@@ -15,6 +15,8 @@ ArtAssets\
 │  ├─ Boss\    Boss01\
 │  └─ FX\      Sheets\(+raw)  Frames\<特效>\
 └─ _预览\       深绿底总览图（人看，不导入 Unity）
+
+批量生成/补齐资源时：先读《美术资源生成流程.md》（操作手册，含流程/脚本/复用指令），本文件只作风格基准。
 ```
 每个动作：`Sheets\<名>_sheet.png`（等大透明精灵表，Unity 按 cell 切）；`Frames\<名>\<名>_00.png…`（单帧）。
 
