@@ -1,0 +1,44 @@
+# Unity 生成的缓存目录
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]serSettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# 资产商店 / IDE
+Assets/AssetStoreTools*
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity 崩溃报告
+sysinfo.txt
+*.stackdump
+crashlytics-build.properties
+
+# 打包产物
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# 系统
+.DS_Store
+Thumbs.db
