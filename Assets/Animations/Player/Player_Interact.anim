@@ -6,7 +6,7 @@ AnimationClip:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Player_Interact
+  m_Name: 
   serializedVersion: 7
   m_Legacy: 0
   m_Compressed: 0
@@ -43,23 +43,8 @@ AnimationClip:
     m_Center: {x: 0, y: 0, z: 0}
     m_Extent: {x: 0, y: 0, z: 0}
   m_ClipBindingConstant:
-    genericBindings:
-    - serializedVersion: 2
-      path: 0
-      attribute: 0
-      script: {fileID: 0}
-      typeID: 212
-      customType: 23
-      isPPtrCurve: 1
-      isIntCurve: 0
-      isSerializeReferenceCurve: 0
-    pptrCurveMapping:
-    - {fileID: 21300000, guid: 596c203f9ab378949abeb899211b8d71, type: 3}
-    - {fileID: 21300000, guid: d6b4efaf9166962489eae2cb024e9d9c, type: 3}
-    - {fileID: 21300000, guid: 38b8bb21c58c6074b8e034be433b8bf7, type: 3}
-    - {fileID: 21300000, guid: 0eabf9c07abbeb7409b425f9da290194, type: 3}
-    - {fileID: 21300000, guid: 82ef3ece5cc929549ade6e09fa873d1a, type: 3}
-    - {fileID: 21300000, guid: 8fbfe4aab19ade348afe83e56b0fbbec, type: 3}
+    genericBindings: []
+    pptrCurveMapping: []
   m_AnimationClipSettings:
     serializedVersion: 2
     m_AdditiveReferencePoseClip: {fileID: 0}
