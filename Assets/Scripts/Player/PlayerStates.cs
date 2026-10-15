@@ -208,16 +208,16 @@ namespace StarEco.Player
         }
     }
 
-    /// <summary>死亡：停输入停碰撞，播放 Die 动画后由关卡流程接管重生。</summary>
-    public class PlayerDieState : PlayerStateBase
+    /// <summary>死亡：停输入停碰撞，播放 Death 动画后由关卡流程接管重生。</summary>
+    public class PlayerDeathState : PlayerStateBase
     {
-        public PlayerDieState(PlayerController player, PlayerStateMachine machine)
+        public PlayerDeathState(PlayerController player, PlayerStateMachine machine)
             : base(player, machine) { }
 
         public override void Enter()
         {
             Player.StopHorizontal();
-            Player.TryFireAnim(PlayerAnimParams.Die);
+            Player.TryFireAnim(PlayerAnimParams.Death);
 
             var collider = Player.GetComponent<Collider2D>();
             if (collider != null)

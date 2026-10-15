@@ -66,7 +66,7 @@ namespace StarEco.Player
             _machine.Register(new PlayerAirState(this, _machine));
             _machine.Register(new PlayerLandState(this, _machine));
             _machine.Register(new PlayerHurtState(this, _machine));
-            _machine.Register(new PlayerDieState(this, _machine));
+            _machine.Register(new PlayerDeathState(this, _machine));
             _machine.SetInitial<PlayerIdleState>();
         }
 

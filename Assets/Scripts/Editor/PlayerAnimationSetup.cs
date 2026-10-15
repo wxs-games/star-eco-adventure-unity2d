@@ -26,18 +26,18 @@ namespace StarEco.EditorTools
         private const string PrefabPath = "Assets/Prefabs/Player/Player.prefab";
         private const float FrameRate = 12f;
 
-        // 目录名 → 是否循环播放
-        private static readonly Dictionary<string, bool> AnimLoopMap = new Dictionary<string, bool>
+        // 目录名 → (clip名, 是否循环)。clip 命名遵循社区规范：无前缀 PascalCase，Die→Death、Attack01→Attack
+        private static readonly Dictionary<string, (string clip, bool loop)> AnimMap = new Dictionary<string, (string, bool)>
         {
-            { "Player_Idle", true },
-            { "Player_Run", true },
-            { "Player_Jump", false },
-            { "Player_Fall", false },
-            { "Player_Land", false },
-            { "Player_Hurt", false },
-            { "Player_Die", false },
-            { "Player_Attack01", false },
-            { "Player_Interact", false },
+            { "Player_Idle",     ("Idle", true) },
+            { "Player_Run",      ("Run", true) },
+            { "Player_Jump",     ("Jump", false) },
+            { "Player_Fall",     ("Fall", false) },
+            { "Player_Land",     ("Land", false) },
+            { "Player_Hurt",     ("Hurt", false) },
+            { "Player_Die",      ("Death", false) },
+            { "Player_Attack01", ("Attack", false) },
+            { "Player_Interact", ("Interact", false) },
         };
 
         [MenuItem("StarEco/Setup/Player Animation")]
@@ -46,6 +46,7 @@ namespace StarEco.EditorTools
             EnsureFolder(OutputRoot);
             EnsureFolder("Assets/Settings");
             EnsureFolder("Assets/Prefabs/Player");
+            CleanupLegacyClips();
 
             var clips = BuildAllClips();
             var controller = BuildController(clips);
@@ -55,6 +56,21 @@ namespace StarEco.EditorTools
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log("[PlayerAnimationSetup] 玩家动画管线搭建完成 ✓");
+        }
+
+        /// <summary>删除旧命名（Player_ 前缀）的 clip 资产，避免残留。</summary>
+        private static void CleanupLegacyClips()
+        {
+            foreach (var guid in AssetDatabase.FindAssets("t:AnimationClip", new[] { OutputRoot }))
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var name = Path.GetFileNameWithoutExtension(path);
+                if (name.StartsWith("Player_"))
+                {
+                    AssetDatabase.DeleteAsset(path);
+                    Debug.Log($"[PlayerAnimationSetup] 清理旧命名 clip：{name}");
+                }
+            }
         }
 
         // ===== 1. Sprite 导入 =====
@@ -80,26 +96,26 @@ namespace StarEco.EditorTools
         {
             var clips = new Dictionary<string, AnimationClip>();
 
-            foreach (var animName in AnimLoopMap.Keys)
+            foreach (var pair in AnimMap)
             {
-                var folder = $"{FramesRoot}/{animName}";
+                var folder = $"{FramesRoot}/{pair.Key}";
                 if (!AssetDatabase.IsValidFolder(folder))
                 {
                     Debug.LogWarning($"[PlayerAnimationSetup] 缺少动画目录：{folder}，跳过。");
                     continue;
                 }
 
-                var clip = BuildClip(animName, folder, AnimLoopMap[animName]);
+                var clip = BuildClip(pair.Key, pair.Value.clip, folder, pair.Value.loop);
                 if (clip != null)
                 {
-                    clips[animName] = clip;
+                    clips[pair.Key] = clip;
                 }
             }
 
             return clips;
         }
 
-        private static AnimationClip BuildClip(string animName, string folder, bool loop)
+        private static AnimationClip BuildClip(string animName, string clipName, string folder, bool loop)
         {
             var guids = AssetDatabase.FindAssets("t:Texture2D", new[] { folder });
             var pngPaths = guids
@@ -139,20 +155,22 @@ namespace StarEco.EditorTools
             settings.loopTime = loop;
             AnimationUtility.SetAnimationClipSettings(clip, settings);
 
-            var clipPath = $"{OutputRoot}/{animName}.anim";
+            var clipPath = $"{OutputRoot}/{clipName}.anim";
             var existing = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
             if (existing != null)
             {
                 EditorUtility.CopySerialized(clip, existing);
                 Object.DestroyImmediate(clip);
                 clip = existing;
+                clip.name = clipName;
             }
             else
             {
                 AssetDatabase.CreateAsset(clip, clipPath);
+                clip.name = clipName;
             }
 
-            Debug.Log($"[PlayerAnimationSetup] 生成 {animName}（{pngPaths.Count} 帧, {(loop ? "循环" : "单次")}）");
+            Debug.Log($"[PlayerAnimationSetup] 生成 {clipName}（{pngPaths.Count} 帧, {(loop ? "循环" : "单次")}）");
             return clip;
         }
 
@@ -180,7 +198,7 @@ namespace StarEco.EditorTools
                 new AnimatorControllerParameter { name = "IsGrounded", type = AnimatorControllerParameterType.Bool, defaultBool = true },
                 new AnimatorControllerParameter { name = "VelocityY", type = AnimatorControllerParameterType.Float, defaultFloat = 0f },
                 new AnimatorControllerParameter { name = "Hurt", type = AnimatorControllerParameterType.Trigger },
-                new AnimatorControllerParameter { name = "Die", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "Death", type = AnimatorControllerParameterType.Trigger },
             };
 
             var root = controller.layers[0].stateMachine;
@@ -194,7 +212,7 @@ namespace StarEco.EditorTools
             var fall = AddState(root, "Fall", GetClip(clips, "Player_Fall"), new Vector2(600, 160));
             var land = AddState(root, "Land", GetClip(clips, "Player_Land"), new Vector2(400, 320));
             var hurt = AddState(root, "Hurt", GetClip(clips, "Player_Hurt"), new Vector2(200, 480));
-            var die = AddState(root, "Die", GetClip(clips, "Player_Die"), new Vector2(400, 480));
+            var death = AddState(root, "Death", GetClip(clips, "Player_Die"), new Vector2(400, 480));
             root.defaultState = idle;
 
             // ---- 地面移动循环 ----
@@ -233,13 +251,13 @@ namespace StarEco.EditorTools
                 t.exitTime = 0.95f;
             });
 
-            // ---- Die：任意状态进入，不退出（由重生逻辑复位） ----
+            // ---- Death：任意状态进入，不退出（由重生逻辑复位） ----
             foreach (var state in new[] { idle, run, jump, fall, land, hurt })
             {
-                var t = root.AddAnyStateTransition(die);
+                var t = root.AddAnyStateTransition(death);
                 t.hasExitTime = false;
                 t.duration = 0.02f;
-                t.AddCondition(AnimatorConditionMode.If, 0, "Die");
+                t.AddCondition(AnimatorConditionMode.If, 0, "Death");
             }
 
             EditorUtility.SetDirty(controller);
@@ -293,7 +311,7 @@ namespace StarEco.EditorTools
         private static void BuildPrefab(AnimatorController controller, StarEco.Player.PlayerConfig config)
         {
             // 用 Idle 第一帧做占位显示（外观由美术帧决定，尺寸由碰撞体决定）
-            var idleClip = AssetDatabase.LoadAssetAtPath<AnimationClip>($"{OutputRoot}/Player_Idle.anim");
+            var idleClip = AssetDatabase.LoadAssetAtPath<AnimationClip>($"{OutputRoot}/Idle.anim");
             Sprite displaySprite = null;
             if (idleClip != null)
             {

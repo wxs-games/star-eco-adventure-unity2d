@@ -28,7 +28,7 @@ namespace StarEco.Player
         {
             if (Player.IsDead)
             {
-                Machine.SwitchState<PlayerDieState>();
+                Machine.SwitchState<PlayerDeathState>();
                 return true;
             }
 

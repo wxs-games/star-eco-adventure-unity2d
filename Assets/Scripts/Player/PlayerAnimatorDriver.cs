@@ -9,7 +9,7 @@ namespace StarEco.Player
         public static readonly int IsGrounded = Animator.StringToHash("IsGrounded");
         public static readonly int VelocityY = Animator.StringToHash("VelocityY");
         public static readonly int Hurt = Animator.StringToHash("Hurt");
-        public static readonly int Die = Animator.StringToHash("Die");
+        public static readonly int Death = Animator.StringToHash("Death");
         public static readonly int Attack = Animator.StringToHash("Attack");       // M3 使用
         public static readonly int Interact = Animator.StringToHash("Interact");   // M5 使用
     }
