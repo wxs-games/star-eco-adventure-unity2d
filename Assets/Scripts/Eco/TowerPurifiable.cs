@@ -11,7 +11,7 @@ namespace StarEco.Eco
     /// 与广播 GarbagePurifiedEvent；关闭表现复用 M4 Tower01_Disable 动画。
     /// </summary>
     [RequireComponent(typeof(Tower01Controller))]
-    public class TowerPurifiable : MonoBehaviour, IPurifiable
+    public class TowerPurifiable : MonoBehaviour, IResettablePurifiable
     {
         [SerializeField] private EcoConfig _config;
 
@@ -62,6 +62,17 @@ namespace StarEco.Eco
             {
                 CompletePurify();
             }
+        }
+
+        /// <summary>
+        /// 恢复未净化初始态（M6 关卡重开）。
+        /// 注意：塔已 RequestDisable（关闭）后无法复活 —— 这是 M4 的单向开关语义，
+        /// 因此重开只重置净化进度，塔保持关闭（重开后该目标不再贡献净化值）。
+        /// </summary>
+        public void ResetPurify()
+        {
+            _progress = 0;
+            _purified = false;
         }
 
         private void CompletePurify()

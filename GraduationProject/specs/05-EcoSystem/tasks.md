@@ -57,6 +57,6 @@
 
 - [x] T22 Unity 编译零报错 + 控制台检查：Refresh Unity，确认 Console 无 error/warning（资产缺失告警除外），20 个 .cs（Eco/ 内 15 文件 + Events/ 5 文件）+ Player/ 增量全部编译通过。验收：零报错。
 - [ ] T23 运行验证（需用户配合按 Play 目检）：逐条走查——喷洒链路（按住 K → 播 Interact + 减速移动 + 垃圾色块渐变 + 2 秒净化完成 → fx_purify + 事件 + 净化值 +5%）；挡路墙（普通喷洒进度缓慢 → 蓄力波 ×1.5 次净化 → Collider 关闭通路打开 + Sprite 变淡）；蓄力（长按 L 站定 → 0.8 秒蓄满 → 松开同帧波结算 + 播 HeavyAttack + 扣 25 净化剂 → 对敌 3 伤害 + 击退 8 → 0.5 秒恢复；未满松开零消耗取消）；净化剂经济（喷洒 8/秒消耗、命中敌加倍 16/秒、耗尽自动退出不报错、拾取瓶 +20）；塔净化（持续喷 3.75 秒 → RequestDisable → TowerDisableEvent + 净化值 +10%，幂等重喷不报错）；氛围（初始灰紫 → 净化推进背景色平滑渐变自然绿 → 100% 时 LevelPurifiedEvent 恰一次）；掉落（杀敌按表概率掉瓶 → 触碰自动拾取归池）；池化（连杀 20 + 连续 fx 后 Profiler 无新增实例、无每帧 GC）；优先级与互斥（喷洒中受击被打断、攻击/受击/死亡中按 K/L 不进入、喷洒与蓄力互斥、J 夹钳攻击与 Space 跳跃回归正常）。验收：逐条通过。
-- [ ] T24 git commit：提交 M5 环保玩法全部代码与资产，commit message `M5: eco system — spray/charge/purify/purity/atmosphere/drops`。验收：commit 含 20 个 .cs + Player/ 两文件增量 + EcoConfig/DropTable 资产 + 4 个 Prefab + Animator Controller + 场景/层配置变更。
+- [x] T24 git commit：提交 M5 环保玩法全部代码与资产，commit message `M5: eco system — spray/charge/purify/purity/atmosphere/drops`。验收：commit 含 20 个 .cs + Player/ 两文件增量 + EcoConfig/DropTable 资产 + 4 个 Prefab + Animator Controller + 场景/层配置变更。
 
 > 状态：T1~T22 已完成（代码 21 个 .cs + 资产 + 预制体 + Animator + 场景接入，编译零报错）。共 24 个任务（20 个 .cs + Player/ 最小增量 + 2 份资产 + 4 个 Prefab + Animator 核对补建 + 场景/碰撞接入 + 编译/运行验证 + git 提交），覆盖 R1~R10 全部约 50 条 EARS。对 M3/M4 边界：只实现/调用 `IHittable`·`TakeDamage`·`RequestDisable` 与订阅既有事件，零改其源码；对 M2 增量已收敛为 T10 的约 15 行（全部为 R2/R3/R10 必需功能，TDD §2.1 允许）。

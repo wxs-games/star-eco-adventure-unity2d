@@ -33,7 +33,7 @@ MonoBehaviour:
   AimSeconds: 0.4
   FireSeconds: 0.3
   SpawnSeconds: 0
-  DropTable: {fileID: 0}
+  DropTable: {fileID: 11400000, guid: f4ac1aa1667501f42934628a040d3ccf, type: 2}
   AnimFrameRate: 12
   PlayerLayer:
     serializedVersion: 2

@@ -78,6 +78,17 @@ namespace StarEco.Eco
             }
         }
 
+        /// <summary>
+        /// 重置关卡净化进度（M6 关卡重开）：Current 清零、解除 100% one-shot 守卫并重新广播基线。
+        /// Total 不变（场景可净化目标集合未改变）。
+        /// </summary>
+        public void ResetProgress()
+        {
+            Current = 0;
+            _completed = false;
+            Broadcast();
+        }
+
         private void Broadcast()
         {
             EventCenter.Publish(new PurityChangedEvent

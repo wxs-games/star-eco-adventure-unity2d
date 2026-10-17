@@ -249,6 +249,37 @@ namespace StarEco.Player
         /// <summary>无敌期剩余时间（闪烁效果用）。</summary>
         public float InvincibleTimer => _invincibleTimer;
 
+        /// <summary>
+        /// 复活（M6 检查点恢复）：清死亡/输入锁、零化速度与击退、复位动画参数。
+        /// 刻意不直接改 HP —— HP 由 PlayerCombat.RestoreHP 负责。
+        /// </summary>
+        public void Revive()
+        {
+            IsDead = false;
+            InputLocked = false;
+            _pendingHurt = false;
+            _knockbackVelocity = Vector2.zero;
+
+            if (Body != null)
+            {
+                Body.velocity = Vector2.zero;
+            }
+
+            // 复位 Animator 一次性触发器并切回 Idle（否则死亡状态触发器残留、状态机停在死亡态）
+            if (Anim != null)
+            {
+                var animator = Anim.GetComponent<Animator>();
+                if (animator != null)
+                {
+                    animator.ResetTrigger(PlayerAnimParams.Hurt);
+                    animator.ResetTrigger(PlayerAnimParams.Death);
+                    animator.SetBool(PlayerAnimParams.IsCrouching, false);
+                }
+            }
+
+            _machine?.SwitchState<PlayerIdleState>();
+        }
+
         /// <summary>触发一次性动画（受击/死亡/攻击/互动），驱动器缺失时静默。</summary>
         public void TryFireAnim(int triggerHash)
         {

@@ -54,6 +54,17 @@ namespace StarEco.Combat
             return true;
         }
 
+        // ===== 生命恢复（M6 检查点快照恢复入口） =====
+
+        /// <summary>
+        /// 恢复 HP 到指定值（夹取 [0, MaxHP]）。
+        /// 刻意不碰 PlayerController.IsDead —— 复活是 LevelManager 的流程决策，不在伤害组件里做。
+        /// </summary>
+        public void RestoreHP(int hp)
+        {
+            CurrentHP = Mathf.Clamp(hp, 0, MaxHP);
+        }
+
         // ===== IHittable =====
 
         public void TakeDamage(DamageInfo info)

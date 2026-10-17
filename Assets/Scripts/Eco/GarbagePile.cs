@@ -10,7 +10,7 @@ namespace StarEco.Eco
     /// 完成后播 fx_purify、广播事件；挡路型关闭阻挡 Collider 打开通路。
     /// 进度中断不衰减（design §2.1）。美术后补仅换 Sprite，逻辑不变。
     /// </summary>
-    public class GarbagePile : MonoBehaviour, IPurifiable
+    public class GarbagePile : MonoBehaviour, IResettablePurifiable
     {
         [SerializeField] private EcoConfig _config;
         [SerializeField] private FxOneShot _fxPurifyPrefab;
@@ -116,8 +116,24 @@ namespace StarEco.Eco
             }
         }
 
-        private int ResolveRequired()
+        /// <summary>恢复未净化初始态（M6 关卡重开）。</summary>
+        public void ResetPurify()
         {
+            _progress = 0;
+            _purified = false;
+
+            if (_collider != null)
+            {
+                _collider.enabled = true;
+            }
+
+            if (_sprite != null)
+            {
+                _sprite.color = _config != null ? _config.GarbagePollutedTint : Color.gray;
+            }
+        }
+
+        private int ResolveRequired()        {
             if (_purifyRequired >= 0)
             {
                 return _purifyRequired;
