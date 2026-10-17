@@ -14,6 +14,23 @@ namespace StarEco.Player
         private bool _released;
         private float _recoverTimer;
 
+        /// <summary>蓄力进度比例 [0,1]（M7 HUD 蓄力条数据源；蓄满保持 1）。</summary>
+        public float ChargeRatio
+        {
+            get
+            {
+                float full = _spray != null && _spray.Config != null
+                    ? _spray.Config.HeavyChargeSeconds
+                    : 0f;
+                if (full <= 0f)
+                {
+                    return _released ? 0f : 0f;
+                }
+
+                return Mathf.Clamp01(_chargeTimer / full);
+            }
+        }
+
         public PlayerChargeState(PlayerController player, PlayerStateMachine machine)
             : base(player, machine) { }
 

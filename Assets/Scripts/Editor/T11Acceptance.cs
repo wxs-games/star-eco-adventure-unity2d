@@ -9,13 +9,16 @@ using StarEco.Combat;
 namespace StarEco.EditorTools
 {
     /// <summary>
-    /// T11 战斗验收 harness：
+    /// T11 战斗验收 harness（M3 历史遗留，已完成使命）：
     /// - 按时刻表注入攻击输入（OS 键盘注入被环境阻断，故顶替「按键→AttackPressedThisFrame」这一跳：
     ///   注入前禁用 PlayerCombat.Update，防止每帧用真实 Input 覆盖注入值）
     /// - 三段动画衔接、连段窗口缓冲、Animation Event 开窗、命中扣血、第三段击退 全部走真实游戏链路
     /// - 每条事件实时写入 .workbuddy/t11_report.txt
+    ///
+    /// M7 起停用自动运行：原 [InitializeOnLoad] 会在每次 Play 时无条件禁用 PlayerCombat.Update
+    /// 并挪动靶子，干扰 M4 之后的正常试玩。需要复跑验收时，临时恢复该特性或在 Unity 菜单
+    /// 里手动调用 Tick 即可（逻辑保持原样未删）。
     /// </summary>
-    [InitializeOnLoad]
     public static class T11Acceptance
     {
         // 三连击时刻：第1击进段1；第2击在段1的 0.15s 连段窗口内；第3击在段2窗口内

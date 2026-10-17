@@ -154,5 +154,8 @@ namespace StarEco.Framework
     {
         public float bgmVolume = 0.8f;
         public float sfxVolume = 1f;
+
+        /// <summary>画质档位 0/1/2（M7 设置面板新增字段，默认中档）。</summary>
+        public int qualityLevel = 1;
     }
 }

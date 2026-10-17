@@ -280,6 +280,15 @@ namespace StarEco.Player
             _machine?.SwitchState<PlayerIdleState>();
         }
 
+        /// <summary>
+        /// 蓄力进度比例 [0,1]（M7 HUD 蓄力条数据源）：非蓄力状态返回 0。
+        /// 唯一改动点是本只读属性（M7 design §2.7 论证的必要最小增量）。
+        /// </summary>
+        public float ChargeRatio =>
+            _machine != null && _machine.Current is PlayerChargeState charge
+                ? charge.ChargeRatio
+                : 0f;
+
         /// <summary>触发一次性动画（受击/死亡/攻击/互动），驱动器缺失时静默。</summary>
         public void TryFireAnim(int triggerHash)
         {

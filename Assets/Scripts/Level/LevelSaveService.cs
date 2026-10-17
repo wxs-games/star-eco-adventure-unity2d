@@ -15,6 +15,9 @@ namespace StarEco.Level
         /// <summary>进度存档槽位。</summary>
         public const string ProgressSlot = "progress";
 
+        /// <summary>图鉴收集进度槽位（M7 R8，SaveSystem 自行补 .json 后缀）。</summary>
+        public const string CodexSlot = "codex";
+
         /// <summary>写结算（覆盖）。</summary>
         public static void SaveResult(LevelResultData data)
         {
@@ -88,6 +91,20 @@ namespace StarEco.Level
         {
             SaveSystem.Delete(ResultSlot);
             SaveSystem.Delete(ProgressSlot);
+            SaveSystem.Delete(CodexSlot);
+        }
+
+        /// <summary>仅清关卡进度与图鉴（M7"开始新游戏"用，保留设置）。</summary>
+        public static void ClearProgress()
+        {
+            SaveSystem.Delete(ProgressSlot);
+            SaveSystem.Delete(CodexSlot);
+        }
+
+        /// <summary>仅清结算记录（M7"开始新游戏"用）。</summary>
+        public static void ClearResult()
+        {
+            SaveSystem.Delete(ResultSlot);
         }
     }
 }
