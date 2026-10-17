@@ -16,6 +16,7 @@ namespace StarEco.Player
         public Rigidbody2D Body { get; private set; }
         public SpriteRenderer Sprite { get; private set; }
         public PlayerAnimatorDriver Anim { get; private set; }
+        public StarEco.Combat.PlayerCombat Combat { get; private set; }
 
         // ===== 运行时事实（供状态机读取） =====
         public float HorizontalInput { get; private set; }
@@ -47,6 +48,7 @@ namespace StarEco.Player
             Body = GetComponent<Rigidbody2D>();
             Sprite = GetComponent<SpriteRenderer>();
             Anim = GetComponent<PlayerAnimatorDriver>();
+            Combat = GetComponent<StarEco.Combat.PlayerCombat>();
             Body.freezeRotation = true;
 
             if (_config == null)
@@ -65,6 +67,7 @@ namespace StarEco.Player
             _machine.Register(new PlayerRunState(this, _machine));
             _machine.Register(new PlayerAirState(this, _machine));
             _machine.Register(new PlayerLandState(this, _machine));
+            _machine.Register(new PlayerAttackState(this, _machine));
             _machine.Register(new PlayerHurtState(this, _machine));
             _machine.Register(new PlayerDeathState(this, _machine));
             _machine.SetInitial<PlayerIdleState>();

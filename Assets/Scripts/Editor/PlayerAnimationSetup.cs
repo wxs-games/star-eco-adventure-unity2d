@@ -24,20 +24,33 @@ namespace StarEco.EditorTools
         private const string ConfigPath = "Assets/Settings/PlayerConfig.asset";
         private const string ControllerPath = "Assets/Animations/Player/Player.controller";
         private const string PrefabPath = "Assets/Prefabs/Player/Player.prefab";
-        private const float FrameRate = 12f;
 
-        // 目录名 → (clip名, 是否循环)。clip 命名遵循社区规范：无前缀 PascalCase，Die→Death、Attack01→Attack
-        private static readonly Dictionary<string, (string clip, bool loop)> AnimMap = new Dictionary<string, (string, bool)>
+        // 目录名 → (clip名, 是否循环, 采样率)。采样率取排期表 Samples 列（未声明则用默认 12）。
+        private const float DefaultFrameRate = 12f;
+        private static readonly Dictionary<string, (string clip, bool loop, float fps)> AnimMap = new Dictionary<string, (string, bool, float)>
         {
-            { "Player_Idle",     ("Idle", true) },
-            { "Player_Run",      ("Run", true) },
-            { "Player_Jump",     ("Jump", false) },
-            { "Player_Fall",     ("Fall", false) },
-            { "Player_Land",     ("Land", false) },
-            { "Player_Hurt",     ("Hurt", false) },
-            { "Player_Die",      ("Death", false) },
-            { "Player_Attack01", ("Attack", false) },
-            { "Player_Interact", ("Interact", false) },
+            { "Player_Idle",        ("Idle", true, 12) },
+            { "Player_Run",         ("Run", true, 24) },
+            { "Player_Jump",        ("Jump", false, 24) },
+            { "Player_Fall",        ("Fall", true, 12) },
+            { "Player_Land",        ("Land", false, 24) },
+            { "Player_Hurt",        ("Hurt", false, 15) },
+            { "Player_Die",         ("Death", false, 18) },
+            { "Player_Attack01",    ("Attack", false, 24) },
+            { "Player_Interact",    ("Interact", false, 18) },
+            { "Player_Dash",        ("Dash", false, 30) },
+            { "Player_Roll",        ("Roll", false, 24) },
+            { "Player_Attack02",    ("Attack02", false, 24) },
+            { "Player_Attack03",    ("Attack03", false, 24) },
+            { "Player_AttackAir",   ("AttackAir", false, 24) },
+            { "Player_Victory",     ("Victory", true, 15) },
+            { "Player_Turn",        ("Turn", false, 24) },
+            { "Player_WallSlide",   ("WallSlide", true, 12) },
+            { "Player_WallJump",    ("WallJump", false, 24) },
+            { "Player_LedgeGrab",   ("LedgeGrab", true, 12) },
+            { "Player_Crouch",      ("Crouch", false, 15) },
+            { "Player_Idle02",      ("Idle02", true, 10) },
+            { "Player_HeavyAttack", ("HeavyAttack", false, 24) },
         };
 
         [MenuItem("StarEco/Setup/Player Animation")]
@@ -55,7 +68,30 @@ namespace StarEco.EditorTools
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+            // 保险：删除重建 controller 的窗口期会让场景内 Player 实例的 Animator 引用被清空
+            // （guid 虽已恢复，但内存里的实例引用已断）。重建后统一回绑并保存场景。
+            RebindSceneAnimators(controller);
             Debug.Log("[PlayerAnimationSetup] 玩家动画管线搭建完成 ✓");
+        }
+
+        /// <summary>把场景中 Player 根节点的 Animator 重新指向刚生成的 controller 并保存场景。</summary>
+        private static void RebindSceneAnimators(RuntimeAnimatorController controller)
+        {
+            int bound = 0;
+            foreach (var anim in UnityEngine.Object.FindObjectsOfType<Animator>(true))
+            {
+                if (anim.gameObject.name != "Player") continue;
+                if (anim.runtimeAnimatorController == controller) continue;
+                anim.runtimeAnimatorController = controller;
+                EditorUtility.SetDirty(anim);
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(anim.gameObject.scene);
+                bound++;
+            }
+            if (bound > 0)
+            {
+                UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
+                Debug.Log($"[PlayerAnimationSetup] 已回绑 {bound} 处场景 Animator 引用");
+            }
         }
 
         /// <summary>删除旧命名（Player_ 前缀）的 clip 资产，避免残留。</summary>
@@ -105,7 +141,7 @@ namespace StarEco.EditorTools
                     continue;
                 }
 
-                var clip = BuildClip(pair.Key, pair.Value.clip, folder, pair.Value.loop);
+                var clip = BuildClip(pair.Key, pair.Value.clip, folder, pair.Value.loop, pair.Value.fps);
                 if (clip != null)
                 {
                     clips[pair.Key] = clip;
@@ -115,8 +151,9 @@ namespace StarEco.EditorTools
             return clips;
         }
 
-        private static AnimationClip BuildClip(string animName, string clipName, string folder, bool loop)
+        private static AnimationClip BuildClip(string animName, string clipName, string folder, bool loop, float fps)
         {
+            float frameRate = fps > 0f ? fps : DefaultFrameRate;
             var guids = AssetDatabase.FindAssets("t:Texture2D", new[] { folder });
             var pngPaths = guids
                 .Select(AssetDatabase.GUIDToAssetPath)
@@ -142,12 +179,12 @@ namespace StarEco.EditorTools
                 var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(pngPaths[i]);
                 keyframes[i] = new ObjectReferenceKeyframe
                 {
-                    time = i / FrameRate,
+                    time = i / frameRate,
                     value = sprite
                 };
             }
 
-            var clip = new AnimationClip { frameRate = FrameRate };
+            var clip = new AnimationClip { frameRate = frameRate };
             var binding = EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite");
             AnimationUtility.SetObjectReferenceCurve(clip, binding, keyframes);
 
@@ -159,10 +196,16 @@ namespace StarEco.EditorTools
             var existing = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
             if (existing != null)
             {
+                // 覆盖重建时保留 Animation Event（Attack 开窗帧等由战斗系统手工打入，不能被冲掉）
+                var preservedEvents = AnimationUtility.GetAnimationEvents(existing);
                 EditorUtility.CopySerialized(clip, existing);
                 Object.DestroyImmediate(clip);
                 clip = existing;
                 clip.name = clipName;
+                if (preservedEvents != null && preservedEvents.Length > 0)
+                {
+                    AnimationUtility.SetAnimationEvents(clip, preservedEvents);
+                }
             }
             else
             {
@@ -185,13 +228,28 @@ namespace StarEco.EditorTools
 
         private static AnimatorController BuildController(Dictionary<string, AnimationClip> clips)
         {
-            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
-            if (controller == null)
+            // 删除重建：历史重跑会在 .controller 里累积孤儿状态/转移块（含引用已删参数的死转移），
+            // 重建保证文件只含当前图；同时恢复原 guid，保 prefab/场景引用不断。
+            var oldGuid = AssetDatabase.AssetPathToGUID(ControllerPath);
+            if (AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath) != null)
             {
-                controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
+                AssetDatabase.DeleteAsset(ControllerPath);
             }
 
-            // 参数
+            var controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
+
+            if (!string.IsNullOrEmpty(oldGuid) && oldGuid != AssetDatabase.AssetPathToGUID(ControllerPath))
+            {
+                var metaPath = ControllerPath + ".meta";
+                var meta = File.ReadAllText(metaPath);
+                meta = new Regex(@"guid: \w+").Replace(meta, "guid: " + oldGuid, 1);
+                File.WriteAllText(metaPath, meta);
+                AssetDatabase.Refresh();
+                controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+                Debug.Log($"[PlayerAnimationSetup] controller 已重建并恢复 guid {oldGuid}");
+            }
+
+            // 参数（与 PlayerAnimParams 常量一一对应）
             controller.parameters = new[]
             {
                 new AnimatorControllerParameter { name = "Speed", type = AnimatorControllerParameterType.Float, defaultFloat = 0f },
@@ -199,6 +257,21 @@ namespace StarEco.EditorTools
                 new AnimatorControllerParameter { name = "VelocityY", type = AnimatorControllerParameterType.Float, defaultFloat = 0f },
                 new AnimatorControllerParameter { name = "Hurt", type = AnimatorControllerParameterType.Trigger },
                 new AnimatorControllerParameter { name = "Death", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "Attack", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "Interact", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "Dash", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "Roll", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "Attack2", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "Attack3", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "AttackAir", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "HeavyAttack", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "Victory", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "Turn", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "WallJump", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "IsWallSliding", type = AnimatorControllerParameterType.Bool, defaultBool = false },
+                new AnimatorControllerParameter { name = "IsLedgeGrab", type = AnimatorControllerParameterType.Bool, defaultBool = false },
+                new AnimatorControllerParameter { name = "IsCrouching", type = AnimatorControllerParameterType.Bool, defaultBool = false },
+                new AnimatorControllerParameter { name = "IsLongIdle", type = AnimatorControllerParameterType.Bool, defaultBool = false },
             };
 
             var root = controller.layers[0].stateMachine;
@@ -214,6 +287,25 @@ namespace StarEco.EditorTools
             var hurt = AddState(root, "Hurt", GetClip(clips, "Player_Hurt"), new Vector2(200, 480));
             var death = AddState(root, "Death", GetClip(clips, "Player_Die"), new Vector2(400, 480));
             root.defaultState = idle;
+
+            // ---- 收尾补齐：一次性动作（trigger），播完回地面/空中 ----
+            var interact = AddState(root, "Interact", GetClip(clips, "Player_Interact"), new Vector2(600, 0));
+            var attack = AddState(root, "Attack", GetClip(clips, "Player_Attack01"), new Vector2(800, 0));
+            var attack2 = AddState(root, "Attack02", GetClip(clips, "Player_Attack02"), new Vector2(1000, 0));
+            var attack3 = AddState(root, "Attack03", GetClip(clips, "Player_Attack03"), new Vector2(1200, 0));
+            var attackAir = AddState(root, "AttackAir", GetClip(clips, "Player_AttackAir"), new Vector2(800, 160));
+            var heavy = AddState(root, "HeavyAttack", GetClip(clips, "Player_HeavyAttack"), new Vector2(1400, 0));
+            var dash = AddState(root, "Dash", GetClip(clips, "Player_Dash"), new Vector2(600, 320));
+            var roll = AddState(root, "Roll", GetClip(clips, "Player_Roll"), new Vector2(800, 320));
+            var turn = AddState(root, "Turn", GetClip(clips, "Player_Turn"), new Vector2(1000, 320));
+            var victory = AddState(root, "Victory", GetClip(clips, "Player_Victory"), new Vector2(1200, 320));
+            var wallJump = AddState(root, "WallJump", GetClip(clips, "Player_WallJump"), new Vector2(600, 480));
+
+            // ---- 持续型状态（bool 进出）----
+            var wallSlide = AddState(root, "WallSlide", GetClip(clips, "Player_WallSlide"), new Vector2(800, 480));
+            var ledgeGrab = AddState(root, "LedgeGrab", GetClip(clips, "Player_LedgeGrab"), new Vector2(1000, 480));
+            var crouch = AddState(root, "Crouch", GetClip(clips, "Player_Crouch"), new Vector2(1200, 480));
+            var longIdle = AddState(root, "Idle02", GetClip(clips, "Player_Idle02"), new Vector2(1400, 480));
 
             // ---- 地面移动循环 ----
             Link(idle, run, t => t.AddCondition(AnimatorConditionMode.Greater, 0.1f, "Speed"));
@@ -235,6 +327,70 @@ namespace StarEco.EditorTools
                 t.exitTime = 0.9f;
             });
             Link(land, jump, t => t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsGrounded"));
+
+            // ---- 收尾补齐接线 ----
+            // 持续型状态（bool 由 Driver/状态机每帧写入，进出场即时响应）
+            foreach (var from in new[] { idle, run })
+            {
+                Link(from, wallSlide, t => t.AddCondition(AnimatorConditionMode.If, 0, "IsWallSliding"));
+                Link(from, ledgeGrab, t => t.AddCondition(AnimatorConditionMode.If, 0, "IsLedgeGrab"));
+                Link(from, crouch, t => t.AddCondition(AnimatorConditionMode.If, 0, "IsCrouching"));
+                Link(from, longIdle, t => t.AddCondition(AnimatorConditionMode.If, 0, "IsLongIdle"));
+            }
+            // 持续型 -> 退出条件解除即回地面循环
+            Link(wallSlide, idle, t => t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsWallSliding"));
+            Link(ledgeGrab, idle, t => t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLedgeGrab"));
+            Link(crouch, idle, t => t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsCrouching"));
+            Link(longIdle, idle, t => t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLongIdle"));
+            // 长待机被任何移动打断
+            Link(longIdle, run, t => t.AddCondition(AnimatorConditionMode.Greater, 0.1f, "Speed"));
+            Link(longIdle, jump, t => t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsGrounded"));
+
+            // 墙跳：从贴墙下滑或空中触发
+            Link(wallSlide, wallJump, t => t.AddCondition(AnimatorConditionMode.If, 0, "WallJump"));
+            Link(fall, wallJump, t => t.AddCondition(AnimatorConditionMode.If, 0, "WallJump"));
+            Link(wallJump, fall, t =>
+            {
+                t.hasExitTime = true;
+                t.exitTime = 0.9f;
+            });
+
+            // 一次性动作：AnyState 进入（trigger），播完回地面/空中
+            var oneShots = new[]
+            {
+                (state: interact, trigger: "Interact"), (state: attack, trigger: "Attack"),
+                (state: attack2, trigger: "Attack2"), (state: attack3, trigger: "Attack3"),
+                (state: attackAir, trigger: "AttackAir"), (state: heavy, trigger: "HeavyAttack"),
+                (state: dash, trigger: "Dash"), (state: roll, trigger: "Roll"),
+                (state: turn, trigger: "Turn"), (state: victory, trigger: "Victory"),
+            };
+            foreach (var (state, trigger) in oneShots)
+            {
+                var any = root.AddAnyStateTransition(state);
+                any.hasExitTime = false;
+                any.duration = 0.02f;
+                any.AddCondition(AnimatorConditionMode.If, 0, trigger);
+
+                // 播完回地面或空中（Victory 循环播，由过关流程直接切场景）
+                if (state != victory)
+                {
+                    Link(state, idle, t =>
+                    {
+                        t.hasExitTime = true;
+                        t.exitTime = 0.95f;
+                    });
+                    Link(state, jump, t =>
+                    {
+                        t.hasExitTime = true;
+                        t.exitTime = 0.95f;
+                        t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsGrounded");
+                    });
+                }
+            }
+
+            // 连段链：Attack 结束窗口可无缝接 Attack02 -> Attack03（玩家按攻击键触发下一段）
+            Link(attack, attack2, t => t.AddCondition(AnimatorConditionMode.If, 0, "Attack2"));
+            Link(attack2, attack3, t => t.AddCondition(AnimatorConditionMode.If, 0, "Attack3"));
 
             // ---- Hurt：任意状态进入，播放完回 Idle ----
             foreach (var state in new[] { idle, run, jump, fall, land })

@@ -12,6 +12,21 @@ namespace StarEco.Player
         public static readonly int Death = Animator.StringToHash("Death");
         public static readonly int Attack = Animator.StringToHash("Attack");       // M3 使用
         public static readonly int Interact = Animator.StringToHash("Interact");   // M5 使用
+        // —— 收尾补齐的 22 条动作参数（与排期表/装配工具一一对应）——
+        public static readonly int Dash = Animator.StringToHash("Dash");
+        public static readonly int Roll = Animator.StringToHash("Roll");
+        public static readonly int Attack2 = Animator.StringToHash("Attack2");
+        public static readonly int Attack3 = Animator.StringToHash("Attack3");
+        public static readonly int AttackAir = Animator.StringToHash("AttackAir");
+        public static readonly int HeavyAttack = Animator.StringToHash("HeavyAttack");
+        public static readonly int Victory = Animator.StringToHash("Victory");
+        public static readonly int Turn = Animator.StringToHash("Turn");
+        public static readonly int WallJump = Animator.StringToHash("WallJump");
+        // 持续型状态用 bool（进入/退出即时响应），一次性动作用 trigger
+        public static readonly int IsWallSliding = Animator.StringToHash("IsWallSliding");
+        public static readonly int IsLedgeGrab = Animator.StringToHash("IsLedgeGrab");
+        public static readonly int IsCrouching = Animator.StringToHash("IsCrouching");
+        public static readonly int IsLongIdle = Animator.StringToHash("IsLongIdle");
     }
 
     /// <summary>
