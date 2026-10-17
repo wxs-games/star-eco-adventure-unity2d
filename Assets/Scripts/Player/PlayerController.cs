@@ -17,6 +17,7 @@ namespace StarEco.Player
         public SpriteRenderer Sprite { get; private set; }
         public PlayerAnimatorDriver Anim { get; private set; }
         public StarEco.Combat.PlayerCombat Combat { get; private set; }
+        public StarEco.Eco.SprayController Spray { get; private set; }
 
         // ===== 运行时事实（供状态机读取） =====
         public float HorizontalInput { get; private set; }
@@ -49,6 +50,7 @@ namespace StarEco.Player
             Sprite = GetComponent<SpriteRenderer>();
             Anim = GetComponent<PlayerAnimatorDriver>();
             Combat = GetComponent<StarEco.Combat.PlayerCombat>();
+            Spray = GetComponent<StarEco.Eco.SprayController>();
             Body.freezeRotation = true;
 
             if (_config == null)
@@ -68,6 +70,8 @@ namespace StarEco.Player
             _machine.Register(new PlayerAirState(this, _machine));
             _machine.Register(new PlayerLandState(this, _machine));
             _machine.Register(new PlayerAttackState(this, _machine));
+            _machine.Register(new PlayerSprayState(this, _machine));
+            _machine.Register(new PlayerChargeState(this, _machine));
             _machine.Register(new PlayerHurtState(this, _machine));
             _machine.Register(new PlayerDeathState(this, _machine));
             _machine.SetInitial<PlayerIdleState>();
@@ -157,10 +161,10 @@ namespace StarEco.Player
         /// <summary>跳跃缓冲是否有效（触地瞬间自动起跳用）。</summary>
         public bool HasJumpBuffer => _jumpBufferCounter > 0f;
 
-        /// <summary>水平移动（状态机在 FixedTick 调用；air 参数控制空中控制力）。</summary>
-        public void MoveHorizontally(bool inAir)
+        /// <summary>水平移动（状态机在 FixedTick 调用；air 参数控制空中控制力；speedFactor 为移速因子，喷洒减速用）。</summary>
+        public void MoveHorizontally(bool inAir, float speedFactor = 1f)
         {
-            float targetSpeed = HorizontalInput * _config.MoveSpeed * (inAir ? _config.AirControlRatio : 1f);
+            float targetSpeed = HorizontalInput * _config.MoveSpeed * (inAir ? _config.AirControlRatio : 1f) * speedFactor;
             float newSpeed = Mathf.MoveTowards(Body.velocity.x, targetSpeed, _config.Acceleration * Time.fixedDeltaTime);
             Body.velocity = new Vector2(newSpeed, Body.velocity.y);
 

@@ -26,6 +26,22 @@ namespace StarEco.Player
                 return;
             }
 
+            // 喷洒/蓄力进入（M5：门条件在 SprayController，K/L 按下帧请求）
+            if (Player.Spray != null)
+            {
+                if (Player.Spray.TryConsumeSprayStart())
+                {
+                    Machine.SwitchState<PlayerSprayState>();
+                    return;
+                }
+
+                if (Player.Spray.TryConsumeChargeStart())
+                {
+                    Machine.SwitchState<PlayerChargeState>();
+                    return;
+                }
+            }
+
             // 跳跃缓冲（含土狼时间内的起跳）
             if (Player.HasJumpBuffer && Player.TryConsumeJump())
             {
@@ -65,6 +81,22 @@ namespace StarEco.Player
             {
                 Machine.SwitchState<PlayerAttackState>();
                 return;
+            }
+
+            // 喷洒/蓄力进入（M5：门条件在 SprayController，K/L 按下帧请求）
+            if (Player.Spray != null)
+            {
+                if (Player.Spray.TryConsumeSprayStart())
+                {
+                    Machine.SwitchState<PlayerSprayState>();
+                    return;
+                }
+
+                if (Player.Spray.TryConsumeChargeStart())
+                {
+                    Machine.SwitchState<PlayerChargeState>();
+                    return;
+                }
             }
 
             if (Player.HasJumpBuffer && Player.TryConsumeJump())
