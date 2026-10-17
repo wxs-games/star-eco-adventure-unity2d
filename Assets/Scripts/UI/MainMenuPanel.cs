@@ -169,11 +169,12 @@ namespace StarEco.UI
         {
             UIUtility.PlayClickSfx();
 
+            // M9：三关均建成，继续游戏 = 进入已解锁的最高关卡（通关即解锁下一关）
             var progress = LevelSaveService.LoadProgress();
-            int target = Mathf.Clamp(progress.UnlockedLevelIndex, 1, 1);   // 当前仅第 1 关可加载
+            int target = Mathf.Clamp(progress.UnlockedLevelIndex, 1, 3);
             Time.timeScale = 1f;
-            SceneManager.LoadScene(SceneNames.Level01);
-            Debug.Log($"[MainMenu] 继续游戏：解锁至第 {target} 关（当前仅第 1 关可加载）。");
+            SceneManager.LoadScene(SceneNames.ForLevel(target));
+            Debug.Log($"[MainMenu] 继续游戏：进入第 {target} 关（{SceneNames.ForLevel(target)}）。");
         }
 
         private void OnQuitClicked()
@@ -212,5 +213,18 @@ namespace StarEco.UI
     {
         public const string Title = "Title";
         public const string Level01 = "Level01";
+        public const string Level02 = "Level02";
+        public const string Level03 = "Level03";
+
+        /// <summary>关卡序号（1 起）→ 场景名。LevelIndex 与 Build Settings 索引一致（Title=0）。</summary>
+        public static string ForLevel(int levelIndex)
+        {
+            switch (Mathf.Clamp(levelIndex, 1, 3))
+            {
+                case 2: return Level02;
+                case 3: return Level03;
+                default: return Level01;
+            }
+        }
     }
 }

@@ -12,7 +12,7 @@ namespace StarEco.UI
     /// 结算面板（M7 R7）：订阅 M6 的 LevelCompletedEvent/LevelFailedEvent。
     /// 完成：标题/关卡名/净化度/用时/击杀/拾取 + 评级（S/A/B/C 与 ★ 并存）。
     /// 失败：失败原因 + 重新开始/返回主菜单。
-    /// 下一关按钮：result.LevelIndex < UnlockedLevelIndex 时显示（第 2 关未建成→提示）。
+    /// 下一关按钮：result.LevelIndex < UnlockedLevelIndex 时显示，加载下一关场景（M9 起三关均建成）。
     /// </summary>
     public class ResultPanel : UIPanel
     {
@@ -169,11 +169,12 @@ namespace StarEco.UI
             _nextButton.onClick.AddListener(() =>
             {
                 UIUtility.PlayClickSfx();
+                // M9：三关均建成，LevelIndex 与 Build Settings 索引一致（Title=0）
                 int next = _resultLevelIndex + 1;
-                int nextBuild = next == 2 ? -1 : -1;   // 第 2/3 关尚未建成（M8/M9）
+                int nextBuild = next <= 3 ? next : -1;
                 if (nextBuild < 0)
                 {
-                    Debug.Log($"[ResultPanel] 第 {next} 关尚未建成（M8/M9），敬请期待。");
+                    Debug.Log($"[ResultPanel] 第 {next} 关尚未建成，敬请期待。");
                     return;
                 }
 

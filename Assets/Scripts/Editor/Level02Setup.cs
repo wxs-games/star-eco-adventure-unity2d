@@ -1,0 +1,532 @@
+using System.Collections.Generic;
+using System.Text;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using StarEco.Level;
+using StarEco.UI;
+
+namespace StarEco.EditorTools
+{
+    /// <summary>
+    /// 第二关一键搭建（M9 R5）：Level02.asset + Level02.unity 灰盒（生态森林）。
+    /// 目标链（四段）：解救 2 只动物 → 清理 3 处堵塞疏通河道 → 净化 3 处污染源 → 击败 4 只毒植物。
+    /// 空间动线：左岸（出生/解救/清堵）→ 河道（深水致命，木筏通路初始禁用）→ 右岸（净化/战斗）。
+    /// 复用 M6 关卡系统与 M7 UI 面板；菜单：StarEco → Setup → Level02（幂等：场景已存在则跳过）。
+    /// </summary>
+    public static class Level02Setup
+    {
+        private const string ConfigPath = "Assets/Settings/Levels/Level02.asset";
+        private const string ScenePath = "Assets/Scenes/Level02.unity";
+
+        private const string PlayerPrefab = "Assets/Prefabs/Player/Player.prefab";
+        private const string GarbagePilePrefab = "Assets/Prefabs/Eco/GarbagePile.prefab";
+        private const string Enemy02Prefab = "Assets/Prefabs/Enemies/Enemy02.prefab";
+        private const string WhiteSquarePath = "Assets/Settings/WhiteSquare.png";
+
+        // 关卡几何（世界单位）
+        private const float GroundTop = 0f;
+        private const float BankL = -7f;          // 左岸右缘
+        private const float BankR = 7f;           // 右岸左缘
+        private const float LevelLeft = -28f;
+        private const float LevelRight = 28f;
+        private const float WaterLowY = -1.6f;    // 水位低位（初始）
+        private const float WaterHighY = 0.05f;   // 水位高位（解谜后）
+
+        [MenuItem("StarEco/Setup/Level02")]
+        public static void Run()
+        {
+            var log = new StringBuilder();
+
+            EnsureFolder("Assets/Settings/Levels");
+            EnsureFolder("Assets/Scenes");
+
+            var config = BuildConfig(log);
+
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) != null)
+            {
+                log.AppendLine("Level02.unity 已存在，跳过场景创建（需要重建请先删除该场景）");
+                AssetDatabase.SaveAssets();
+                Debug.Log("[Level02Setup] 完成 ✓\n" + log);
+                return;
+            }
+
+            BuildScene(config, log);
+
+            AssetDatabase.SaveAssets();
+            Debug.Log("[Level02Setup] 完成 ✓\n" + log);
+        }
+
+        // ===== 配置 =====
+
+        private static LevelConfig BuildConfig(StringBuilder log)
+        {
+            var config = AssetDatabase.LoadAssetAtPath<LevelConfig>(ConfigPath);
+            if (config != null)
+            {
+                log.AppendLine("Level02.asset 已存在，跳过");
+                return config;
+            }
+
+            config = ScriptableObject.CreateInstance<LevelConfig>();
+            config.LevelIndex = 2;
+            config.LevelName = "第二关：生态失衡的森林";
+            config.SpawnPoint = new Vector2(-26f, 2f);
+            config.Star3Purity = 100;
+            config.Star2Purity = 60;
+            config.Star1Purity = 30;
+            config.TimeLimit = 0f;
+            config.IntroText = "森林里的动物被困住了，河道也被污染物堵住。先解救动物，再清理堵塞物疏通河道。";
+
+            // 四段目标链（顺序解锁）
+            config.Objectives = new[]
+            {
+                new LevelConfig.LevelObjective(
+                    LevelObjectiveType.RescueTargets, 2, "解救被困动物"),
+                new LevelConfig.LevelObjective(
+                    LevelObjectiveType.PuzzleSolved, 3, "清理堵塞物，疏通河道"),
+                new LevelConfig.LevelObjective(
+                    LevelObjectiveType.PurifyTargets, 3, "净化森林污染源"),
+                new LevelConfig.LevelObjective(
+                    LevelObjectiveType.DefeatEnemies, 4, "击败 4 只变异毒植物")
+            };
+
+            // 刷怪表：Enemy02 两条（初始温和 + 解谜后加压）
+            config.SpawnEntries = new[]
+            {
+                new LevelConfig.SpawnEntry
+                {
+                    Prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Enemy02Prefab),
+                    Anchors = new Transform[0],
+                    MaxAlive = 2,
+                    BaseInterval = 6f,
+                    RequiredObjectiveIndex = -1
+                },
+                new LevelConfig.SpawnEntry
+                {
+                    Prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Enemy02Prefab),
+                    Anchors = new Transform[0],
+                    MaxAlive = 3,
+                    BaseInterval = 5f,
+                    RequiredObjectiveIndex = 1
+                }
+            };
+
+            AssetDatabase.CreateAsset(config, ConfigPath);
+            log.AppendLine("已创建 Level02.asset（四段目标链 + Enemy02 刷怪表 2 条）");
+            return config;
+        }
+
+        // ===== 场景 =====
+
+        private static void BuildScene(LevelConfig config, StringBuilder log)
+        {
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            var white = AssetDatabase.LoadAssetAtPath<Sprite>(WhiteSquarePath);
+            if (white == null)
+            {
+                Debug.LogError("[Level02Setup] WhiteSquare.png 缺失，灰盒无法构建。");
+                return;
+            }
+
+            int groundLayer = LayerMask.NameToLayer("Ground");
+
+            // —— 两岸地面 ——
+            var groundL = MakeWorldBox("GroundL", white, 21f, 4f, new Vector3(-17.5f, -2f, 0f),
+                new Color(0.32f, 0.42f, 0.30f, 1f), -5);
+            groundL.layer = groundLayer;
+            var groundR = MakeWorldBox("GroundR", white, 21f, 4f, new Vector3(17.5f, -2f, 0f),
+                new Color(0.32f, 0.42f, 0.30f, 1f), -5);
+            groundR.layer = groundLayer;
+            log.AppendLine($"已创建 GroundL/R（x∈[{LevelLeft},{BankL}] / [{BankR},{LevelRight}]，顶面 y={GroundTop}）");
+
+            // —— 河床与溺水区 ——
+            var riverbed = MakeWorldBox("Riverbed", white, 15f, 2f, new Vector3(0f, -5f, 0f),
+                new Color(0.20f, 0.24f, 0.30f, 1f), -6);
+            riverbed.layer = groundLayer;
+            log.AppendLine("已创建 Riverbed（河道底，防坠落虚空）");
+
+            var kill = MakeWorldBox("KillZone", white, 14.6f, 3.8f, new Vector3(0f, -2.4f, 0f),
+                new Color(0.3f, 0.6f, 1f, 0.12f), -3);
+            var killCol = kill.GetComponent<BoxCollider2D>();
+            killCol.isTrigger = true;
+            kill.AddComponent<DrownHazard>();
+            log.AppendLine("已创建 KillZone（掉入河道即溺水，DrownHazard 走既有伤害流水线）");
+
+            // —— 水域与木筏通路（WaterRoot 为水位面参考，木筏为其子物体随水位升降）——
+            var waterRoot = new GameObject("WaterRoot");
+            waterRoot.transform.position = new Vector3(0f, WaterLowY, 0f);
+
+            var water = MakeWorldBox("Water", white, 15f, 5f, new Vector3(0f, -2.5f, 0f),
+                new Color(0.25f, 0.50f, 0.85f, 0.55f), -2);
+            water.transform.SetParent(waterRoot.transform, false);
+            UnityEngine.Object.DestroyImmediate(water.GetComponent<BoxCollider2D>());   // 水域纯视觉
+
+            var raftPath = new GameObject("RaftPath");
+            raftPath.transform.SetParent(waterRoot.transform, false);
+            raftPath.SetActive(false);   // 解谜前不可通行
+            MakeRaftPlank(raftPath.transform, white, "Raft1", -4.5f);
+            MakeRaftPlank(raftPath.transform, white, "Raft2", 0f);
+            MakeRaftPlank(raftPath.transform, white, "Raft3", 4.5f);
+            log.AppendLine($"已创建 WaterRoot（水位 {WaterLowY}→{WaterHighY}）+ RaftPath（3 段连通，初始禁用）");
+
+            // —— 河道堵塞点 ×3（左岸，喷雾可及）——
+            var blockages = new List<StarEco.Eco.WaterBlockage>();
+            MakeBlockage(white, "WaterBlock1", new Vector3(-10f, 0.5f, 0f), 8, blockages);
+            MakeBlockage(white, "WaterBlock2", new Vector3(-12.5f, 0.5f, 0f), 8, blockages);
+            MakeBlockage(white, "WaterBlock3", new Vector3(-15f, 0.5f, 0f), 8, blockages);
+            log.AppendLine("已放置 WaterBlock1~3（左岸堵塞点，各需 8 点净化）");
+
+            // —— 陷阱笼 ×2（E 键解救）——
+            MakeCage("AnimalCage01", "Animal01", new Vector3(-22f, 1.3f, 0f));
+            MakeCage("AnimalCage02", "Animal02", new Vector3(-18f, 1.3f, 0f));
+            log.AppendLine("已放置 AnimalCage01/02（RescueTarget，E 键解救）");
+
+            // —— 右岸污染源 ×3（GarbagePile 预制体）——
+            PlacePrefab(GarbagePilePrefab, "Garbage1", new Vector3(12f, 0.9f, 0f));
+            PlacePrefab(GarbagePilePrefab, "Garbage2", new Vector3(17f, 0.9f, 0f));
+            PlacePrefab(GarbagePilePrefab, "Garbage3", new Vector3(22f, 0.9f, 0f));
+            log.AppendLine("已放置 Garbage1~3（右岸污染源）");
+
+            // —— 装饰树（无碰撞）——
+            MakeTree(white, new Vector3(-26f, 1.6f, 0f), 1.4f);
+            MakeTree(white, new Vector3(-20.5f, 1.8f, 0f), 1.7f);
+            MakeTree(white, new Vector3(-13.5f, 1.5f, 0f), 1.3f);
+            MakeTree(white, new Vector3(-8.5f, 1.7f, 0f), 1.5f);
+            MakeTree(white, new Vector3(9f, 1.7f, 0f), 1.5f);
+            MakeTree(white, new Vector3(14.5f, 1.5f, 0f), 1.3f);
+            MakeTree(white, new Vector3(20.5f, 1.8f, 0f), 1.7f);
+            MakeTree(white, new Vector3(26f, 1.6f, 0f), 1.4f);
+
+            // —— 跳跃平台（点缀）——
+            MakePlatform(white, "PlatformL1", new Vector3(-24.5f, 2.8f, 0f), 3f, groundLayer);
+            MakePlatform(white, "PlatformL2", new Vector3(-20.5f, 4.2f, 0f), 2.5f, groundLayer);
+            MakePlatform(white, "PlatformR1", new Vector3(20.5f, 2.8f, 0f), 3f, groundLayer);
+            MakePlatform(white, "PlatformR2", new Vector3(24.5f, 4.2f, 0f), 2.5f, groundLayer);
+            log.AppendLine("已放置 8 棵树 + 4 个跳跃平台");
+
+            // —— 刷怪锚点 ——
+            MakeAnchor(white, "SpawnAnchorA", new Vector3(-10f, 0.2f, 0f));
+            MakeAnchor(white, "SpawnAnchorB", new Vector3(16f, 0.2f, 0f));
+
+            // —— 检查点 ——
+            MakeCheckpoint(white, "Checkpoint1", "CP_1", new Vector3(-25f, 0.5f, 0f));
+            MakeCheckpoint(white, "Checkpoint2", "CP_2", new Vector3(25f, 0.5f, 0f));
+            log.AppendLine("已放置 SpawnAnchorA/B + CP_1/CP_2");
+
+            // —— 相机（跟随，横向 56u 必须跟随）——
+            var camGo = new GameObject("Main Camera");
+            camGo.tag = "MainCamera";
+            var cam = camGo.AddComponent<Camera>();
+            cam.orthographic = true;
+            cam.orthographicSize = 6.5f;
+            cam.backgroundColor = new Color(0.35f, 0.50f, 0.45f, 1f);
+            camGo.transform.position = new Vector3(0f, 2.2f, -10f);
+            var follow = camGo.AddComponent<CameraFollow2D>();
+            var camSo = new SerializedObject(follow);
+            camSo.FindProperty("_fixedY").floatValue = 2.2f;
+            camSo.FindProperty("_levelLeft").floatValue = LevelLeft;
+            camSo.FindProperty("_levelRight").floatValue = LevelRight;
+            camSo.ApplyModifiedPropertiesWithoutUndo();
+            log.AppendLine("已创建 Main Camera（ortho 6.5 + CameraFollow2D 钳制跟随）");
+
+            // —— 玩家 ——
+            var playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefab);
+            if (playerPrefab != null)
+            {
+                var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);
+                player.transform.position = new Vector3(-26f, 1.5f, 0f);
+                player.name = "Player";
+                log.AppendLine("已放置 Player");
+            }
+            else
+            {
+                Debug.LogError($"[Level02Setup] 找不到 {PlayerPrefab}");
+            }
+
+            // —— 环保系统 ——
+            var eco = new GameObject("EcoSystems");
+            eco.AddComponent<StarEco.Eco.PuritySystem>();
+            eco.AddComponent<StarEco.Eco.AtmosphereController>();
+            eco.AddComponent<StarEco.Eco.DropSpawner>();
+
+            // —— 关卡系统（LevelManager 挂非根节点，避免重载场景产生重复单例）——
+            var levelGo = new GameObject("LevelSystems");
+            var mgrGo = new GameObject("LevelManager");
+            mgrGo.transform.SetParent(levelGo.transform, false);
+            var manager = mgrGo.AddComponent<LevelManager>();
+
+            var tracker = levelGo.AddComponent<LevelObjectiveTracker>();
+            var spawner = levelGo.AddComponent<LevelSpawner>();
+            levelGo.AddComponent<LevelStats>();
+
+            // —— UIManager 必须挂场景根节点（M8 教训：缺了它面板 SafeOpen 静默失败）——
+            var uiRootGo = new GameObject("UIManager");
+            uiRootGo.AddComponent<UIManager>();
+
+            levelGo.AddComponent<HUDController>();
+            levelGo.AddComponent<PausePanel>();
+            levelGo.AddComponent<ResultPanel>();
+            levelGo.AddComponent<DialoguePanel>();
+            levelGo.AddComponent<SettingsPanel>();
+            levelGo.AddComponent<CodexPanel>();
+            levelGo.AddComponent<LevelSelectPanel>();
+
+            // —— 水解谜控制器 ——
+            var puzzleGo = new GameObject("WaterPuzzle");
+            var puzzle = puzzleGo.AddComponent<WaterPuzzleController>();
+            var pzSo = new SerializedObject(puzzle);
+            var blockProp = pzSo.FindProperty("_blockages");
+            blockProp.arraySize = blockages.Count;
+            for (int i = 0; i < blockages.Count; i++)
+            {
+                blockProp.GetArrayElementAtIndex(i)
+                    .FindPropertyRelative("Blockage").objectReferenceValue = blockages[i];
+            }
+            pzSo.FindProperty("_waterVisual").objectReferenceValue = waterRoot.transform;
+            pzSo.FindProperty("_lowY").floatValue = WaterLowY;
+            pzSo.FindProperty("_highY").floatValue = WaterHighY;
+            pzSo.FindProperty("_raftPath").objectReferenceValue = raftPath;
+            pzSo.ApplyModifiedPropertiesWithoutUndo();
+            log.AppendLine("已挂载 WaterPuzzle（3 堵塞点 + 水位 + 木筏通路已回填）");
+
+            // —— 注入配置 ——
+            Inject(manager, "_config", config, log, "LevelManager");
+            Inject(tracker, "_config", config, log, "LevelObjectiveTracker");
+            Inject(spawner, "_config", config, log, "LevelSpawner");
+
+            EditorSceneManager.SaveScene(scene, ScenePath);
+            log.AppendLine($"已创建场景 {ScenePath}");
+
+            EnsureInBuildSettings(log);
+        }
+
+        // ===== 构件 =====
+
+        private static GameObject MakeWorldBox(string name, Sprite white, float worldW, float worldH,
+            Vector3 pos, Color color, int sortingOrder)
+        {
+            var go = new GameObject(name);
+            go.transform.position = pos;
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = white;
+            sr.color = color;
+            sr.sortingOrder = sortingOrder;
+
+            go.transform.localScale = new Vector3(
+                worldW / white.bounds.size.x,
+                worldH / white.bounds.size.y, 1f);
+
+            var col = go.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(white.bounds.size.x, white.bounds.size.y);
+
+            return go;
+        }
+
+        private static void MakeRaftPlank(Transform parent, Sprite white, string name, float localX)
+        {
+            var plank = MakeWorldBox(name, white, 4.5f, 0.4f, Vector3.zero,
+                new Color(0.55f, 0.42f, 0.28f, 1f), 0);
+            plank.transform.SetParent(parent, false);
+            plank.transform.localPosition = new Vector3(localX, 0.15f, 0f);
+        }
+
+        private static void MakeBlockage(Sprite white, string targetId, Vector3 pos, int purifyRequired,
+            List<StarEco.Eco.WaterBlockage> output)
+        {
+            var go = MakeWorldBox(targetId, white, 1.6f, 1.6f, pos,
+                new Color(0.45f, 0.38f, 0.32f, 1f), 0);
+            var blockage = go.AddComponent<StarEco.Eco.WaterBlockage>();
+            var so = new SerializedObject(blockage);
+            so.FindProperty("_targetId").stringValue = targetId;
+            so.FindProperty("_purifyRequired").intValue = purifyRequired;
+            so.FindProperty("_purityValue").intValue = 5;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            output.Add(blockage);
+        }
+
+        private static void MakeCage(string name, string targetId, Vector3 pos)
+        {
+            var white = AssetDatabase.LoadAssetAtPath<Sprite>(WhiteSquarePath);
+
+            var cage = new GameObject(name);
+            cage.transform.position = pos;
+
+            // 笼体（灰盒）
+            var bars = MakeWorldBox("Bars", white, 1.3f, 1.3f, Vector3.zero,
+                new Color(0.55f, 0.55f, 0.60f, 1f), 1);
+            bars.transform.SetParent(cage.transform, false);
+            bars.transform.localPosition = Vector3.zero;
+
+            // 笼中动物（灰盒）
+            var animal = MakeWorldBox("Animal", white, 0.7f, 0.7f, Vector3.zero,
+                new Color(0.80f, 0.62f, 0.42f, 1f), 2);
+            animal.transform.SetParent(cage.transform, false);
+            animal.transform.localPosition = new Vector3(0f, 0.05f, 0f);
+            UnityEngine.Object.DestroyImmediate(animal.GetComponent<BoxCollider2D>());
+            UnityEngine.Object.DestroyImmediate(bars.GetComponent<BoxCollider2D>());
+
+            var col = cage.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(1.3f, 1.3f);
+
+            var rescue = cage.AddComponent<RescueTarget>();
+            var so = new SerializedObject(rescue);
+            so.FindProperty("_targetId").stringValue = targetId;
+            so.FindProperty("_radius").floatValue = 2.2f;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void MakeTree(Sprite white, Vector3 pos, float size)
+        {
+            var trunk = MakeWorldBox("Trunk", white, 0.3f, size * 0.5f, pos + new Vector3(0f, size * 0.25f, 0f),
+                new Color(0.40f, 0.30f, 0.22f, 1f), -4);
+            UnityEngine.Object.DestroyImmediate(trunk.GetComponent<BoxCollider2D>());
+            var crown = MakeWorldBox("Crown", white, size, size, pos + new Vector3(0f, size * 0.75f, 0f),
+                new Color(0.25f, 0.50f, 0.28f, 1f), -3);
+            UnityEngine.Object.DestroyImmediate(crown.GetComponent<BoxCollider2D>());
+        }
+
+        private static void MakePlatform(Sprite white, string name, Vector3 pos, float width, int groundLayer)
+        {
+            var go = MakeWorldBox(name, white, width, 0.5f, pos,
+                new Color(0.38f, 0.46f, 0.34f, 1f), -4);
+            go.layer = groundLayer;
+        }
+
+        private static Transform MakeAnchor(Sprite white, string name, Vector3 pos)
+        {
+            var go = MakeWorldBox(name, white, 0.3f, 0.3f, pos, new Color(1f, 0.4f, 0.4f, 0.5f), -3);
+            UnityEngine.Object.DestroyImmediate(go.GetComponent<BoxCollider2D>());
+            return go.transform;
+        }
+
+        private static void MakeCheckpoint(Sprite white, string name, string id, Vector3 pos)
+        {
+            var go = MakeWorldBox(name, white, 1.6f, 1.6f, pos,
+                new Color(0.4f, 0.8f, 1f, 0.35f), 6);
+            var col = go.GetComponent<BoxCollider2D>();
+            col.isTrigger = true;
+
+            var cp = go.AddComponent<Checkpoint>();
+            var so = new SerializedObject(cp);
+            so.FindProperty("_checkpointId").stringValue = id;
+            so.FindProperty("_respawnOffset").vector2Value = new Vector2(0f, 1.2f);
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void PlacePrefab(string prefabPath, string name, Vector3 pos)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (prefab == null)
+            {
+                Debug.LogError($"[Level02Setup] 缺少预制体 {prefabPath}");
+                return;
+            }
+
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            go.transform.position = pos;
+            go.name = name;
+        }
+
+        private static void Inject(Object target, string field, Object value, StringBuilder log, string label)
+        {
+            var so = new SerializedObject(target);
+            var prop = so.FindProperty(field);
+            if (prop != null)
+            {
+                prop.objectReferenceValue = value;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+            else
+            {
+                log.AppendLine($"[{label}] 未找到字段 {field}，请手动在 Inspector 绑定配置");
+            }
+        }
+
+        /// <summary>
+        /// 把关卡场景加入 Build Settings，并固定顺序 Title(0)/Level01(1)/Level02(2)/Level03(3)
+        /// （LevelIndex 与 buildIndex 一致是不变量：ResultPanel 下一关、MainMenu 继续游戏都依赖它）。
+        /// 顺手移除遗留的 SampleScene（默认样例，不属于本项目）。
+        /// </summary>
+        private static void EnsureInBuildSettings(StringBuilder log)
+        {
+            var scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+
+            // 移除默认样例场景（占着 index 2 会破坏 LevelIndex==buildIndex 不变式）
+            scenes.RemoveAll(s => s.path.Contains("SampleScene"));
+
+            bool exists = false;
+            for (int i = 0; i < scenes.Count; i++)
+            {
+                if (scenes[i].path == ScenePath)
+                {
+                    exists = true;
+                    break;
+                }
+            }
+
+            if (!exists)
+            {
+                scenes.Add(new EditorBuildSettingsScene(ScenePath, true));
+            }
+
+            // 固定顺序：Title / Level01 / Level02 / Level03 在前，其余保持相对顺序垫后
+            var ordered = new List<EditorBuildSettingsScene>();
+            ordered.Add(Find(scenes, "Assets/Scenes/Title.unity"));
+            ordered.Add(Find(scenes, "Assets/Scenes/Level01.unity"));
+            ordered.Add(Find(scenes, ScenePath));
+            ordered.Add(Find(scenes, "Assets/Scenes/Level03.unity"));
+            for (int i = 0; i < scenes.Count; i++)
+            {
+                if (!ordered.Contains(scenes[i]))
+                {
+                    ordered.Add(scenes[i]);
+                }
+            }
+            ordered.RemoveAll(s => s == null);
+
+            EditorBuildSettings.scenes = ordered.ToArray();
+
+            var names = new List<string>();
+            for (int i = 0; i < ordered.Count; i++)
+            {
+                names.Add($"{i}:{System.IO.Path.GetFileNameWithoutExtension(ordered[i].path)}");
+            }
+            log.AppendLine("Build Settings 顺序 → " + string.Join(" | ", names));
+        }
+
+        private static EditorBuildSettingsScene Find(List<EditorBuildSettingsScene> scenes, string path)
+        {
+            for (int i = 0; i < scenes.Count; i++)
+            {
+                if (scenes[i].path == path)
+                {
+                    return scenes[i];
+                }
+            }
+            return null;
+        }
+
+        private static void EnsureFolder(string path)
+        {
+            if (AssetDatabase.IsValidFolder(path))
+            {
+                return;
+            }
+
+            var parts = path.Split('/');
+            var current = parts[0];
+            for (int i = 1; i < parts.Length; i++)
+            {
+                var next = $"{current}/{parts[i]}";
+                if (!AssetDatabase.IsValidFolder(next))
+                {
+                    AssetDatabase.CreateFolder(current, parts[i]);
+                }
+                current = next;
+            }
+        }
+    }
+}

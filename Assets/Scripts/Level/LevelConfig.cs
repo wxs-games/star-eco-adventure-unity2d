@@ -18,7 +18,13 @@ namespace StarEco.Level
         ReachPurity = 2,
 
         /// <summary>击杀 N 个敌人。</summary>
-        DefeatEnemies = 3
+        DefeatEnemies = 3,
+
+        /// <summary>解救 N 个被困动物（M9：E 键互动，AnimalRescuedEvent 计数）。</summary>
+        RescueTargets = 4,
+
+        /// <summary>疏通河道（M9 水流解谜：清理 N 处堵塞点，GarbagePurifiedEvent 的 WaterBlock 前缀计数）。</summary>
+        PuzzleSolved = 5
     }
 
     /// <summary>
@@ -37,7 +43,7 @@ namespace StarEco.Level
             [Tooltip("达成条件类型")]
             public LevelObjectiveType Type = LevelObjectiveType.PurifyTargets;
 
-            [Tooltip("所需数量：PurifyTargets=污染源个数 / PurifyTowers=塔数 / ReachPurity=百分比(0~100) / DefeatEnemies=敌人数")]
+            [Tooltip("所需数量：PurifyTargets=污染源个数 / PurifyTowers=塔数 / ReachPurity=百分比(0~100) / DefeatEnemies=敌人数 / RescueTargets=动物数 / PuzzleSolved=堵塞点数")]
             public int Required = 1;
 
             [Tooltip("UI 显示文本（M7 HUD 消费）")]

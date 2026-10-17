@@ -27,7 +27,8 @@ namespace StarEco.UI
         private static readonly LevelCardInfo[] Levels =
         {
             new LevelCardInfo { SceneName = "Level01", DisplayName = "第一关 · 污染初现的星球", Brief = "教学与轻度战斗：清理垃圾堆，学会净化喷雾", BuildIndex = 1 },
-            new LevelCardInfo { SceneName = "Level02", DisplayName = "第二关 · 生态失衡的森林", Brief = "解救动物与解谜（建设中）", BuildIndex = -1 },
+            // M9：第二关已建成（E 键解救 + 水流解谜），Build Settings index 2
+            new LevelCardInfo { SceneName = "Level02", DisplayName = "第二关 · 生态失衡的森林", Brief = "E 键解救动物、喷雾清堵疏通河道、木筏渡河", BuildIndex = 2 },
             // M8：第三关已建成（Boss01 三阶段战），Build Settings index 3
             new LevelCardInfo { SceneName = "Level03", DisplayName = "第三关 · 能源工厂的危机", Brief = "高强度战斗：清理污染源，击败 Boss01", BuildIndex = 3 }
         };

@@ -15,6 +15,7 @@ namespace StarEco.Level
     public class LevelObjectiveTracker : MonoBehaviour
     {
         private const string TowerIdPrefix = "Tower";
+        private const string WaterBlockPrefix = "WaterBlock";   // M9：河道堵塞点单独计数
 
         [SerializeField] private LevelConfig _config;
 
@@ -29,6 +30,8 @@ namespace StarEco.Level
         private int _purifiedTargets;
         private int _purifiedTowers;
         private int _defeatedEnemies;
+        private int _rescuedAnimals;   // M9 R2：AnimalRescuedEvent 计数
+        private int _waterCleared;     // M9 R3：WaterBlock 前缀 GarbagePurifiedEvent 计数
 
         // 运行时夹取后的 Required（不修改 LevelConfig 资产本身，避免 Editor 下资产被标脏持久化）
         private int[] _effectiveRequired;
@@ -69,6 +72,7 @@ namespace StarEco.Level
             EventCenter.Subscribe<GarbagePurifiedEvent>(OnGarbagePurified);
             EventCenter.Subscribe<EnemyDeathEvent>(OnEnemyDied);
             EventCenter.Subscribe<PurityChangedEvent>(OnPurityChanged);
+            EventCenter.Subscribe<AnimalRescuedEvent>(OnAnimalRescued);   // M9 R2
         }
 
         private void OnDisable()
@@ -76,6 +80,7 @@ namespace StarEco.Level
             EventCenter.Unsubscribe<GarbagePurifiedEvent>(OnGarbagePurified);
             EventCenter.Unsubscribe<EnemyDeathEvent>(OnEnemyDied);
             EventCenter.Unsubscribe<PurityChangedEvent>(OnPurityChanged);
+            EventCenter.Unsubscribe<AnimalRescuedEvent>(OnAnimalRescued);
         }
 
         /// <summary>
@@ -96,6 +101,8 @@ namespace StarEco.Level
             _purifiedTargets = 0;
             _purifiedTowers = 0;
             _defeatedEnemies = 0;
+            _rescuedAnimals = 0;
+            _waterCleared = 0;
             ChainCompleted = false;
 
             ClampRequired();
@@ -111,6 +118,8 @@ namespace StarEco.Level
             _purifiedTargets = 0;
             _purifiedTowers = 0;
             _defeatedEnemies = 0;
+            _rescuedAnimals = 0;
+            _waterCleared = 0;
             ChainCompleted = false;
             _initialized = false;
         }
@@ -125,6 +134,15 @@ namespace StarEco.Level
 
         private void OnGarbagePurified(GarbagePurifiedEvent evt)
         {
+            // M9 R3：河道堵塞点单独计数（PuzzleSolved），不算普通污染源
+            if (!string.IsNullOrEmpty(evt.TargetId) &&
+                evt.TargetId.StartsWith(WaterBlockPrefix, StringComparison.Ordinal))
+            {
+                _waterCleared++;
+                Evaluate();
+                return;
+            }
+
             if (IsTower(evt.TargetId))
             {
                 _purifiedTowers++;
@@ -148,6 +166,13 @@ namespace StarEco.Level
             Evaluate();
         }
 
+        /// <summary>M9 R2：解救被困动物计数。</summary>
+        private void OnAnimalRescued(AnimalRescuedEvent evt)
+        {
+            _rescuedAnimals++;
+            Evaluate();
+        }
+
         // ===== 推进 =====
 
         private void Evaluate()
@@ -157,32 +182,36 @@ namespace StarEco.Level
                 return;
             }
 
-            var objective = CurrentObjective;
-            if (objective == null)
+            // M9 修复：循环推进到首个未满足目标。
+            // 若新激活目标的计数已被先前事件满足（提前击杀 / 提前净化 / 提前解救），
+            // 单次 if 会让链停滞到下一次同类事件才恢复，必须继续检查。
+            while (!ChainCompleted)
             {
-                CompleteChain();
-                return;
+                var objective = CurrentObjective;
+                if (objective == null)
+                {
+                    CompleteChain();
+                    return;
+                }
+
+                int required = CurrentRequired;
+                int current = CurrentCountFor(objective.Type);
+
+                if (current < required)
+                {
+                    BroadcastCurrent();   // 计数变化即刷新目标文本
+                    return;
+                }
+
+                EventCenter.Publish(new ObjectiveCompletedEvent { Index = _index, Label = objective.Label });
+
+                _index++;
+                if (_index >= (_config.Objectives?.Length ?? 0))
+                {
+                    CompleteChain();
+                    return;
+                }
             }
-
-            int required = CurrentRequired;
-            int current = CurrentCountFor(objective.Type);
-
-            if (current < required)
-            {
-                BroadcastCurrent();   // 计数变化即刷新目标文本
-                return;
-            }
-
-            EventCenter.Publish(new ObjectiveCompletedEvent { Index = _index, Label = objective.Label });
-
-            _index++;
-            if (_index >= (_config.Objectives?.Length ?? 0))
-            {
-                CompleteChain();
-                return;
-            }
-
-            BroadcastCurrent();
         }
 
         private void CompleteChain()
@@ -208,6 +237,10 @@ namespace StarEco.Level
                     return _purifiedTowers;
                 case LevelObjectiveType.DefeatEnemies:
                     return _defeatedEnemies;
+                case LevelObjectiveType.RescueTargets:
+                    return _rescuedAnimals;
+                case LevelObjectiveType.PuzzleSolved:
+                    return _waterCleared;
                 case LevelObjectiveType.ReachPurity:
                     return _purity != null ? Mathf.FloorToInt(_purity.Percent * 100f) : 0;
                 default:
@@ -241,11 +274,18 @@ namespace StarEco.Level
 
             int available = 0;
             int towers = 0;
+            int waterBlocks = 0;   // M9 R3：场景实际堵塞点数（PuzzleSolved 夹取用）
             var behaviours = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             for (int i = 0; i < behaviours.Length; i++)
             {
                 if (behaviours[i] is IPurifiable target && !target.IsPurified)
                 {
+                    if (behaviours[i] is WaterBlockage)
+                    {
+                        waterBlocks++;   // 堵塞点单独统计，不算普通污染源
+                        continue;
+                    }
+
                     available++;
                     if (behaviours[i].GetType().Name.Contains("TowerPurifiable"))
                     {
@@ -271,6 +311,11 @@ namespace StarEco.Level
                 {
                     Debug.LogWarning($"[LevelObjectiveTracker] 目标 {i} 要求净化 {obj.Required} 座塔，场景仅有 {towers} 座，已按实际夹取。");
                     _effectiveRequired[i] = towers;
+                }
+                else if (obj.Type == LevelObjectiveType.PuzzleSolved && obj.Required > waterBlocks)
+                {
+                    Debug.LogWarning($"[LevelObjectiveTracker] 目标 {i} 要求清理 {obj.Required} 处堵塞，场景仅有 {waterBlocks} 处，已按实际夹取。");
+                    _effectiveRequired[i] = waterBlocks;
                 }
                 else
                 {
