@@ -13,6 +13,11 @@ namespace StarEco.EnemyAI
         public static readonly int Hurt = Animator.StringToHash("Hurt");
         public static readonly int Die = Animator.StringToHash("Die");
         public static readonly int Spawn = Animator.StringToHash("Spawn");
+
+        // M8 Boss 专属：技能 B / 特殊招 / 阶段狂暴（三个 Trigger，其余沿用上面通用参数）
+        public static readonly int AttackB = Animator.StringToHash("AttackB");
+        public static readonly int Special = Animator.StringToHash("Special");
+        public static readonly int Enrage = Animator.StringToHash("Enrage");
     }
 
     /// <summary>

@@ -183,7 +183,10 @@ namespace StarEco.Eco
                 if (target.Hittable != null && IsEnemyLayer(target.Collider.gameObject))
                 {
                     Vector2 dir = (Vector2)transform.position - (Vector2)target.Collider.bounds.center;
-                    target.Hittable.TakeDamage(new DamageInfo(purifyAmount, dir.normalized, gameObject));
+                    target.Hittable.TakeDamage(new DamageInfo(purifyAmount, dir.normalized, gameObject)
+                    {
+                        IsPurify = true   // M8：Boss 按此标记套用净化倍率
+                    });
                     hitEnemy = true;
                 }
             }
@@ -291,7 +294,8 @@ namespace StarEco.Eco
                     hittable.TakeDamage(new DamageInfo(
                         _config != null ? _config.HeavyDamage : 3, dir, gameObject)
                     {
-                        KnockbackPower = _config != null ? _config.HeavyKnockback : 8f
+                        KnockbackPower = _config != null ? _config.HeavyKnockback : 8f,
+                        IsPurify = true   // M8：蓄力净化波同样计为净化伤害
                     });
                 }
             }

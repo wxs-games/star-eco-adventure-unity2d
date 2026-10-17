@@ -19,12 +19,19 @@ namespace StarEco.Combat
         /// <summary>附带击退速度（0 = 不附带，受击方自行决定击退）。</summary>
         public float KnockbackPower;
 
+        /// <summary>
+        /// 是否为净化伤害（M5 喷雾/净化波置 true）。
+        /// M8 Boss 据此套用净化倍率；普通敌人忽略该字段，行为不变。
+        /// </summary>
+        public bool IsPurify;
+
         public DamageInfo(int amount, Vector2 sourceDirection, GameObject source)
         {
             Amount = amount;
             SourceDirection = sourceDirection;
             Source = source;
             KnockbackPower = 0f;
+            IsPurify = false;
         }
     }
 }

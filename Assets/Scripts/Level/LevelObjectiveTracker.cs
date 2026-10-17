@@ -51,6 +51,19 @@ namespace StarEco.Level
                 ? _effectiveRequired[_index]
                 : 0;
 
+        /// <summary>
+        /// 当前目标已完成的计数（M7 HUD 初始化时主动拉取用：
+        /// 首帧的 LevelObjectiveChangedEvent 可能早于 HUD 订阅，需要能回头读一次）。
+        /// </summary>
+        public int CurrentProgress
+        {
+            get
+            {
+                var objective = CurrentObjective;
+                return objective != null ? CurrentCountFor(objective.Type) : 0;
+            }
+        }
+
         private void OnEnable()
         {
             EventCenter.Subscribe<GarbagePurifiedEvent>(OnGarbagePurified);

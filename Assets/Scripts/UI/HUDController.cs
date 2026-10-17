@@ -76,6 +76,11 @@ namespace StarEco.UI
             EventCenter.Subscribe<LevelObjectiveChangedEvent>(OnObjectiveChanged);
             EventCenter.Subscribe<ObjectiveCompletedEvent>(OnObjectiveCompleted);
 
+            // 主动拉取一次：首个 LevelObjectiveChangedEvent 由 LevelManager.Start 触发，
+            // 可能早于本组件的 Start（同场景 Start 顺序不定），不补拉会停在"目标：—"。
+            RefreshObjectiveFromTracker();
+            RefreshPurity();
+
             // 注册可能因 Awake 时序丢失（HUD 的 Awake 早于 UIManager 的 Awake 时
             // HasInstance 为 false）。Start 阶段 UIManager 必已就绪，这里幂等补注册。
             if (UIManager.HasInstance)
@@ -263,6 +268,31 @@ namespace StarEco.UI
             else
             {
                 _objectiveText.text = $"目标：{evt.Label}";
+            }
+        }
+
+        /// <summary>从目标链直接读当前目标文本（初始化与事件丢失时的兜底）。</summary>
+        private void RefreshObjectiveFromTracker()
+        {
+            if (_objectiveText == null || _tracker == null)
+            {
+                return;
+            }
+
+            var objective = _tracker.CurrentObjective;
+            int required = _tracker.CurrentRequired;
+
+            if (objective == null)
+            {
+                _objectiveText.text = "目标：关卡目标已完成";
+            }
+            else if (required > 0)
+            {
+                _objectiveText.text = $"目标：{objective.Label}（{_tracker.CurrentProgress}/{required}）";
+            }
+            else
+            {
+                _objectiveText.text = $"目标：{objective.Label}";
             }
         }
 
