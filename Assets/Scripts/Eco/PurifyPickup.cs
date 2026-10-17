@@ -55,6 +55,8 @@ namespace StarEco.Eco
             int amount = _config != null ? _config.PickupTankAmount : 20;
             tank.Restore(amount);
 
+            AudioManager.Instance?.PlaySfx(SfxId.Pickup);   // M10
+
             EventCenter.Publish(new Events.PickupCollectedEvent
             {
                 Kind = PickupKind.PurifyBottle,

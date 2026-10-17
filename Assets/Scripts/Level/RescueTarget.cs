@@ -133,6 +133,8 @@ namespace StarEco.Level
             var visual = _cageVisual != null ? _cageVisual : gameObject;
             visual.SetActive(false);
 
+            AudioManager.Instance?.PlaySfx(SfxId.Rescue);   // M10
+
             EventCenter.Publish(new AnimalRescuedEvent
             {
                 TargetId = _targetId,

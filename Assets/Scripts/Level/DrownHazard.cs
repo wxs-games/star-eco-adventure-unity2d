@@ -1,5 +1,6 @@
 using UnityEngine;
 using StarEco.Combat;
+using StarEco.Framework;
 
 namespace StarEco.Level
 {
@@ -17,6 +18,11 @@ namespace StarEco.Level
 
         private void OnTriggerEnter2D(Collider2D other)
         {
+            // M10：入水瞬间播放 Splash（Stay 持续伤害不重复播）
+            if (other.GetComponentInParent<IHittable>() != null)
+            {
+                AudioManager.Instance?.PlaySfx(SfxId.Splash);
+            }
             Apply(other);
         }
 

@@ -228,6 +228,9 @@ namespace StarEco.Boss
 
         // ===== 伤害（R4：净化 ×1.5，过场无敌） =====
 
+        /// <summary>M10：Boss 受击音效（基类默认 EnemyHit）。</summary>
+        protected override SfxId HitSfxId => StarEco.Framework.SfxId.BossHit;
+
         public override void TakeDamage(DamageInfo info)
         {
             if (IsDead)

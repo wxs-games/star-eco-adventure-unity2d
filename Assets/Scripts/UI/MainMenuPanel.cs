@@ -200,10 +200,10 @@ namespace StarEco.UI
 
         private void PlayTitleBgm()
         {
-            // BGM 资源缺失时 AudioManager 内部静默跳过（M10 铺量）
+            // BGM 素材缺失时 AudioManager 内部静默跳过（M10）
             if (StarEco.Framework.AudioManager.HasInstance)
             {
-                StarEco.Framework.AudioManager.Instance.PlayBgm(null);
+                StarEco.Framework.AudioManager.Instance.PlayTitleBgm();
             }
         }
     }

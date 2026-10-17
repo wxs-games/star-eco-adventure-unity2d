@@ -1,4 +1,5 @@
 using UnityEngine;
+using StarEco.Framework;
 
 namespace StarEco.Player
 {
@@ -153,6 +154,7 @@ namespace StarEco.Player
                 _canJump = false;
                 _jumpBufferCounter = 0f;
                 Body.velocity = new Vector2(Body.velocity.x, _config.JumpVelocity);
+                AudioManager.Instance?.PlaySfx(SfxId.Jump);   // M10
             }
 
             return allowed;

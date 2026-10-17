@@ -1,4 +1,5 @@
 using UnityEngine;
+using StarEco.Framework;
 
 namespace StarEco.Player
 {
@@ -160,6 +161,7 @@ namespace StarEco.Player
         public override void Enter()
         {
             _lockTimer = Player.Config.LandLockTime;
+            AudioManager.Instance?.PlaySfx(SfxId.Land);   // M10
         }
 
         public override void FixedTick()
@@ -216,6 +218,7 @@ namespace StarEco.Player
             var knockback = Player.TakeKnockback();
             Player.SetKnockback(knockback);
             Player.TryFireAnim(PlayerAnimParams.Hurt);
+            AudioManager.Instance?.PlaySfx(SfxId.Hurt);   // M10
             // 硬直时长来自 CombatConfig（T5：GDD 初值 0.6s）
             _recoverTimer = Player.Combat != null && Player.Combat.Config != null
                 ? Player.Combat.Config.StunDuration
@@ -273,6 +276,7 @@ namespace StarEco.Player
         {
             Player.StopHorizontal();
             Player.TryFireAnim(PlayerAnimParams.Death);
+            AudioManager.Instance?.PlaySfx(SfxId.Death);   // M10
 
             var collider = Player.GetComponent<Collider2D>();
             if (collider != null)

@@ -246,7 +246,7 @@ namespace StarEco.UI
                 return;
             }
 
-            audio.PlaySfx(null);
+            audio.PlaySfx(StarEco.Framework.SfxId.UIClick);
         }
     }
 }

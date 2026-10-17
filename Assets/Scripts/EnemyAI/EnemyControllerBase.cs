@@ -178,6 +178,9 @@ namespace StarEco.EnemyAI
 
         // ===== 受击 (IHittable) =====
 
+        /// <summary>受击音效标识（M10）：Boss 覆写为 BossHit，小怪统一 EnemyHit。</summary>
+        protected virtual SfxId HitSfxId => SfxId.EnemyHit;
+
         public virtual void TakeDamage(DamageInfo info)
         {
             if (IsDead || IsSpawnImmune)
@@ -188,6 +191,7 @@ namespace StarEco.EnemyAI
             LastHitDirection = info.SourceDirection;
             _pendingHurt = true;
             _hurtStunTimer = _config.HurtStunSeconds;
+            AudioManager.Instance?.PlaySfx(HitSfxId);   // M10：受击音效（Boss 覆写为 BossHit）
 
             if (_config.KnockbackResponse > 0f && info.KnockbackPower > 0f && Body != null)
             {

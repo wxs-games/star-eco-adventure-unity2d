@@ -62,6 +62,9 @@ namespace StarEco.Eco
 
         private void OnGarbagePurified(GarbagePurifiedEvent evt)
         {
+            // M10：任意污染源/堵塞点/塔净化完成，统一走命名音效（库缺失静默跳过）
+            AudioManager.Instance?.PlaySfx(SfxId.PurifyComplete);
+
             Current += evt.PurityValue;
 
             if (Current > Total)

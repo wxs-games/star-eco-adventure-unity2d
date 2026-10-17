@@ -17,6 +17,8 @@ namespace StarEco.Eco
         [SerializeField] private EcoConfig _config;
         [SerializeField] private FxOneShot _fxPurifyPrefab;
         [SerializeField] private SprayHitbox _hitbox;
+        // M10：喷雾音效改走命名音效库（AudioManager.PlaySfx(SfxId)），
+        // 保留序列化字段供个别关卡覆写；为空时用库内默认音。
         [SerializeField] private AudioClip _sprayStartSfx;
         [SerializeField] private AudioClip _heavyReleaseSfx;
 
@@ -237,6 +239,10 @@ namespace StarEco.Eco
             {
                 AudioManager.Instance?.PlaySfx(_sprayStartSfx);
             }
+            else
+            {
+                AudioManager.Instance?.PlaySfx(SfxId.SprayStart);   // M10：库默认音
+            }
         }
 
         public void EndSpray()
@@ -303,6 +309,10 @@ namespace StarEco.Eco
             if (_heavyReleaseSfx != null)
             {
                 AudioManager.Instance?.PlaySfx(_heavyReleaseSfx);
+            }
+            else
+            {
+                AudioManager.Instance?.PlaySfx(SfxId.HeavyRelease);   // M10：库默认音
             }
         }
     }

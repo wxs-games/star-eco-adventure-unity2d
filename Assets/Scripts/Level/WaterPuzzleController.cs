@@ -180,6 +180,8 @@ namespace StarEco.Level
             _rising = true;
             _riseT = 0f;
 
+            AudioManager.Instance?.PlaySfx(SfxId.PuzzleSolved);   // M10
+
             float elapsed = _stats != null
                 ? _stats.ElapsedSeconds - _startTime
                 : Time.time - _startTime;

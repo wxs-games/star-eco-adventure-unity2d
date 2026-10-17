@@ -19,7 +19,7 @@ MonoBehaviour:
   KnockbackResponse: 1
   MoveSpeed: 3
   AttackDamage: 1
-  AttackRange: 10
+  AttackRange: 3.5
   AttackInterval: 1.2
   AttackKnockback: 0
   PerceptionRadius: 14

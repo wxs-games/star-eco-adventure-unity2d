@@ -1,5 +1,6 @@
 using UnityEngine;
 using StarEco.Combat;
+using StarEco.Framework;
 
 namespace StarEco.Player
 {
@@ -26,6 +27,7 @@ namespace StarEco.Player
             _combat = Player.Combat;
             _nextQueued = false;
             _comboWindowTimer = 0f;
+            AudioManager.Instance?.PlaySfx(SfxId.Attack);   // M10
 
             if (!Player.IsGrounded)
             {

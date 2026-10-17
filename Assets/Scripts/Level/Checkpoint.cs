@@ -49,6 +49,8 @@ namespace StarEco.Level
 
             _submitted = true;
 
+            AudioManager.Instance?.PlaySfx(SfxId.Checkpoint);   // M10
+
             if (LevelManager.HasInstance)
             {
                 LevelManager.Instance.CommitCheckpoint(this);

@@ -151,6 +151,9 @@ namespace StarEco.Level
 
             SetState(LevelState.Playing);
 
+            // M10：进入关卡播放对应 BGM（素材缺失静默跳过）
+            AudioManager.Instance?.PlayBgmForLevel(_config.LevelIndex);
+
             if (_spawner != null)
             {
                 _spawner.Begin(_config, _tracker, _player != null ? _player.transform : null);
@@ -231,11 +234,13 @@ namespace StarEco.Level
 
             if (success)
             {
+                AudioManager.Instance?.PlaySfx(SfxId.LevelComplete);   // M10
                 SetState(LevelState.Completed);
                 EventCenter.Publish(new LevelCompletedEvent { Result = result });
             }
             else
             {
+                AudioManager.Instance?.PlaySfx(SfxId.LevelFail);   // M10
                 SetState(LevelState.Failed);
                 EventCenter.Publish(new LevelFailedEvent { Reason = reason });
             }

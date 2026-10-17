@@ -101,7 +101,7 @@ GameManager(Facade单例)
 | M7 UI/对话 | 07-UIDialogue | HUD/菜单/对话/图鉴 | ✅ 已完成 |
 | M8 Boss+关三 | 08-Boss | Boss 阶段机 + 第三关 | ✅ 已完成 |
 | M9 关卡二三 | 09-Level02-03 | 解谜/解救玩法 + 全流程打通 | ✅ 已完成（Level02：E 解救/水解谜/Enemy02；Level03 沿用 M8；三关全流程+解锁链路打通） |
-| M10 打磨 | 10-Polish | 音效铺量/数值校准/Build | ⏳ 未开始 |
+| M10 打磨 | 10-Polish | 音效铺量/数值校准/Build | ✅ 已完成（18 SFX+4 BGM 程序化合成、全调用点接线、校准 2 项、Windows 构建通过） |
 
 ## 6. 测试计划
 - 单元级：伤害计算、净化值累加、存档序列化（EditMode Test）
@@ -115,3 +115,4 @@ GameManager(Facade单例)
 | v0.1 | 2026-10-15 | 初稿：架构与 M1~M10 计划 |
 | v0.2 | 2026-10-17 | 进度同步：M4~M8 已完成（敌人/环保/关卡一/UI 对话/Boss+关三） |
 | v0.3 | 2026-10-18 | M9：Level02（E 键解救/水流解谜/Enemy02）+ 全流程打通；修 `LevelObjectiveTracker.Evaluate` 链停滞（单次 if→while）；UI 三处索引对齐 |
+| v0.4 | 2026-10-18 | M10：音频铺量（Tools/audio-pipeline 合成 18 SFX+4 BGM、GameAudioLibrary、AudioManager 命名 API、13 处调用点接线）；校准 Enemy01/03 近战 AttackRange（10→3.5 / 9→3.0，修"范围远大于命中几何"导致空挥木桩）；Windows x64 构建通过（Builds/，1052MB，0 错误 0 警告） |
