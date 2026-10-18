@@ -60,6 +60,22 @@ namespace StarEco.EnemyAI
 
         protected abstract void BuildStateMachine();
 
+        /// <summary>
+        /// 保证状态机可用。域重载（Play 中途改脚本触发）会把所有实例字段清零、
+        /// 但 Awake 不会重跑，导致 Machine 为 null 而 Update/FixedUpdate 照常被调用 → 每帧 NRE。
+        /// 这里做懒加载自愈：缺失时按子类实现重建并复位初始态。
+        /// BuildStateMachine 幂等（每次 new 新实例），可安全重复调用。
+        /// </summary>
+        protected void EnsureMachine()
+        {
+            if (Machine != null)
+            {
+                return;
+            }
+            BuildStateMachine();
+            Machine.SetInitial(InitialStateType);
+        }
+
         protected virtual void OnEnable()
         {
             if (_awaken)
@@ -70,6 +86,7 @@ namespace StarEco.EnemyAI
 
         protected virtual void Update()
         {
+            EnsureMachine();
             if (IsDead)
             {
                 Machine.Tick();
@@ -82,6 +99,7 @@ namespace StarEco.EnemyAI
 
         protected virtual void FixedUpdate()
         {
+            EnsureMachine();
             if (IsDead)
             {
                 return;
@@ -342,7 +360,8 @@ namespace StarEco.EnemyAI
                 Sprite.flipX = false;
             }
             Anim?.ResetParams();
-            Machine?.SetInitial(InitialStateType);
+            EnsureMachine();
+            Machine.SetInitial(InitialStateType);
         }
 
         public void TryFireAnim(int triggerHash)

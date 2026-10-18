@@ -23,6 +23,7 @@ namespace StarEco.EnemyAI
         /// <summary>Animation Event: SpawnEnd — 出场结束转 Idle。</summary>
         public void OnSpawnEnd()
         {
+            EnsureMachine();
             if (Machine.CurrentType == typeof(Enemy03SpawnState))
             {
                 Machine.SwitchState<EnemyIdleState>();

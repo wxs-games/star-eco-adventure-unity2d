@@ -80,6 +80,7 @@ namespace StarEco.Player
 
         private void Update()
         {
+            EnsureMachine();
             ReadInput();
             UpdateTimers();
             UpdateInvincibility();
@@ -88,10 +89,25 @@ namespace StarEco.Player
 
         private void FixedUpdate()
         {
+            EnsureMachine();
             UpdateGrounded();
             UpdateGravity();
             _machine.FixedTick();
             ClampFallSpeed();
+        }
+
+        /// <summary>
+        /// 保证状态机可用。域重载（Play 中途改脚本触发）会把实例字段清零但 Awake 不重跑，
+        /// 导致 _machine 为 null 而 Update/FixedUpdate 照常被调用 → 每帧 NRE。
+        /// 懒加载自愈：缺失时重建并复位初始态。BuildStateMachine 幂等，可重复调用。
+        /// </summary>
+        private void EnsureMachine()
+        {
+            if (_machine != null)
+            {
+                return;
+            }
+            BuildStateMachine();
         }
 
         // ===== 输入 =====

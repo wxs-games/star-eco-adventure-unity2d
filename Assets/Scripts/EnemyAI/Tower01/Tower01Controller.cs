@@ -40,6 +40,7 @@ namespace StarEco.EnemyAI
         {
             if (_isDisabled) return;
             _isDisabled = true;
+            EnsureMachine();
             Machine.SwitchState<Tower01DisableState>();
         }
 
