@@ -115,7 +115,7 @@ namespace StarEco.UI
             UIUtility.EnsureEventSystem();
 
             var canvas = UIUtility.CreateCanvas("HUDCanvas", transform, 10);
-            Root = canvas.gameObject;
+            SetRoot(canvas.gameObject, visibleByDefault: true);   // HUD 常驻
 
             var font = UIUtility.BuiltinFont;
             var root = canvas.transform;

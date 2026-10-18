@@ -317,16 +317,22 @@ namespace StarEco.EditorTools
             body.gravityScale = 3f;
             body.freezeRotation = true;
 
+            // 碰撞体从精灵视觉 bounds 推导（PPU=378 后旧的 3.6×4.2 绝对值已失效）。
+            // Pivot = Bottom Center，故 bounds 中心在 y=h/2，碰撞体随之抬到身体中心。
+            Vector2 bossBounds = new Vector2(sprite.bounds.size.x, sprite.bounds.size.y);
+            Vector2 bossColliderSize = bossBounds * 0.9f;
+            Vector2 bossColliderOffset = new Vector2(0f, bossBounds.y * 0.5f * 0.95f);
+
             var col = root.AddComponent<BoxCollider2D>();
-            col.size = new Vector2(3.6f, 4.2f);   // Boss 体量（玩家约 1×1.6）
-            col.offset = Vector2.zero;
+            col.size = bossColliderSize;
+            col.offset = bossColliderOffset;
 
             root.AddComponent<StarEco.EnemyAI.EnemyAnimatorDriver>();
 
             var boss = root.AddComponent<StarEco.Boss.BossController>();
             var bossSo = new SerializedObject(boss);
             bossSo.FindProperty("_config").objectReferenceValue = config;
-            bossSo.FindProperty("_firePointOffset").floatValue = 1.8f;
+            bossSo.FindProperty("_firePointOffset").floatValue = bossColliderSize.x * 0.5f;
             var projectile = AssetDatabase.LoadAssetAtPath<StarEco.EnemyAI.EnemyProjectile>(
                 "Assets/Prefabs/Projectiles/EnemyProjectile.prefab");
             if (projectile != null)
@@ -338,14 +344,15 @@ namespace StarEco.EditorTools
             // 近战判定盒（复用 M4 EnemyAttackHitbox，事件帧开窗）
             var hitboxGo = new GameObject("AttackHitbox");
             hitboxGo.transform.SetParent(root.transform, false);
-            hitboxGo.transform.localPosition = new Vector3(1.6f, 0f, 0f);
+            // Bottom Center pivot 下 y=0 是脚底，判定盒须抬到身体中心
+            hitboxGo.transform.localPosition = new Vector3(bossColliderSize.x * 0.44f, bossColliderOffset.y, 0f);
             var hitboxCol = hitboxGo.AddComponent<BoxCollider2D>();
-            hitboxCol.size = new Vector2(2.6f, 2.4f);
+            hitboxCol.size = bossColliderSize * new Vector2(0.72f, 0.67f);
             hitboxCol.isTrigger = true;
             hitboxCol.enabled = false;
             var hitbox = hitboxGo.AddComponent<StarEco.EnemyAI.EnemyAttackHitbox>();
             var hitboxSo = new SerializedObject(hitbox);
-            hitboxSo.FindProperty("_localOffset").vector2Value = new Vector2(1.6f, 0f);
+            hitboxSo.FindProperty("_localOffset").vector2Value = new Vector2(bossColliderSize.x * 0.44f, bossColliderOffset.y);
             hitboxSo.ApplyModifiedPropertiesWithoutUndo();
 
             root.transform.localScale = new Vector3(2.2f, 2.2f, 1f);   // Boss 视觉体量放大

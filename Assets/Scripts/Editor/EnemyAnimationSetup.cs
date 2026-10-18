@@ -20,23 +20,26 @@ namespace StarEco.EditorTools
         [MenuItem("StarEco/Setup/Enemy Animation")]
         public static void Run()
         {
-            // 体量参数按帧图视觉尺寸（PPU=100）与玩家体量（6.9×8.3）适配
+            // 体量不再硬编码世界单位：PPU 从 100 改为 378 后角色视觉缩小 3.78倍，
+            // 旧的绝对尺寸全部失效（碰撞体曾达视觉体量的 3.0~3.4 倍）。
+            // 现统一从精灵实际 bounds 推导，下列向量只表达「相对碰撞体的比例」，
+            // 与 PPU / 素材尺寸解耦。
             BuildUnit("Enemy01", "Assets/Art/Art/Enemies/Enemy01/Frames", "Assets/Animations/Enemy01",
                 "Assets/Prefabs/Enemies/Enemy01.prefab", "Assets/Settings/Enemy01Config.asset",
                 "StarEco.EnemyAI.Enemy01Controller", false, false, false,
-                new Vector2(9f, 7f), Vector2.zero, new Vector2(5f, 7f), 5.5f, 0f);
+                new Vector2(0.556f, 1f), new Vector2(0.611f, 1f), 0.611f);
             BuildUnit("Enemy02", "Assets/Art/Art/Enemies/Enemy02/Frames", "Assets/Animations/Enemy02",
                 "Assets/Prefabs/Enemies/Enemy02.prefab", "Assets/Settings/Enemy02Config.asset",
                 "StarEco.EnemyAI.Enemy02Controller", false, true, false,
-                new Vector2(9f, 10f), Vector2.zero, null, 0f, 7f);
+                null, null, 0.778f);
             BuildUnit("Enemy03", "Assets/Art/Art/Enemies/Enemy03/Frames", "Assets/Animations/Enemy03",
                 "Assets/Prefabs/Enemies/Enemy03.prefab", "Assets/Settings/Enemy03Config.asset",
                 "StarEco.EnemyAI.Enemy03Controller", true, false, false,
-                new Vector2(7f, 9f), Vector2.zero, new Vector2(4f, 8f), 4.5f, 0f);
+                new Vector2(0.571f, 0.889f), new Vector2(0.643f, 0f), 0f);
             BuildUnit("Tower01", "Assets/Art/Art/Towers/Tower01/Frames", "Assets/Animations/Tower01",
                 "Assets/Prefabs/Towers/Tower01.prefab", "Assets/Settings/Tower01Config.asset",
                 "StarEco.EnemyAI.Tower01Controller", false, true, true,
-                new Vector2(8f, 8f), Vector2.zero, null, 0f, 5f);
+                null, null, 0.625f);
             BuildProjectilePrefab();
 
             AssetDatabase.SaveAssets();
@@ -44,11 +47,13 @@ namespace StarEco.EditorTools
             Debug.Log("[EnemyAnimationSetup] 敌人动画管线搭建完成 ✓");
         }
 
+        /// <param name="hitboxSizeRatio">攻击判定盒相对碰撞体的尺寸比例，null 表示该单位无近战判定。</param>
+        /// <param name="hitboxOffsetRatio">攻击判定盒沿 +X 的偏移，相对碰撞体宽度。</param>
+        /// <param name="firePointOffsetRatio">远程发射点沿 +X 的偏移，相对碰撞体宽度；0 表示无发射点。</param>
         private static void BuildUnit(string name, string framesRoot, string outputRoot,
             string prefabPath, string configPath, string controllerType,
             bool hasSpawn, bool hasFirePoint, bool isStatic,
-            Vector2 colliderSize, Vector2 colliderOffset,
-            Vector2? hitboxSize, float hitboxOffset, float firePointOffset)
+            Vector2? hitboxSizeRatio, Vector2? hitboxOffsetRatio, float firePointOffsetRatio)
         {
             EnsureFolder(outputRoot);
             EnsureFolder(Path.GetDirectoryName(prefabPath));
@@ -56,7 +61,7 @@ namespace StarEco.EditorTools
             var clips = BuildAllClips(name, framesRoot, outputRoot);
             var controller = BuildController(name, outputRoot, clips, hasSpawn, isStatic);
             BuildPrefab(name, prefabPath, configPath, controllerType, controller, hasFirePoint, isStatic,
-                colliderSize, colliderOffset, hitboxSize, hitboxOffset, firePointOffset);
+                hitboxSizeRatio, hitboxOffsetRatio, firePointOffsetRatio);
         }
 
         private static void EnsureFolder(string path)
@@ -268,8 +273,7 @@ namespace StarEco.EditorTools
 
         private static void BuildPrefab(string unitName, string prefabPath, string configPath,
             string controllerType, AnimatorController controller, bool hasFirePoint, bool isStatic,
-            Vector2 colliderSize, Vector2 colliderOffset,
-            Vector2? hitboxSize, float hitboxOffset, float firePointOffset)
+            Vector2? hitboxSizeRatio, Vector2? hitboxOffsetRatio, float firePointOffsetRatio)
         {
             var go = new GameObject(unitName);
             int enemyLayer = UnityEngine.LayerMask.NameToLayer("Enemy");
@@ -295,7 +299,16 @@ namespace StarEco.EditorTools
                 if (configField != null) configField.SetValue(ctrl, config);
             }
 
-            // Rigidbody2D + BoxCollider2D（非 Static）——碰撞体按视觉体量配置
+            // Rigidbody2D + BoxCollider2D —— 碰撞体一律从精灵视觉 bounds 推导（×0.9），
+            // 不再使用硬编码世界单位。Sprite Pivot = Bottom Center，故 bounds 中心位于
+            // y = h/2，碰撞体 offset 取 h/2×0.95 让身体居中、脚底略微离地。
+            Vector2 bounds = new Vector2(sr.sprite.bounds.size.x, sr.sprite.bounds.size.y);
+            Vector2 colliderSize = bounds * 0.9f;
+            Vector2 colliderOffset = new Vector2(0f, bounds.y * 0.5f * 0.95f);
+            float hitboxOffset = hitboxOffsetRatio.HasValue ? colliderSize.x * hitboxOffsetRatio.Value.x : 0f;
+            Vector2? hitboxSize = hitboxSizeRatio.HasValue ? colliderSize * hitboxSizeRatio.Value : (Vector2?)null;
+            float firePointOffset = firePointOffsetRatio * colliderSize.x;
+
             if (!isStatic)
             {
                 var rb = go.AddComponent<Rigidbody2D>();
@@ -316,7 +329,8 @@ namespace StarEco.EditorTools
             {
                 var hitboxGo = new GameObject("AttackHitbox");
                 hitboxGo.transform.SetParent(go.transform, false);
-                hitboxGo.transform.localPosition = new Vector3(hitboxOffset, 0f, 0f);
+                // Bottom Center pivot 下 y=0 是脚底，判定盒须抬到身体中心
+                hitboxGo.transform.localPosition = new Vector3(hitboxOffset, colliderOffset.y, 0f);
                 var hitboxCol = hitboxGo.AddComponent<BoxCollider2D>();
                 hitboxCol.isTrigger = true;
                 hitboxCol.size = hitboxSize.Value;
@@ -330,7 +344,8 @@ namespace StarEco.EditorTools
             {
                 var fireGo = new GameObject("FirePoint");
                 fireGo.transform.SetParent(go.transform, false);
-                fireGo.transform.localPosition = new Vector3(firePointOffset, 0f, 0f);
+                // 同上：抬到身体中心，否则弹幕从脚底射出
+                fireGo.transform.localPosition = new Vector3(firePointOffset, colliderOffset.y, 0f);
             }
 
             // 保存 Prefab

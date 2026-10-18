@@ -129,7 +129,7 @@ namespace StarEco.UI
             UIUtility.EnsureEventSystem();
 
             var canvas = UIUtility.CreateCanvas("ResultCanvas", transform, 100);
-            Root = canvas.gameObject;
+            SetRoot(canvas.gameObject);
 
             var root = canvas.transform;
 

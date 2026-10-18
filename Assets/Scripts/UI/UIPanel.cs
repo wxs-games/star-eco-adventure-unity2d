@@ -17,8 +17,28 @@ namespace StarEco.UI
         /// </summary>
         public virtual bool BlocksInput => true;
 
-        /// <summary>面板内容根节点（通常为 Canvas 或子容器），默认隐藏，Open 时激活。</summary>
+        /// <summary>面板内容根节点（通常为 Canvas 或子容器）。</summary>
         protected GameObject Root;
+
+        /// <summary>
+        /// 声明面板内容根节点。默认立即隐藏，等待 <see cref="Open"/> 显示。
+        ///
+        /// 背景：场景里这些面板 GameObject 本身是激活的，而 <see cref="Close"/>
+        /// 在 <c>_isOpen == false</c> 时直接 return —— 于是没有任何代码路径能隐藏
+        /// 它们。实测表现为进入游戏后Codex / Settings / Pause 等面板全部常驻，
+        /// 文字互相压在一起。显式在此隐藏，是唯一可靠入口。
+        ///
+        /// <paramref name="visibleByDefault"/> 仅 HUDController 这类常驻面板传 true。
+        /// </summary>
+        protected void SetRoot(GameObject root, bool visibleByDefault = false)
+        {
+            Root = root;
+
+            if (!visibleByDefault && root != null)
+            {
+                root.SetActive(false);
+            }
+        }
 
         private bool _isOpen;
 

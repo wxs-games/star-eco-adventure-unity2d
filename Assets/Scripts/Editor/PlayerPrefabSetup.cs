@@ -52,7 +52,10 @@ namespace StarEco.EditorTools
                 {
                     var child = new GameObject(HitboxName);
                     child.transform.SetParent(root.transform, false);
-                    child.transform.localPosition = new Vector3(0.55f, 0.1f, 0f);
+                    // Bottom Center pivot 下 y=0 是脚底；喷射源自手持净化器，
+                    // 抬到身体中下部（碰撞体高约 2，喷射口约在 45% 高度）。
+                    // size(1.4,1.2) 是与 PPU 无关的手写世界单位，无需随 PPU 缩放。
+                    child.transform.localPosition = new Vector3(0.55f, 0.85f, 0f);
                     child.layer = root.layer;
 
                     var col = child.AddComponent<BoxCollider2D>();
@@ -61,7 +64,7 @@ namespace StarEco.EditorTools
                     child.AddComponent<StarEco.Eco.SprayHitbox>();
 
                     hitboxGo = child.transform;
-                    log.AppendLine("已创建 SprayHitbox 子物体（localPos 0.55,0.1，size 1.4x1.2，Trigger）");
+                    log.AppendLine("已创建 SprayHitbox 子物体（localPos 0.55,0.85，size 1.4x1.2，Trigger）");
                 }
                 else
                 {

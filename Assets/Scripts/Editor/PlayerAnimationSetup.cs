@@ -490,9 +490,12 @@ namespace StarEco.EditorTools
             var collider = go.AddComponent<BoxCollider2D>();
             if (displaySprite != null)
             {
-                var size = displaySprite.bounds.size * 0.9f; // 碰撞体略小于显示，宽容手感
+                // PPU=378 后角色视觉高约 2 世界单位（原 PPU=100 时是 8.33）。
+                // Pivot = Bottom Center → bounds 中心在 y=h/2，碰撞体须随之抬到
+                // 身体中心；size 取视觉 ×0.9 留宽容手感。
+                var size = displaySprite.bounds.size * 0.9f;
                 collider.size = size;
-                collider.offset = new Vector2(0f, -displaySprite.bounds.size.y * 0.05f);
+                collider.offset = new Vector2(0f, displaySprite.bounds.size.y * 0.5f * 0.95f);
             }
 
             go.AddComponent<Animator>().runtimeAnimatorController = controller;

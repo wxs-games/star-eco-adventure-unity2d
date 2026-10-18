@@ -197,18 +197,18 @@ BoxCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: 0, y: 1.0957671}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 13.12, y: 8.72}
+    pivot: {x: 0, y: 1}
+    oldSize: {x: 3.4708996, y: 2.3068783}
     newSize: {x: 13.12, y: 8.72}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 9, y: 7}
+  m_Size: {x: 3.1238096, y: 2.0761905}
   m_EdgeRadius: 0
 --- !u!1 &2910567153685782168
 GameObject:
@@ -237,7 +237,7 @@ Transform:
   m_GameObject: {fileID: 2910567153685782168}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5.5, y: 0, z: 0}
+  m_LocalPosition: {x: 1.9089947, y: 1.0957671, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -286,7 +286,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 5, y: 7}
+  m_Size: {x: 1.7354498, y: 2.0761905}
   m_EdgeRadius: 0
 --- !u!114 &2642835079760829375
 MonoBehaviour:
@@ -301,4 +301,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _hitbox: {fileID: 0}
-  _localOffset: {x: 5.5, y: 0}
+  _localOffset: {x: 1.9089947, y: 1.0957671}
