@@ -146,3 +146,26 @@ alpha-first 精灵图集管线：入口先归一化为**透明底 RGBA master**�
 → 分帧（网格切格 / 连通域自动分帧，可只留最大域去悬空配件）→ 条内身高中位数统一缩放 → 脚底基线对齐（留白 7px）
 → 重拼等大透明精灵表；坏帧用相邻帧替换。全程**不再经过白底中间图**，raw 与成品均为透明底 RGBA；
 透明区做颜色外溢（alpha bleeding）避免缩放渗色出晕圈。FX 另走一条：黑底亮度转 alpha（Additive 友好）。
+
+## 五、环境 Environment（M10 R1：Level01 先行）
+
+风格沿用上文的「高清卡通描边」，色调偏暗紫 + 病态黄绿，呼应「污染星球」设定。
+
+| 素材 | 尺寸 | PPU | 世界尺寸 | 用法 |
+|---|---|---|---|---|
+| `Environment\Tiles\ground_polluted.png` | 760×190 | **190** | **4×1 单位** | 横向无缝周期，Sprite **Tiled**，WrapMode=Repeat，Mesh Type=FullRect |
+| `Environment\Background\bg_polluted_planet.png` | 1920×1080 (16:9) | 100 | 16×9 单位 | 跟随相机铺满视野，sortingOrder −100 |
+
+**拼接基准（改相机参数时必须同步重算）**
+
+- Level01 相机 `orthographicSize = 4.5`、`position.y = 2` → 视野高 9 单位，地面顶面（世界 y=0）占屏高 (2+4.5−0)/9 = **72.2%**。
+- 背景图地平线已按此对齐在图内 **72.2%**（y=780/1080），使远景工厂剪影正好坐在地面线上。
+- 背景图宽高比必须 = 视野宽高比（16:9），否则会被拉伸变形。
+
+**Unity 导入要点**
+
+1. 地面瓦片：`Sprite Mode = Single`、`Mesh Type = **FullRect**`（Tiled 必需）、`Wrap Mode = **Repeat**`、关 Mipmap、Bilinear。
+2. **`SpriteRenderer.size` 在 Tiled 模式下是「世界单位」，不是像素**（Simple 模式才是像素）。传像素值会放大 PPU 倍铺满全屏——本项目曾踩过。
+3. 灰盒 Ground 换素材时注意：`MakeWorldBox` 靠 `transform.scale`（原 1000×25）把 0.04u 的 WhiteSquare 撑成 40×1，碰撞体存的是被放大的局部单位。换真素材须先算 `collider.size × scale` 得世界尺寸，再把 scale 归一、碰撞体改回世界单位。
+
+**仍为灰盒、待补的占位符**（Level01）：`NPC_Ava`、`Signboard_Plastic/Recycle`、`KnowledgeCard1/2`、`Checkpoint1/2`、`SpawnAnchorA/B`。
