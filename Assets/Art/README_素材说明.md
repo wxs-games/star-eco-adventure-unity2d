@@ -169,7 +169,7 @@ alpha-first 精灵图集管线：入口先归一化为**透明底 RGBA master**�
 3. 灰盒 Ground 换素材时注意：`MakeWorldBox` 靠 `transform.scale`（原 1000×25）把 0.04u 的 WhiteSquare 撑成 40×1，碰撞体存的是被放大的局部单位。换真素材须先算 `collider.size × scale` 得世界尺寸，再把 scale 归一、碰撞体改回世界单位。
 4. 背景**不要用 Sliced**：该图 `.meta` 的 border 为 0，Sliced 退化后会按 1920×1080 像素粒度切块，运行时斜铺出巨大色块。改用 `Simple + transform.scale` 拉伸。
 
-**仍为灰盒、待补的占位符**（Level01）：无——`NPC_Ava`、两块提示牌、两个知识卡片、两个检查点均已换真素材；`SpawnAnchorA/B` 是刷怪逻辑锚点，**刻意隐藏**（`SpriteRenderer.enabled = false`），仅在 Editor 中作位置句柄用。
+**仍为灰盒、待补的占位符**（Level01）：无——`NPC_Ava`、两块提示牌、两个知识卡片、两个检查点、三个垃圾堆、挡路垃圾墙均已换真素材；`SpawnAnchorA/B` 是刷怪逻辑锚点，**刻意隐藏**（`SpriteRenderer.enabled = false`），仅在 Editor 中作位置句柄用。
 
 ## 六、道具 Props（M10 R2：Level01 占位符全部替换）
 
@@ -183,6 +183,18 @@ alpha-first 精灵图集管线：入口先归一化为**透明底 RGBA master**�
 | `sign_recycle.png` | 260×926 | 805 | 0.32×1.15 | 蓝绿牌，白色回收三角 | `Signboard_Recycle` ← `signboard_recycle`（可回收物识别） |
 | `knowledge_card.png` | 509×538 | 1076 | 0.47×0.50 | 琥珀晶体卡，离地 0.35 | `KnowledgeCard1/2` |
 | `checkpoint.png` | 377×746 | 481 | 0.78×1.55 | 青蓝布旗检查点，触发区 1.2×1.2 | `Checkpoint1/2` |
+| `garbage_pile.png` | 724×327 | 452 | 1.60×0.72 | 可清理垃圾堆（塑料瓶/纸箱/锡罐），碰撞体 1.60×0.90 | `Garbage1/2/3` |
+| `garbage_wall.png` | 809×957 | 578 | 1.40×1.66 | 高瘦捆扎挡路墙（麻绳+木箱），碰撞体 1.40×2.20 | `GarbageWall1` |
+
+### 垃圾堆/墙的贴地约定（与 LevelSetup 的坑）
+
+`GarbagePile` / `GarbageWall` 是 **prefab**（带 `GarbagePile` 逻辑组件），不走 LevelUISetup 那套。约定：
+
+- prefab 根节点位于物件**中心**，`BoxCollider2D.offset = 0`，`localScale = 1`；
+- 场景实例的 `position.y` 必须给「**视觉**高度 ÷ 2」才能让底边贴地：垃圾堆 0.36、垃圾墙 0.83。
+  （曾按旧灰盒中心值 0.9/1.4 摆放 → 悬空；又曾用碰撞体半高 0.45/1.10 摆放 → 视觉与碰撞体错位。**一律以视觉半高为准**。）
+- **碰撞体尺寸刻意沿用原灰盒值**（1.60×0.90 / 1.40×2.20），不随视觉高度改，避免改变关卡可通行性与手感；`LevelSetup.Run` 里的 y 值已同步为半高约定。
+- 垃圾墙第一版生成成矮胖「一堆」，拉伸到 2.2 高会明显变形，已重新生成高瘦构图（宽高比 ≈ 1:1.17），与三个矮胖垃圾堆形成层次。
 
 - **PPU 按「目标世界高度」反算**（`PPU = 像素高 / 目标单位高`），避免落地后靠 scale 硬凑把描边拉糊。
 - 提示牌三张共用同一根木柱与边框锈斑（ImageGen 以 `sign_recycle` 为 image1 + `input_fidelity: high` 续生成），保证系列感。

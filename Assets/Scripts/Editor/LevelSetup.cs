@@ -152,12 +152,15 @@ namespace StarEco.EditorTools
                 Debug.LogError($"[LevelSetup] 找不到 {PlayerPrefab}，玩家未放置。");
             }
 
-            // —— 污染源：3 垃圾堆 + 1 挡路墙 ——
-            PlacePrefab(GarbagePilePrefab, "Garbage1", new Vector3(-4.5f, 0.9f, 0f), log);
-            PlacePrefab(GarbagePilePrefab, "Garbage2", "Garbage2", new Vector3(-1f, 0.9f, 0f), log);
-            PlacePrefab(GarbagePilePrefab, "Garbage3", new Vector3(3f, 0.9f, 0f), log);
-            PlacePrefab(GarbageWallPrefab, "GarbageWall1", "GarbageWall1", new Vector3(6.5f, 1.4f, 0f), log);
-            log.AppendLine("已放置 Garbage1~3 + GarbageWall1");
+            // —— 污染源：3 垃圾堆+ 1 挡路墙 ——
+            // 注意：prefab 根节点位于物件**中心**，碰撞体 offset=0，
+            // 因此 y 必须给「**视觉**高度/2」才能让底边贴地（地面顶面 y=0）。
+            // 垃圾堆视觉高 0.72u→ y=0.36；垃圾墙视觉高 1.66u → y=0.83。
+            PlacePrefab(GarbagePilePrefab, "Garbage1", new Vector3(-4.5f, 0.36f, 0f), log);
+            PlacePrefab(GarbagePilePrefab, "Garbage2", "Garbage2", new Vector3(-1f, 0.36f, 0f), log);
+            PlacePrefab(GarbagePilePrefab, "Garbage3", new Vector3(3f, 0.36f, 0f), log);
+            PlacePrefab(GarbageWallPrefab, "GarbageWall1", "GarbageWall1", new Vector3(6.5f, 0.83f, 0f), log);
+            log.AppendLine("已放置 Garbage1~3(y=0.36) + GarbageWall1(y=0.83)，y=视觉半高使底边贴地");
 
             // —— 塔（挂 TowerPurifiable 适配器）——
             var towerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(TowerPrefab);
