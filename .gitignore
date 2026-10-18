@@ -46,3 +46,4 @@ Thumbs.db
 #临时脚本不入库
 .workbuddy/
 Assets/Screenshots/
+Assets/Screenshots.meta
