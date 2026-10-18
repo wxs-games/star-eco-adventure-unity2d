@@ -60,10 +60,11 @@ namespace StarEco.Level
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920f, 1080f);
 
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            // 统一走 UIUtility.BuiltinFont（中文字体 + 内置字体回退），避免重复硬编码
+            var font = StarEco.UI.UIUtility.BuiltinFont;
             if (font == null)
             {
-                Debug.LogError("[LevelResultUI] 未取得内置字体，结算面板文字将不可见。");
+                Debug.LogError("[LevelResultUI] 未取得任何字体，结算面板文字将不可见。");
             }
 
             // 遮罩

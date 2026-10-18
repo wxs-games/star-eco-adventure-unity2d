@@ -43,17 +43,29 @@ namespace StarEco.UI
         /// <summary>按钮禁用色。</summary>
         public static readonly Color ButtonDisabled = new Color(0.25f, 0.25f, 0.27f, 0.9f);
 
-        /// <summary>内置字体（LegacyRuntime，无美术资源依赖）。</summary>
+        /// <summary>
+        /// UI 字体。优先加载项目内置的中文字体 Noto Sans SC（SIL OFL 1.1，可随项目分发）；
+        /// 回退到 Unity 内置 LegacyRuntime.ttf（无 CJK 字形，中文会显示为方块）。
+        /// 字体资源需放在 Assets/Resources/Fonts/ 下才能被 Resources.Load 命中。
+        /// </summary>
         public static Font BuiltinFont
         {
             get
             {
                 if (_font == null)
                 {
-                    _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    _font = Resources.Load<Font>("Fonts/NotoSansSC-Regular");
                     if (_font == null)
                     {
-                        Debug.LogError("[UIUtility] 未取得内置字体 LegacyRuntime.ttf，UI 文字将不可见。");
+                        Debug.LogWarning(
+                            "[UIUtility] 未找到 Assets/Resources/Fonts/NotoSansSC-Regular，" +
+                            "回退内置 LegacyRuntime.ttf —— 中文将渲染为方块（乱码）。");
+                        _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    }
+
+                    if (_font == null)
+                    {
+                        Debug.LogError("[UIUtility] 未取得任何字体，UI 文字将不可见。");
                     }
                 }
 

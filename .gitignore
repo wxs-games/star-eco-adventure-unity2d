@@ -42,3 +42,7 @@ crashlytics-build.properties
 # 系统
 .DS_Store
 Thumbs.db
+
+#临时脚本不入库
+.workbuddy/
+Assets/Screenshots/
