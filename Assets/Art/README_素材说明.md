@@ -167,5 +167,30 @@ alpha-first 精灵图集管线：入口先归一化为**透明底 RGBA master**�
 1. 地面瓦片：`Sprite Mode = Single`、`Mesh Type = **FullRect**`（Tiled 必需）、`Wrap Mode = **Repeat**`、关 Mipmap、Bilinear。
 2. **`SpriteRenderer.size` 在 Tiled 模式下是「世界单位」，不是像素**（Simple 模式才是像素）。传像素值会放大 PPU 倍铺满全屏——本项目曾踩过。
 3. 灰盒 Ground 换素材时注意：`MakeWorldBox` 靠 `transform.scale`（原 1000×25）把 0.04u 的 WhiteSquare 撑成 40×1，碰撞体存的是被放大的局部单位。换真素材须先算 `collider.size × scale` 得世界尺寸，再把 scale 归一、碰撞体改回世界单位。
+4. 背景**不要用 Sliced**：该图 `.meta` 的 border 为 0，Sliced 退化后会按 1920×1080 像素粒度切块，运行时斜铺出巨大色块。改用 `Simple + transform.scale` 拉伸。
 
-**仍为灰盒、待补的占位符**（Level01）：`NPC_Ava`、`Signboard_Plastic/Recycle`、`KnowledgeCard1/2`、`Checkpoint1/2`、`SpawnAnchorA/B`。
+**仍为灰盒、待补的占位符**（Level01）：无——`NPC_Ava`、两块提示牌、两个知识卡片、两个检查点均已换真素材；`SpawnAnchorA/B` 是刷怪逻辑锚点，**刻意隐藏**（`SpriteRenderer.enabled = false`），仅在 Editor 中作位置句柄用。
+
+## 六、道具 Props（M10 R2：Level01 占位符全部替换）
+
+目录 `Assets\Art\Art\Environment\Props\`。白底生成图经 **flood-fill 容差抠白** 处理成透明底并 trim：
+背景色取四边中位数，只吃**与画面边界连通**的浅色区，因此道具内部的白色高光（提示牌上的白色标志、卡片上的白色叶脉）不会被误抠。
+
+| 素材 | 像素 | PPU | 世界尺寸 | 用法 | 语义对应 |
+|---|---|---|---|---|---|
+| `npc_ava.png` | 390×922 | 485 | 0.80×1.90 | 教学 NPC，落地后 scale 1.16 → **2.20 单位高**（与主角等高） | `ava_intro` |
+| `sign_plastic_warning.png` | 288×1024 | 890 | 0.32×1.15 | 灰绿警示牌，白色警告三角 | `Signboard_Plastic` ← `signboard_plastic`（塑料污染警示） |
+| `sign_recycle.png` | 260×926 | 805 | 0.32×1.15 | 蓝绿牌，白色回收三角 | `Signboard_Recycle` ← `signboard_recycle`（可回收物识别） |
+| `knowledge_card.png` | 509×538 | 1076 | 0.47×0.50 | 琥珀晶体卡，离地 0.35 | `KnowledgeCard1/2` |
+| `checkpoint.png` | 377×746 | 481 | 0.78×1.55 | 青蓝布旗检查点，触发区 1.2×1.2 | `Checkpoint1/2` |
+
+- **PPU 按「目标世界高度」反算**（`PPU = 像素高 / 目标单位高`），避免落地后靠 scale 硬凑把描边拉糊。
+- 提示牌三张共用同一根木柱与边框锈斑（ImageGen 以 `sign_recycle` 为 image1 + `input_fidelity: high` 续生成），保证系列感。
+- **`Signboard_Plastic` 配的是「警示」而非「堆肥」标**：查 `dialogues.json`，该牌文本讲塑料污染与「勿焚烧」，堆肥语义不符，故重做为警告三角。
+- 脚本 `LevelSetup.MakeCheckpoint` / `LevelUISetup.CreateSignboard/CreateKnowledgeCard/CreateTriggerVisual` 均改为「优先真素材、缺失才退灰盒」，可重跑而不会冲掉美术。
+
+**踩坑：pivot 在本工程 Unity 构建中改不动**
+
+`TextureImporter` 反射确认**不存在** `spriteAlignment` / `spriteMeshType`（只有无用的 `spritePivot`），写 `.meta` 的 `alignment: 1` 也不生效——`sprite.bounds.center.y` 始终是 `-高/2`，即**实际按 Center pivot 处理**。
+因此所有道具统一用 Center 语义摆放：`position.y = 地面顶面(0) + 高度/2`（悬浮物再加 yOffset），`localScale` 归一为 1。
+FullRect / pivot 一律在 `.meta` 文本层设置，不走 API。

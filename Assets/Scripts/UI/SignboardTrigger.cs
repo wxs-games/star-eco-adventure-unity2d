@@ -228,19 +228,11 @@ namespace StarEco.UI
         private void BuildBubble()
         {
             var canvasGo = new GameObject("SignBubbleCanvas",
-                typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
-            canvasGo.transform.SetParent(transform, false);
-            var canvas = canvasGo.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.WorldSpace;
-
-            var scaler = canvasGo.GetComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
-            scaler.scaleFactor = 0.01f;
-            scaler.dynamicPixelsPerUnit = 10f;
+typeof(RectTransform), typeof(Canvas));
+            UIUtility.CreateWorldCanvas(canvasGo, transform, new Vector3(0f, _bubbleHeight, 0f));
 
             var canvasRt = canvasGo.GetComponent<RectTransform>();
-            canvasRt.sizeDelta = new Vector2(400f, 120f);
-            canvasRt.localPosition = new Vector3(0f, _bubbleHeight, 0f);
+            canvasRt.sizeDelta = new Vector2(400f, 120f);   // 像素；已由 localScale 换算为 4×1.2 世界单位
 
             _bubble = UIUtility.CreateObject("Bubble", canvasGo.transform);
             UIUtility.CenterAnchor(_bubble, new Vector2(360f, 90f), Vector2.zero);

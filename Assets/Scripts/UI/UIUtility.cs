@@ -10,6 +10,40 @@ namespace StarEco.UI
     /// </summary>
     public static class UIUtility
     {
+        /// <summary>
+        /// 世界空间 Canvas 的像素→世界换算比例。
+        /// 关卡相机为 orthographicSize=4.5，视野约 16×9 世界单位；
+        /// 400px 宽的气泡按 0.01 换算即4 单位，约占屏宽 1/4，符合观感。
+        ///
+        /// 注意：RenderMode.WorldSpace 下 CanvasScaler 不生效（scaleFactor 被忽略），
+        /// 早期版本误以为 0.01 的 scaleFactor 会生效，导致 400×120 的RectTransform
+        /// 被当作 400×120 **世界单位**渲染，一个气泡横跨 25 屏，表现为斜穿画面的白色带。
+        /// 因此必须落在 transform.localScale 上。
+        /// </summary>
+        public const float WorldUiScale = 0.01f;
+
+        /// <summary>
+        /// 把新建的 Canvas 配成世界空间 UI：设置 renderMode 与像素→世界缩放。
+        /// RectTransform 的 sizeDelta 等仍按「像素」填写，由本方法统一换算。
+        /// </summary>
+        public static Canvas CreateWorldCanvas(GameObject canvasGo, Transform parent, Vector3 localPosition)
+        {
+            canvasGo.transform.SetParent(parent, false);
+            canvasGo.transform.localPosition = localPosition;
+            canvasGo.transform.localScale = Vector3.one * WorldUiScale;
+
+            var canvas = canvasGo.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+
+            // WorldSpace 下 CanvasScaler 无效, 移除以免误导后续维护者
+            var scaler = canvasGo.GetComponent<CanvasScaler>();
+            if (scaler != null)
+            {
+                Object.DestroyImmediate(scaler);
+            }
+
+            return canvas;
+        }
         /// <summary>面板底色（半透明深蓝紫）。</summary>
         public static readonly Color PanelBg = new Color(0.10f, 0.10f, 0.18f, 0.93f);
 

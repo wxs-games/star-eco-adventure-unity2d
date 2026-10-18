@@ -109,9 +109,12 @@ M6 `LevelResultUI` 退场：其订阅逻辑（`LevelCompletedEvent`/`LevelFailed
 
 ## 3. 程序化 uGUI 约定（沿用 M6 LevelResultUI 先例）
 
-- Canvas：`RenderMode.ScreenSpaceOverlay`，`CanvasScaler` 用 `ScaleWithScreenSize`（ReferenceResolution 1920×1080，Match 0.5）。
+- 屏幕级 Canvas：`RenderMode.ScreenSpaceOverlay`，`CanvasScaler` 用 `ScaleWithScreenSize`（ReferenceResolution 1920×1080，Match 0.5）。
+- 世界空间气泡 Canvas（对话/提示牌/救援）：**`RenderMode.WorldSpace` 下 `CanvasScaler` 完全不生效**，`scaleFactor` 被忽略。像素→世界的换算必须落在 `transform.localScale`（`UIUtility.WorldUiScale = 0.01f`，见 `UIUtility.CreateWorldCanvas`），RectTransform 的 `sizeDelta` 仍按像素填写（400×120 → 4×1.2 世界单位）。
+  - 早期版本误把换算写在 CanvasScaler 上，导致 400×120 的气泡被当作 **400×120 世界单位**渲染（视野仅 16×9），一个气泡横跨 25 屏，表现为斜穿画面的巨大白色带，且**污染所有运行时截图**，使视觉验收结论全部失真。
 - EventSystem 缺失时自动创建（`LevelResultUI` 已有同款代码，抽到 `UIUtility` 复用）。
-- 字体一律 `Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")`。
+- 字体：`LegacyRuntime.ttf` **不含 CJK 字形**，中文会渲染为方块（乱码）。改用 `Resources.Load<Font>("Fonts/NotoSansSC-Regular")`（仓库内自带，SIL OFL 1.1，可随毕设分发），未找到时才回退内置字体并打 Warning。见 `UIUtility.BuiltinFont` / `LevelResultUI`。
+- 面板默认隐藏：`UIPanel.Close()` 在 `_isOpen == false` 时直接 return，场景中激活态面板没有任何代码路径能隐藏。因此 `SetRoot(root, visibleByDefault: false)` 在 Awake 时主动 `SetActive(false)`（HUD 传 true 常驻）。
 - 颜色：面板底 `#1A1A2EE6`（半透明深蓝紫）、主文字白、强调绿 `#7CFC98`、警示红 `#FF6B6B`、禁用灰 `#888`。
 - 布局：锚点预设（左上/居中/底部），不用 LayoutGroup（面板元素少，手动锚点更可控）。
 

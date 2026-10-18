@@ -293,6 +293,14 @@ namespace StarEco.EditorTools
             var go = MakeWorldBox(name, white, 0.3f, 0.3f, pos, new Color(1f, 0.4f, 0.4f, 0.5f), -3);
             var col = go.GetComponent<BoxCollider2D>();
             UnityEngine.Object.DestroyImmediate(col);   // 锚点只需位置，不需要碰撞
+
+            // 刷怪锚点是纯逻辑标记, 视觉留个句柄即可, 不进成品画面
+            var sr = go.GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                sr.enabled = false;
+            }
+
             return go.transform;
         }
 
@@ -300,12 +308,38 @@ namespace StarEco.EditorTools
         {
             const float cpWorldSize = 1.6f;
 
-            var white = AssetDatabase.LoadAssetAtPath<Sprite>(WhiteSquarePath);
-            var go = MakeWorldBox(name, white, cpWorldSize, cpWorldSize, pos,
-                new Color(0.4f, 0.8f, 1f, 0.35f), 6);
+            // 优先真素材（checkpoint.png, 1.55u 高），缺失才退回灰盒
+            var prop = AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Assets/Art/Art/Environment/Props/checkpoint.png");
+
+            GameObject go;
+            if (prop != null)
+            {
+                go = new GameObject(name);
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = prop;
+                sr.color = Color.white;
+                sr.drawMode = SpriteDrawMode.Simple;
+                sr.size = prop.bounds.size;
+                sr.sortingOrder = 6;
+                go.transform.localScale = Vector3.one;
+                // pivot 为Center：底边贴地（地面顶面 y=0）
+                go.transform.position = new Vector3(pos.x, prop.bounds.size.y * 0.5f, pos.z);
+                log.AppendLine($"  {name}: 真素材 checkpoint.png ({prop.bounds.size.y:F2}u)");
+            }
+            else
+            {
+                var white = AssetDatabase.LoadAssetAtPath<Sprite>(WhiteSquarePath);
+                go = MakeWorldBox(name, white, cpWorldSize, cpWorldSize, pos,
+                    new Color(0.4f, 0.8f, 1f, 0.35f), 6);
+                log.AppendLine($"  {name}: 灰盒（checkpoint.png 未就位）");
+            }
 
             var col = go.GetComponent<BoxCollider2D>();
             col.isTrigger = true;
+            // scale 已归一, 触发区直接写世界单位
+            col.size = new Vector2(1.2f, 1.2f);
+            col.offset = Vector2.zero;
 
             var cp = go.AddComponent<StarEco.Level.Checkpoint>();
             var so = new SerializedObject(cp);

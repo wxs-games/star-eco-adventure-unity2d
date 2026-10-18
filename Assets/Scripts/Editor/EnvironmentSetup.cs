@@ -130,8 +130,11 @@ namespace StarEco.Level
             var sr = old.GetComponent<SpriteRenderer>();
             if (sr == null) sr = old.AddComponent<SpriteRenderer>();
             sr.sprite = sprite;
-            sr.drawMode = SpriteDrawMode.Sliced;
-            sr.size = new Vector2(1920f, 1080f);
+            // 背景是单张固定图, 不需要九宫格: 用 Simple + scale 拉伸即可。
+            // 曾用 Sliced + size=(1920,1080), 但该图 .meta 的 border 为 0,
+            // Sliced 退化后按 1920×1080 像素粒度切块, 运行时会斜铺出巨大白带。
+            sr.drawMode = SpriteDrawMode.Simple;
+            sr.size = sprite.bounds.size;
             sr.sortingOrder = -100;
 
             // 背景以相机为中心：Level01 相机固定于 (0, 2)，宽高覆盖视野
@@ -153,7 +156,10 @@ namespace StarEco.Level
             imp.spritePixelsPerUnit = ppu;
             imp.textureType = TextureImporterType.Sprite;
             imp.spriteImportMode = SpriteImportMode.Single;
-            imp.spriteMeshType = SpriteMeshType.FullRect;   // Tiled/Sliced 必须是 FullRect
+            // 注意: 本工程的 Unity 2022.3.62f3c1 构建中 TextureImporter 不暴露
+            // spriteMeshType / spriteAlignment (反射确认仅有无 spritePivot),
+            // 因此 FullRect 与 pivot 一律在 .meta 文本层设置, 不走 API。
+            // 场景侧统一按 Center pivot 处理: 摆放时用 position.y = 底面 + 高/2。
             imp.mipmapEnabled = false;
             imp.filterMode = FilterMode.Bilinear;
             imp.wrapMode = TextureWrapMode.Repeat;      // tiled drawMode 需要 Repeat 才能横向无缝
