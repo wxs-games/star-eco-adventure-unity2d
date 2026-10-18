@@ -491,11 +491,11 @@ namespace StarEco.EditorTools
             if (displaySprite != null)
             {
                 // PPU=378 后角色视觉高约 2 世界单位（原 PPU=100 时是 8.33）。
-                // Pivot = Bottom Center → bounds 中心在 y=h/2，碰撞体须随之抬到
-                // 身体中心；size 取视觉 ×0.9 留宽容手感。
+                // Pivot = Center（.meta alignment:0）→ bounds 中心即 transform 原点，
+                // 碰撞体 offset 取 0 即与视觉重合；size 取视觉 ×0.9 留宽容手感。
                 var size = displaySprite.bounds.size * 0.9f;
                 collider.size = size;
-                collider.offset = new Vector2(0f, displaySprite.bounds.size.y * 0.5f * 0.95f);
+                collider.offset = Vector2.zero;
             }
 
             go.AddComponent<Animator>().runtimeAnimatorController = controller;

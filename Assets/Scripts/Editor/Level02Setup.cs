@@ -24,6 +24,12 @@ namespace StarEco.EditorTools
         private const string Enemy02Prefab = "Assets/Prefabs/Enemies/Enemy02.prefab";
         private const string WhiteSquarePath = "Assets/Settings/WhiteSquare.png";
 
+        // 美术资源（M10 R4 起：真素材优先，缺失才退灰盒）
+        private const string TilesDir = "Assets/Art/Art/Environment/Tiles/";
+        private const string PropsDir = "Assets/Art/Art/Environment/Props/";
+        private const string BgDir = "Assets/Art/Art/Environment/Background/";
+
+
         // 关卡几何（世界单位）
         private const float GroundTop = 0f;
         private const float BankL = -7f;          // 左岸右缘
@@ -136,15 +142,18 @@ namespace StarEco.EditorTools
             var groundL = MakeWorldBox("GroundL", white, 21f, 4f, new Vector3(-17.5f, -2f, 0f),
                 new Color(0.32f, 0.42f, 0.30f, 1f), -5);
             groundL.layer = groundLayer;
+            ApplyTile(groundL, "ground_forest.png");
             var groundR = MakeWorldBox("GroundR", white, 21f, 4f, new Vector3(17.5f, -2f, 0f),
                 new Color(0.32f, 0.42f, 0.30f, 1f), -5);
             groundR.layer = groundLayer;
+            ApplyTile(groundR, "ground_forest.png");
             log.AppendLine($"已创建 GroundL/R（x∈[{LevelLeft},{BankL}] / [{BankR},{LevelRight}]，顶面 y={GroundTop}）");
 
             // —— 河床与溺水区 ——
             var riverbed = MakeWorldBox("Riverbed", white, 15f, 2f, new Vector3(0f, -5f, 0f),
                 new Color(0.20f, 0.24f, 0.30f, 1f), -6);
             riverbed.layer = groundLayer;
+            ApplyTile(riverbed, "ground_forest.png");
             log.AppendLine("已创建 Riverbed（河道底，防坠落虚空）");
 
             var kill = MakeWorldBox("KillZone", white, 14.6f, 3.8f, new Vector3(0f, -2.4f, 0f),
@@ -229,7 +238,9 @@ namespace StarEco.EditorTools
             camSo.FindProperty("_levelLeft").floatValue = LevelLeft;
             camSo.FindProperty("_levelRight").floatValue = LevelRight;
             camSo.ApplyModifiedPropertiesWithoutUndo();
-            log.AppendLine("已创建 Main Camera（ortho 6.5 + CameraFollow2D 钳制跟随）");
+            MakeBackdrop(cam, 2.2f);
+            log.AppendLine("已创建 Main Camera（ortho 6.5 + CameraFollow2D 钳制跟随）+背景层");
+
 
             // —— 玩家 ——
             var playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefab);
@@ -304,6 +315,73 @@ namespace StarEco.EditorTools
 
         // ===== 构件 =====
 
+        /// <summary>
+        /// 把白盒地面/水面换成可平铺真素材。
+        ///
+        /// 三个必须遵守的点（M10 R4 实测踩坑）：
+        /// 1) localScale 必须归一到 1 —— 灰盒时代靠 scale(几十倍) 把 4px 白方块撑成
+        ///    几十个单位，不归一会让 Tiled 沿该scale 二次放大（实测 bounds 1568×158）；
+        /// 2) Tiled 模式下 sr.size 是**世界单位**，必须显式给原灰盒的世界尺寸，
+        ///    否则会退回贴图原生尺寸；
+        /// 3) 高度必须沿用原灰盒值（本关 4 / 2），改了会让顶面偏离 GroundTop，
+        ///    树和检查点就会悬空或入地。
+        /// 素材缺失时静默退回白盒（保留灰盒可用性）。
+        /// </summary>
+        private static bool ApplyTile(GameObject go, string tileFile)
+        {
+            var tile = AssetDatabase.LoadAssetAtPath<Sprite>(TilesDir + tileFile);
+            if (tile == null)
+            {
+                return false;
+            }
+
+            var sr = go.GetComponent<SpriteRenderer>();
+            var col = go.GetComponent<BoxCollider2D>();
+            // 碰撞体是 4px 白方块的局部尺寸 × scale；归一 scale 前先换算回世界单位
+            var worldW = go.transform.localScale.x * (col != null ? col.size.x : 1f);
+            var worldH = go.transform.localScale.y * (col != null ? col.size.y : 1f);
+
+            sr.sprite = tile;
+            sr.color = Color.white;
+            sr.drawMode = SpriteDrawMode.Tiled;
+            go.transform.localScale = Vector3.one;
+            sr.size = new Vector2(worldW, worldH);
+            return true;
+        }
+
+        /// <summary>
+        /// 背景层：挂到相机下并按视野拉伸。
+        ///
+        /// 不用 CameraFollow2D 跟随 —— 关卡横跨 56 单位而单张背景只有 23 单位宽，
+        /// 跟随只会在边界露出空白；挂成相机子物体则无论怎么移动都必定铺满。
+        /// 尺寸走 localScale 而非 sr.size：实测本工程 Simple 模式下 sr.size
+        /// 不改变 SpriteRenderer.bounds，localScale 才生效。
+        /// </summary>
+        private static void MakeBackdrop(Camera cam, float fixedY)
+        {
+            var bg = AssetDatabase.LoadAssetAtPath<Sprite>(BgDir + "bg_forest.png");
+            if (bg == null)
+            {
+                return;
+            }
+
+            var go = new GameObject("Background");
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = bg;
+            sr.drawMode = SpriteDrawMode.Simple;
+            sr.sortingOrder = -100;
+
+            float viewW = cam.orthographicSize * 2f * cam.aspect * 1.05f;
+            float viewH = cam.orthographicSize * 2f * 1.05f;
+            var native = bg.bounds.size;
+            go.transform.localScale = new Vector3(viewW / native.x, viewH / native.y, 1f);
+
+            go.transform.SetParent(cam.transform, false);
+            // Center pivot：精灵几何以 transform 为中心展开，直接置0 即居中于相机。
+            // （旧代码按 TopLeft pivot 写了 -viewW/2, +viewH/2 的偏移，pivot 修正后会导致背景整体偏移半屏）
+            go.transform.localPosition = new Vector3(0f, 0f, 10f);
+        }
+
         private static GameObject MakeWorldBox(string name, Sprite white, float worldW, float worldH,
             Vector3 pos, Color color, int sortingOrder)
         {
@@ -338,7 +416,10 @@ namespace StarEco.EditorTools
         {
             var go = MakeWorldBox(targetId, white, 1.6f, 1.6f, pos,
                 new Color(0.45f, 0.38f, 0.32f, 1f), 0);
+            // 堵塞物用污染水面贴图（与河道同一套素材，语义上是"漂在水面上的污物"）
+            ApplyTile(go, "water_river.png");
             var blockage = go.AddComponent<StarEco.Eco.WaterBlockage>();
+
             var so = new SerializedObject(blockage);
             so.FindProperty("_targetId").stringValue = targetId;
             so.FindProperty("_purifyRequired").intValue = purifyRequired;
@@ -354,17 +435,21 @@ namespace StarEco.EditorTools
             var cage = new GameObject(name);
             cage.transform.position = pos;
 
-            // 笼体（灰盒）
+            // 笼体（真素材 animal_cage.png，缺失才退灰盒）
             var bars = MakeWorldBox("Bars", white, 1.3f, 1.3f, Vector3.zero,
                 new Color(0.55f, 0.55f, 0.60f, 1f), 1);
             bars.transform.SetParent(cage.transform, false);
             bars.transform.localPosition = Vector3.zero;
+            ApplyProp(bars.GetComponent<SpriteRenderer>(), bars.transform,
+                "animal_cage.png", Vector3.zero, 1.3f, 0f, true);
 
-            // 笼中动物（灰盒）
+            // 笼中动物（真素材 animal_otter.png：站在笼内底部）
             var animal = MakeWorldBox("Animal", white, 0.7f, 0.7f, Vector3.zero,
                 new Color(0.80f, 0.62f, 0.42f, 1f), 2);
             animal.transform.SetParent(cage.transform, false);
             animal.transform.localPosition = new Vector3(0f, 0.05f, 0f);
+            ApplyProp(animal.GetComponent<SpriteRenderer>(), animal.transform,
+                "animal_otter.png", Vector3.zero, 0f, -0.31f, false);
             UnityEngine.Object.DestroyImmediate(animal.GetComponent<BoxCollider2D>());
             UnityEngine.Object.DestroyImmediate(bars.GetComponent<BoxCollider2D>());
 
@@ -380,12 +465,23 @@ namespace StarEco.EditorTools
 
         private static void MakeTree(Sprite white, Vector3 pos, float size)
         {
-            var trunk = MakeWorldBox("Trunk", white, 0.3f, size * 0.5f, pos + new Vector3(0f, size * 0.25f, 0f),
+            var tree = MakeWorldBox("Trunk", white, 0.3f, size * 0.5f, pos,
                 new Color(0.40f, 0.30f, 0.22f, 1f), -4);
-            UnityEngine.Object.DestroyImmediate(trunk.GetComponent<BoxCollider2D>());
-            var crown = MakeWorldBox("Crown", white, size, size, pos + new Vector3(0f, size * 0.75f, 0f),
-                new Color(0.25f, 0.50f, 0.28f, 1f), -3);
-            UnityEngine.Object.DestroyImmediate(crown.GetComponent<BoxCollider2D>());
+            UnityEngine.Object.DestroyImmediate(tree.GetComponent<BoxCollider2D>());
+            // 真素材 tree_forest.png 为整树图（树干+树冠合一），Crown 灰盒删除
+            if (ApplyProp(tree.GetComponent<SpriteRenderer>(), tree.transform,
+                    "tree_forest.png", pos, GroundTop, 0f, false))
+            {
+                tree.name = "Tree";
+            }
+            else
+            {
+                // 灰盒回退：保留原树干+树冠两段结构
+                var crown = MakeWorldBox("Crown", white, size, size,
+                    pos + new Vector3(0f, size * 0.75f, 0f),
+                    new Color(0.25f, 0.50f, 0.28f, 1f), -3);
+                UnityEngine.Object.DestroyImmediate(crown.GetComponent<BoxCollider2D>());
+            }
         }
 
         private static void MakePlatform(Sprite white, string name, Vector3 pos, float width, int groundLayer)
@@ -393,12 +489,27 @@ namespace StarEco.EditorTools
             var go = MakeWorldBox(name, white, width, 0.5f, pos,
                 new Color(0.38f, 0.46f, 0.34f, 1f), -4);
             go.layer = groundLayer;
+
+            // 真素材 platform_log.png 原始高 1.49，压到 0.55 贴合平台厚度；
+            // 碰撞体不动（原 0.5 高），保持关卡手感。
+            var log = AssetDatabase.LoadAssetAtPath<Sprite>(PropsDir + "platform_log.png");
+            if (log != null)
+            {
+                var sr = go.GetComponent<SpriteRenderer>();
+                sr.sprite = log;
+                sr.color = Color.white;
+                sr.drawMode = SpriteDrawMode.Simple;
+                sr.size = new Vector2(width, 0.55f);
+                go.transform.localScale = Vector3.one;
+            }
         }
 
         private static Transform MakeAnchor(Sprite white, string name, Vector3 pos)
         {
             var go = MakeWorldBox(name, white, 0.3f, 0.3f, pos, new Color(1f, 0.4f, 0.4f, 0.5f), -3);
             UnityEngine.Object.DestroyImmediate(go.GetComponent<BoxCollider2D>());
+            // 锚点是纯逻辑标记（刷怪点），无需可视 -> 关闭渲染器（同 Level01 MakeAnchor）
+            go.GetComponent<SpriteRenderer>().enabled = false;
             return go.transform;
         }
 
@@ -409,12 +520,53 @@ namespace StarEco.EditorTools
             var col = go.GetComponent<BoxCollider2D>();
             col.isTrigger = true;
 
+            // 真素材 checkpoint.png（与 Level01 同一张）。scale 必须归1，
+            // 否则灰盒时代的 40 倍缩放会把 0.04 局部单位的碰撞体放大到不可用。
+            var flag = AssetDatabase.LoadAssetAtPath<Sprite>(PropsDir + "checkpoint.png");
+            if (flag != null)
+            {
+                var sr = go.GetComponent<SpriteRenderer>();
+                sr.sprite = flag;
+                sr.color = Color.white;
+                sr.drawMode = SpriteDrawMode.Simple;
+                sr.size = flag.bounds.size;
+                go.transform.localScale = Vector3.one;
+                go.transform.position = new Vector3(pos.x, GroundTop + flag.bounds.size.y * 0.5f, pos.z);
+                // 触发盒对齐旗面中部1.2×1.2 世界单位
+                col.offset = new Vector2(0f, -flag.bounds.size.y * 0.5f);
+                col.size = new Vector2(1.2f, 1.2f);
+            }
+
             var cp = go.AddComponent<Checkpoint>();
             var so = new SerializedObject(cp);
             so.FindProperty("_checkpointId").stringValue = id;
             so.FindProperty("_respawnOffset").vector2Value = new Vector2(0f, 1.2f);
             so.ApplyModifiedPropertiesWithoutUndo();
         }
+
+        /// <summary>
+        /// 贴真素材（优先），素材缺失返回 false 由调用方退回灰盒。
+        /// pivot 实测为 Center：底边贴地靠 position.y = groundY + 高/2。
+        /// parented=true 时 pos/localGroundY 语义是父节点局部空间（用于笼体子物体）。
+        /// </summary>
+        private static bool ApplyProp(SpriteRenderer sr, Transform tf, string propFile,
+            Vector3 pos, float groundY, float yOffset, bool parented)
+        {
+            var prop = AssetDatabase.LoadAssetAtPath<Sprite>(PropsDir + propFile);
+            if (prop == null)
+            {
+                return false;
+            }
+
+            sr.sprite = prop;
+            sr.color = Color.white;
+            sr.drawMode = SpriteDrawMode.Simple;
+            sr.size = prop.bounds.size;
+            tf.localScale = Vector3.one;
+            tf.position = new Vector3(pos.x, groundY + prop.bounds.size.y * 0.5f + yOffset, pos.z);
+            return true;
+        }
+
 
         private static void PlacePrefab(string prefabPath, string name, Vector3 pos)
         {

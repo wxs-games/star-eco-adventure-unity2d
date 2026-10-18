@@ -300,11 +300,11 @@ namespace StarEco.EditorTools
             }
 
             // Rigidbody2D + BoxCollider2D —— 碰撞体一律从精灵视觉 bounds 推导（×0.9），
-            // 不再使用硬编码世界单位。Sprite Pivot = Bottom Center，故 bounds 中心位于
-            // y = h/2，碰撞体 offset 取 h/2×0.95 让身体居中、脚底略微离地。
+            // 不再使用硬编码世界单位。Sprite Pivot = Center（.meta alignment:0），
+            // 故 sprite.bounds 中心即 transform 原点，碰撞体 offset 取 0 即与视觉重合。
             Vector2 bounds = new Vector2(sr.sprite.bounds.size.x, sr.sprite.bounds.size.y);
             Vector2 colliderSize = bounds * 0.9f;
-            Vector2 colliderOffset = new Vector2(0f, bounds.y * 0.5f * 0.95f);
+            Vector2 colliderOffset = Vector2.zero;
             float hitboxOffset = hitboxOffsetRatio.HasValue ? colliderSize.x * hitboxOffsetRatio.Value.x : 0f;
             Vector2? hitboxSize = hitboxSizeRatio.HasValue ? colliderSize * hitboxSizeRatio.Value : (Vector2?)null;
             float firePointOffset = firePointOffsetRatio * colliderSize.x;
@@ -329,8 +329,8 @@ namespace StarEco.EditorTools
             {
                 var hitboxGo = new GameObject("AttackHitbox");
                 hitboxGo.transform.SetParent(go.transform, false);
-                // Bottom Center pivot 下 y=0 是脚底，判定盒须抬到身体中心
-                hitboxGo.transform.localPosition = new Vector3(hitboxOffset, colliderOffset.y, 0f);
+                // Center pivot：碰撞体与视觉同中心，判定盒沿 +X 前伸，y 与身体中心一致
+                hitboxGo.transform.localPosition = new Vector3(hitboxOffset, 0f, 0f);
                 var hitboxCol = hitboxGo.AddComponent<BoxCollider2D>();
                 hitboxCol.isTrigger = true;
                 hitboxCol.size = hitboxSize.Value;
@@ -344,8 +344,8 @@ namespace StarEco.EditorTools
             {
                 var fireGo = new GameObject("FirePoint");
                 fireGo.transform.SetParent(go.transform, false);
-                // 同上：抬到身体中心，否则弹幕从脚底射出
-                fireGo.transform.localPosition = new Vector3(firePointOffset, colliderOffset.y, 0f);
+                // Center pivot：与身体中心同高，弹幕不会从脚底射出
+                fireGo.transform.localPosition = new Vector3(firePointOffset, 0f, 0f);
             }
 
             // 保存 Prefab

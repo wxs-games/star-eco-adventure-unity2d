@@ -137,6 +137,36 @@ namespace StarEco.EditorTools
             cam.backgroundColor = new Color(0.45f, 0.40f, 0.52f, 1f);
             camGo.transform.position = new Vector3(0f, 2f, -10f);
 
+            // 横向跟随：Level01 宽 40 单位，静态相机会让玩家走出视口。
+            // 与 M9 的 CameraFollow2D 同构，按关卡边界 ±20 钳制。
+            var follow = camGo.AddComponent<StarEco.Level.CameraFollow2D>();
+            var fso = new SerializedObject(follow);
+            fso.FindProperty("_levelLeft").floatValue = -20f;
+            fso.FindProperty("_levelRight").floatValue = 20f;
+            fso.FindProperty("_fixedY").floatValue = 2f;
+            fso.ApplyModifiedPropertiesWithoutUndo();
+
+            // —— 背景层（挂相机子物体，随相机移动必定铺满）——
+            //尺寸走 localScale：实测本工程 Simple 模式下 sr.size 不改变 bounds。
+            // Center pivot：localPosition 置 0 即居中（旧 TopLeft pivot 需偏移半屏）。
+            var bgSprite = AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Assets/Art/Art/Environment/Background/bg_polluted_planet.png");
+            if (bgSprite != null)
+            {
+                var bgGo = new GameObject("Background");
+                var bgSr = bgGo.AddComponent<SpriteRenderer>();
+                bgSr.sprite = bgSprite;
+                bgSr.drawMode = SpriteDrawMode.Simple;
+                bgSr.sortingOrder = -100;
+                float bgViewW = cam.orthographicSize * 2f * cam.aspect * 1.05f;
+                float bgViewH = cam.orthographicSize * 2f * 1.05f;
+                var bgNative = bgSprite.bounds.size;
+                bgGo.transform.localScale = new Vector3(bgViewW / bgNative.x, bgViewH / bgNative.y, 1f);
+                bgGo.transform.SetParent(camGo.transform, false);
+                bgGo.transform.localPosition = new Vector3(0f, 0f, 10f);
+                log.AppendLine("已创建背景层（相机子物体，Center pivot 居中）");
+            }
+
             // —— 玩家 ——
             var playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefab);
             GameObject player = null;
