@@ -114,6 +114,14 @@ namespace StarEco.EnemyAI
                 return;
             }
 
+            // 装饰性触发体（知识卡/告示牌/检查点等）不吸收弹体。
+            // 塔口/花蕊旁的装饰触发体会在出膛瞬间吃掉弹体，导致炮塔与远程怪永远打不到玩家；
+            // 只有实体碰撞体（地面/墙体/障碍）才按「触地归还」结算。
+            if (other.isTrigger)
+            {
+                return;
+            }
+
             ResolveWithoutHit();
         }
 

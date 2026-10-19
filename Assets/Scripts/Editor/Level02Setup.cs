@@ -193,9 +193,11 @@ namespace StarEco.EditorTools
             log.AppendLine("已放置 AnimalCage01/02（RescueTarget，E 键解救）");
 
             // —— 右岸污染源 ×3（GarbagePile 预制体）——
-            PlacePrefab(GarbagePilePrefab, "Garbage1", new Vector3(12f, 0.9f, 0f));
-            PlacePrefab(GarbagePilePrefab, "Garbage2", new Vector3(17f, 0.9f, 0f));
-            PlacePrefab(GarbagePilePrefab, "Garbage3", new Vector3(22f, 0.9f, 0f));
+            // 右岸地面顶面 y=0；草垛精灵 1.60×0.72u（半高 0.36），底部为向下收窄的碎屑锥形，
+            // 故在半高基础上再下移 0.09u 补偿，避免视觉悬空：y=0.36-0.09=0.27。
+            PlacePrefab(GarbagePilePrefab, "Garbage1", new Vector3(12f, 0.27f, 0f));
+            PlacePrefab(GarbagePilePrefab, "Garbage2", new Vector3(17f, 0.27f, 0f));
+            PlacePrefab(GarbagePilePrefab, "Garbage3", new Vector3(22f, 0.27f, 0f));
             log.AppendLine("已放置 Garbage1~3（右岸污染源）");
 
             // —— 装饰树（无碰撞）——

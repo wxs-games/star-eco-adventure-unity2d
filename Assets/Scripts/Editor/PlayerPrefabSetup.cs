@@ -27,6 +27,11 @@ namespace StarEco.EditorTools
             var root = PrefabUtility.LoadPrefabContents(PrefabPath);
             try
             {
+                // 玩家必须在 Player 层：敌人 EnemyConfig.PlayerLayer 掩码（256 = Player 层）同时用于
+                // 感知查询（OverlapCircle）与近战命中盒的层校验。玩家留在 Default 层会让怪物
+                // 完全感知不到玩家、近战判定也被层校验拦掉，等于敌人没有任何攻击力。
+                root.layer = LayerMask.NameToLayer("Player");
+
                 var combat = root.GetComponent<StarEco.Combat.PlayerCombat>();
                 if (combat == null)
                 {

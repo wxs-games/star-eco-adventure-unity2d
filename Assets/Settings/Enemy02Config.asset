@@ -37,7 +37,7 @@ MonoBehaviour:
   AnimFrameRate: 12
   PlayerLayer:
     serializedVersion: 2
-    m_Bits: 257
+    m_Bits: 256
   GroundLayer:
     serializedVersion: 2
     m_Bits: 1024

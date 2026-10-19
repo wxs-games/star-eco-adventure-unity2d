@@ -301,10 +301,13 @@ namespace StarEco.EditorTools
 
             // Rigidbody2D + BoxCollider2D —— 碰撞体一律从精灵视觉 bounds 推导（×0.9），
             // 不再使用硬编码世界单位。Sprite Pivot = Center（.meta alignment:0），
-            // 故 sprite.bounds 中心即 transform 原点，碰撞体 offset 取 0 即与视觉重合。
+            // 故 sprite.bounds 中心即 transform 原点。
+            // 但 ×0.9 后碰撞体比精灵矮 10%，若 offset 仍取 0（同心），
+            // 物理落底时碰撞体底边贴地、精灵脚底会陷进地面 5% 精灵高。
+            // 故 offset.y 取「碰撞体半高 − 精灵半高」，把碰撞体底边对齐精灵脚底。
             Vector2 bounds = new Vector2(sr.sprite.bounds.size.x, sr.sprite.bounds.size.y);
             Vector2 colliderSize = bounds * 0.9f;
-            Vector2 colliderOffset = Vector2.zero;
+            Vector2 colliderOffset = new Vector2(0f, (colliderSize.y - bounds.y) * 0.5f);
             float hitboxOffset = hitboxOffsetRatio.HasValue ? colliderSize.x * hitboxOffsetRatio.Value.x : 0f;
             Vector2? hitboxSize = hitboxSizeRatio.HasValue ? colliderSize * hitboxSizeRatio.Value : (Vector2?)null;
             float firePointOffset = firePointOffsetRatio * colliderSize.x;

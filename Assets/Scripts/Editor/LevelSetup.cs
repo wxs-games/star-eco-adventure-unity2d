@@ -184,21 +184,25 @@ namespace StarEco.EditorTools
             }
 
             // —— 污染源：3 垃圾堆+ 1 挡路墙 ——
-            // 注意：prefab 根节点位于物件**中心**，碰撞体 offset=0，
-            // 因此 y 必须给「**视觉**高度/2」才能让底边贴地（地面顶面 y=0）。
-            // 垃圾堆视觉高 0.72u→ y=0.36；垃圾墙视觉高 1.66u → y=0.83。
-            PlacePrefab(GarbagePilePrefab, "Garbage1", new Vector3(-4.5f, 0.36f, 0f), log);
-            PlacePrefab(GarbagePilePrefab, "Garbage2", "Garbage2", new Vector3(-1f, 0.36f, 0f), log);
-            PlacePrefab(GarbagePilePrefab, "Garbage3", new Vector3(3f, 0.36f, 0f), log);
-            PlacePrefab(GarbageWallPrefab, "GarbageWall1", "GarbageWall1", new Vector3(6.5f, 0.83f, 0f), log);
-            log.AppendLine("已放置 Garbage1~3(y=0.36) + GarbageWall1(y=0.83)，y=视觉半高使底边贴地");
+            // 注意：prefab 根节点位于物件**中心**，碰撞体 offset=0。
+            // 垃圾堆精灵 1.60×0.72u，垃圾墙精灵 1.40×1.66u（地面顶面 y=0）。
+            // 但两张精灵底部是向外散开的破布/碎屑、向下收窄成锥形，
+            // 套用「半高」使包围盒底边贴地时，主体实心底边仍悬空约 0.09u，
+            // 故在半高基础上再下移 0.09u 补偿：垃圾堆 y=0.36-0.09=0.27；垃圾墙 y=0.83-0.09=0.74。
+            PlacePrefab(GarbagePilePrefab, "Garbage1", new Vector3(-4.5f, 0.27f, 0f), log);
+            PlacePrefab(GarbagePilePrefab, "Garbage2", "Garbage2", new Vector3(-1f, 0.27f, 0f), log);
+            PlacePrefab(GarbagePilePrefab, "Garbage3", new Vector3(3f, 0.27f, 0f), log);
+            PlacePrefab(GarbageWallPrefab, "GarbageWall1", "GarbageWall1", new Vector3(6.5f, 0.74f, 0f), log);
+            log.AppendLine("已放置 Garbage1~3(y=0.27) + GarbageWall1(y=0.74)，含底部锥形 0.09u 落地下移补偿");
 
             // —— 塔（攻击击毁，不挂净化适配器）——
             var towerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(TowerPrefab);
             if (towerPrefab != null)
             {
                 var tower = (GameObject)PrefabUtility.InstantiatePrefab(towerPrefab);
-                tower.transform.position = new Vector3(10f, 1.5f, 0f);
+                // 塔精灵高 2.5899（半高 1.295）、碰撞体底边已对齐精灵脚底，
+                // 故塔根节点置于半高处即脚底贴地（旧值 1.5 会让塔悬空 0.205u）。
+                tower.transform.position = new Vector3(10f, 1.295f, 0f);
                 tower.name = "Tower01";
                 log.AppendLine("已放置 Tower01（攻击击毁，不加 TowerPurifiable）");
             }

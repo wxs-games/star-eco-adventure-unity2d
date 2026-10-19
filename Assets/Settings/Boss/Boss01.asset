@@ -25,7 +25,7 @@ MonoBehaviour:
   PerceptionRadius: 20
   LoseTargetSeconds: 1.5
   LoseTargetBuffer: 1
-  SameGroundToleranceY: 1
+  SameGroundToleranceY: 2
   HurtStunSeconds: 0.25
   ProjectileSpeed: 7
   ProjectileMaxRange: 14
@@ -37,7 +37,7 @@ MonoBehaviour:
   AnimFrameRate: 12
   PlayerLayer:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 256
   GroundLayer:
     serializedVersion: 2
     m_Bits: 4294967295

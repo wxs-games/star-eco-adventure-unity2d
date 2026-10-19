@@ -318,10 +318,12 @@ namespace StarEco.EditorTools
             body.freezeRotation = true;
 
             // 碰撞体从精灵视觉 bounds 推导（PPU=378 后旧的 3.6×4.2 绝对值已失效）。
-            // Pivot = Center（.meta alignment:0），bounds 中心即 transform 原点，offset 取 0。
+            // Pivot = Center（.meta alignment:0），bounds 中心即 transform 原点。
+            // ×0.9 后碰撞体比精灵矮 10%，offset 取 0（同心）会让 Boss 落地时精灵脚底陷进地面，
+            // 故 offset.y 取「碰撞体半高 − 精灵半高」，把碰撞体底边对齐精灵脚底。
             Vector2 bossBounds = new Vector2(sprite.bounds.size.x, sprite.bounds.size.y);
             Vector2 bossColliderSize = bossBounds * 0.9f;
-            Vector2 bossColliderOffset = Vector2.zero;
+            Vector2 bossColliderOffset = new Vector2(0f, (bossColliderSize.y - bossBounds.y) * 0.5f);
 
             var col = root.AddComponent<BoxCollider2D>();
             col.size = bossColliderSize;

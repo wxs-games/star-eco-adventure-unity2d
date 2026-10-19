@@ -116,11 +116,21 @@ namespace StarEco.EditorTools
             log.AppendLine("已创建 Ground（48x1u，Boss 战横向空间）");
 
             // 两侧平台（躲弹幕用）
-            MakeWorldBox("PlatformL", white, 6f, 0.6f, new Vector3(-14f, 3.2f, 0f),
-                new Color(0.34f, 0.34f, 0.38f, 1f), -4).layer = LayerMask.NameToLayer("Ground");
-            MakeWorldBox("PlatformR", white, 6f, 0.6f, new Vector3(14f, 3.2f, 0f),
-                new Color(0.34f, 0.34f, 0.38f, 1f), -4).layer = LayerMask.NameToLayer("Ground");
-            log.AppendLine("已创建 PlatformL / PlatformR");
+            // 平台碰撞体排除 Enemy 层：Boss 精灵高 4.64u、碰撞体高 4.18u，站在 x=16 时
+            // 身体会与 PlatformR（底部 y=2.95）重叠 0.75u，被"地面 + 平台"夹住而稳定陷地 0.48u。
+            // 平台对敌人透明后 Boss 正常落地，对玩家的站立/躲弹功能完全不变（2026-10-20 实测修复）。
+            int enemyLayer = 1 << LayerMask.NameToLayer("Enemy");
+            var platformL = MakeWorldBox("PlatformL", white, 6f, 0.6f, new Vector3(-14f, 3.2f, 0f),
+                new Color(0.34f, 0.34f, 0.38f, 1f), -4);
+            platformL.layer = LayerMask.NameToLayer("Ground");
+            platformL.GetComponent<BoxCollider2D>().excludeLayers = enemyLayer;
+
+            var platformR = MakeWorldBox("PlatformR", white, 6f, 0.6f, new Vector3(14f, 3.2f, 0f),
+                new Color(0.34f, 0.34f, 0.38f, 1f), -4);
+            platformR.layer = LayerMask.NameToLayer("Ground");
+            platformR.GetComponent<BoxCollider2D>().excludeLayers = enemyLayer;
+
+            log.AppendLine("已创建 PlatformL / PlatformR（碰撞体已排除 Enemy 层，Boss 不再被平台夹住）");
 
             // 相机（视口略大，容纳 Boss）
             var camGo = new GameObject("Main Camera");
@@ -171,9 +181,11 @@ namespace StarEco.EditorTools
             }
 
             // 污染源 3 处（目标链第一段）
-            PlacePrefab(GarbagePilePrefab, "Garbage1", new Vector3(-6f, 0.9f, 0f), log);
-            PlacePrefab(GarbagePilePrefab, "Garbage2", new Vector3(2f, 0.9f, 0f), log);
-            PlacePrefab(GarbagePilePrefab, "Garbage3", new Vector3(9f, 0.9f, 0f), log);
+            // 地面顶面 y=0；草垛精灵 1.60×0.72u（半高 0.36），底部为向下收窄的碎屑锥形，
+            // 故在半高基础上再下移 0.09u 补偿，避免视觉悬空：y=0.36-0.09=0.27。
+            PlacePrefab(GarbagePilePrefab, "Garbage1", new Vector3(-6f, 0.27f, 0f), log);
+            PlacePrefab(GarbagePilePrefab, "Garbage2", new Vector3(2f, 0.27f, 0f), log);
+            PlacePrefab(GarbagePilePrefab, "Garbage3", new Vector3(9f, 0.27f, 0f), log);
             log.AppendLine("已放置 3 处工厂污染源");
 
             // Boss01（目标链第二段）
