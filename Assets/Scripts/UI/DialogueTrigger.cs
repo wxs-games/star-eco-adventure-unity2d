@@ -32,6 +32,7 @@ namespace StarEco.UI
         private Text _bubbleText;
         private bool _playing;
         private bool _hasTalkedOnce;
+        private DialoguePanel _panel;   // 缓存面板引用，避免每帧 FindObjectOfType 内部数组分配（GC 优化）
 
         private void OnEnable()
         {
@@ -79,8 +80,12 @@ namespace StarEco.UI
             // 对话播放中不重复触发（面板自己处理推进）。
             // 关键：最后一句也是用 E 关闭面板，如果这里仅靠 panelOpen 判断，
             // 同一帧里面板刚关闭时会再次被 GetKeyDown(E) 立即重开，形成“无限循环”。
-            var panel = FindObjectOfType<DialoguePanel>();
-            bool panelOpen = panel != null && panel.IsOpen;
+            if (_panel == null)
+            {
+                _panel = FindObjectOfType<DialoguePanel>();
+            }
+
+            bool panelOpen = _panel != null && _panel.IsOpen;
 
             if (_playing)
             {
@@ -117,8 +122,8 @@ namespace StarEco.UI
                 }
 
                 UIManager.SafeOpen(DialoguePanel.PanelId);
-                panel = FindObjectOfType<DialoguePanel>();
-                panel?.Play(data);
+                _panel = FindObjectOfType<DialoguePanel>();
+                _panel?.Play(data);
                 _playing = true;
                 _hasTalkedOnce = true;
             }

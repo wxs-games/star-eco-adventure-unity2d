@@ -34,6 +34,10 @@ namespace StarEco.Boss
         private float _targetFill = 1f;
         private float _phaseHintTimer;
 
+        // 仅在 HP 数值变化时重生成字符串，避免每帧 ToString 分配（GC 优化）
+        private int _lastHp = -1;
+        private int _lastMaxHp = -1;
+
         private static readonly Color BarBg = new Color(0.05f, 0.05f, 0.08f, 0.85f);
         private static readonly Color BarFill = new Color(0.85f, 0.25f, 0.30f);
         private static readonly Color BarGhost = new Color(1f, 0.85f, 0.4f, 0.55f);
@@ -117,7 +121,14 @@ namespace StarEco.Boss
 
             if (_hpText != null)
             {
-                _hpText.text = $"{_boss.CurrentHP} / {_boss.Config.MaxHP}";
+                int hp = _boss.CurrentHP;
+                int maxHp = _boss.Config != null ? _boss.Config.MaxHP : 0;
+                if (hp != _lastHp || maxHp != _lastMaxHp)
+                {
+                    _lastHp = hp;
+                    _lastMaxHp = maxHp;
+                    _hpText.text = $"{hp} / {maxHp}";
+                }
             }
         }
 

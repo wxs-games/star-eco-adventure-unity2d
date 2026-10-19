@@ -116,3 +116,4 @@ GameManager(Facade单例)
 | v0.2 | 2026-10-17 | 进度同步：M4~M8 已完成（敌人/环保/关卡一/UI 对话/Boss+关三） |
 | v0.3 | 2026-10-18 | M9：Level02（E 键解救/水流解谜/Enemy02）+ 全流程打通；修 `LevelObjectiveTracker.Evaluate` 链停滞（单次 if→while）；UI 三处索引对齐 |
 | v0.4 | 2026-10-18 | M10：音频铺量（Tools/audio-pipeline 合成 18 SFX+4 BGM、GameAudioLibrary、AudioManager 命名 API、13 处调用点接线）；校准 Enemy01/03 近战 AttackRange（10→3.5 / 9→3.0，修"范围远大于命中几何"导致空挥木桩）；Windows x64 构建通过（Builds/，1052MB，0 错误 0 警告） |
+| v0.5 | 2026-10-19 | 性能：GC=0 达成（Build 版口径）。消除 2 处每帧分配——`DialogueTrigger.Update` 每帧 `FindObjectOfType`（Level01，40 B/帧）、`BossHealthBar` 每帧字符串插值（Level03）；实测证实 Editor 下 ~375 次/帧为编辑器底噪、不可作为 GC 判定口径。详 `性能实测报告.md` |
