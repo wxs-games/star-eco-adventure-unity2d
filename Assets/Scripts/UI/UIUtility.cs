@@ -109,6 +109,31 @@ namespace StarEco.UI
 
         private static Font _font;
 
+        /// <summary>
+        /// 纯白 1×1 Sprite。uGUI 的 Image 在 Type.Filled 下必须挂 Sprite，
+        /// 否则 fillAmount 不生效、进度条永远画满（血条/能量条类 UI 的常见坑）。
+        /// </summary>
+        public static Sprite WhiteSprite
+        {
+            get
+            {
+                if (_whiteSprite == null)
+                {
+                    var tex = Texture2D.whiteTexture;
+                    _whiteSprite = Sprite.Create(
+                        tex,
+                        new Rect(0f, 0f, tex.width, tex.height),
+                        new Vector2(0.5f, 0.5f),
+                        100f);
+                    _whiteSprite.name = "UIUtilityWhite";
+                }
+
+                return _whiteSprite;
+            }
+        }
+
+        private static Sprite _whiteSprite;
+
         /// <summary>参考分辨率（16:9）。</summary>
         public static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
 

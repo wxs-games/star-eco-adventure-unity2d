@@ -191,6 +191,7 @@ namespace StarEco.Boss
             var ghostGo = StarEco.UI.UIUtility.CreateObject("Ghost", track.transform);
             StarEco.UI.UIUtility.Stretch(ghostGo.GetComponent<RectTransform>());
             _fillGhost = ghostGo.AddComponent<Image>();
+            _fillGhost.sprite = StarEco.UI.UIUtility.WhiteSprite;   // Filled 必须挂 Sprite，否则 fillAmount 无效
             _fillGhost.color = BarGhost;
             _fillGhost.type = Image.Type.Filled;
             _fillGhost.fillMethod = Image.FillMethod.Horizontal;
@@ -201,6 +202,7 @@ namespace StarEco.Boss
             var fillGo = StarEco.UI.UIUtility.CreateObject("Fill", track.transform);
             StarEco.UI.UIUtility.Stretch(fillGo.GetComponent<RectTransform>());
             _fill = fillGo.AddComponent<Image>();
+            _fill.sprite = StarEco.UI.UIUtility.WhiteSprite;        // Filled 必须挂 Sprite，否则 fillAmount 无效
             _fill.color = BarFill;
             _fill.type = Image.Type.Filled;
             _fill.fillMethod = Image.FillMethod.Horizontal;
@@ -219,6 +221,8 @@ namespace StarEco.Boss
             nameRt.anchorMax = new Vector2(1f, 1f);
             nameRt.offsetMin = new Vector2(24f, 0f);
             nameRt.offsetMax = new Vector2(-24f, -4f);
+            // 行高 29px 小于字号 26 的单行高度，Truncate 会把整行裁成不可见 → 容许溢出
+            _nameText.verticalOverflow = VerticalWrapMode.Overflow;
 
             // HP 数值（右对齐）
             _hpText = StarEco.UI.UIUtility.CreateText("Hp", panel.transform, "30 / 30", 24,
@@ -228,6 +232,7 @@ namespace StarEco.Boss
             hpRt.anchorMax = new Vector2(1f, 0.25f);
             hpRt.offsetMin = new Vector2(24f, 4f);
             hpRt.offsetMax = new Vector2(-24f, 0f);
+            _hpText.verticalOverflow = VerticalWrapMode.Overflow;   // 同上：行高 25.5px，字号 24
 
             // 阶段提示（居中偏上，默认隐藏）
             _phaseText = StarEco.UI.UIUtility.CreateText("PhaseHint", root, string.Empty, 44,

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Audio;
 
 namespace StarEco.Level
 {
@@ -26,11 +27,43 @@ namespace StarEco.Level
 
         private Camera _cam;
         private Transform _self;
+        private bool _snapRequested;
+        private Vector3? _snapTo;
+
+        /// <summary>
+        /// 让相机在下一帧直接定位到目标的合法位置，而不是平滑插值过去。
+        /// 用于复活/检查点传送这类瞬移：否则相机要花近 1 秒才追上玩家，期间画面停在被传送前的地方。
+        /// </summary>
+        public void SnapToTarget(Transform target = null)
+        {
+            if (target != null)
+            {
+                _target = target;
+            }
+
+            _snapRequested = true;
+        }
+
+        /// <summary>直接定位到指定世界坐标（仅 X 生效，Y 仍用固定值），同样跳过插值。</summary>
+        public void SnapToX(float worldX)
+        {
+            _snapTo = new Vector3(worldX, 0f, 0f);
+            _snapRequested = true;
+        }
 
         private void Awake()
         {
             _self = transform;
             _cam = GetComponent<Camera>();
+
+            // 运行态兜底：场景若漏配 AudioListener，会导致控制台持续刷屏，表现像“卡住”。
+            if (_cam != null && GetComponent<AudioListener>() == null)
+            {
+                if (FindObjectOfType<AudioListener>() == null)
+                {
+                    gameObject.AddComponent<AudioListener>();
+                }
+            }
         }
 
         private void LateUpdate()
@@ -51,17 +84,38 @@ namespace StarEco.Level
             }
 
             float halfWidth = _cam.orthographicSize * _cam.aspect;
-            float minX = _levelLeft + halfWidth;
-            float maxX = _levelRight - halfWidth;
 
             float targetX = _target.position.x;
-            if (maxX > minX)
+
+            // 瞬移请求：本帧直接到达，不做插值（复活/检查点传送）
+            if (_snapRequested)
             {
-                targetX = Mathf.Clamp(targetX, minX, maxX);
+                if (_snapTo.HasValue)
+                {
+                    targetX = _snapTo.Value.x;
+                    _snapTo = null;
+                }
+
+                float snappedX = ClampX(targetX, halfWidth);
+                _self.position = new Vector3(snappedX, _fixedY, _self.position.z);
+                _snapRequested = false;
+                return;
             }
+
+            targetX = ClampX(targetX, halfWidth);
 
             float newX = Mathf.Lerp(_self.position.x, targetX, Mathf.Clamp01(_smoothX * Time.deltaTime));
             _self.position = new Vector3(newX, _fixedY, _self.position.z);
+        }
+
+        /// <summary>按关卡边界与视口半宽钳制相机 X。</summary>
+        private float ClampX(float x, float halfWidth)
+        {
+            float minX = _levelLeft + halfWidth;
+            float maxX = _levelRight - halfWidth;
+
+            // 关卡比视口还窄时，居中显示
+            return maxX > minX ? Mathf.Clamp(x, minX, maxX) : (_levelLeft + _levelRight) * 0.5f;
         }
     }
 }

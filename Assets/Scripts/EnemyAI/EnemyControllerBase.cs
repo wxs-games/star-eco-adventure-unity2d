@@ -223,6 +223,18 @@ namespace StarEco.EnemyAI
             {
                 IsDead = true;
             }
+
+            // 表现层（小怪血条等）据此刷新，扣完血再广播，订阅者读到的是结算后的数值
+            EventCenter.Publish(new EnemyDamagedEvent
+            {
+                Enemy = this,
+                CurrentHP = CurrentHP,
+                MaxHP = _config != null ? _config.MaxHP : CurrentHP,
+                Amount = info.Amount
+            });
+
+            // 受击闪白：与血条同一帧触发，命中反馈更"跟手"
+            HitFlash.Play(Sprite);
         }
 
         public bool ConsumePendingHurt()

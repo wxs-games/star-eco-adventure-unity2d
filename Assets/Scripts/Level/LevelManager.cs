@@ -327,6 +327,7 @@ namespace StarEco.Level
             {
                 NoCheckpointRespawnCount++;
                 _player.transform.position = _config != null ? (Vector3)_config.SpawnPoint : Vector3.zero;
+                SnapCameraToPlayer();
 
                 if (_player.Combat != null)
                 {
@@ -338,6 +339,7 @@ namespace StarEco.Level
             }
 
             _player.transform.position = CurrentSnapshot.PlayerPosition;
+            SnapCameraToPlayer();
 
             if (_player.Combat != null)
             {
@@ -355,6 +357,26 @@ namespace StarEco.Level
 
             _player.InputLocked = false;
             Debug.Log($"[LevelManager] 已从检查点 {CurrentSnapshot.CheckpointId} 恢复。");
+        }
+
+        /// <summary>
+        /// 复活传送后让相机直接定位到玩家，避免它用平滑插值从旧位置慢慢追过去。
+        /// 场景没有 CameraFollow2D（如 Boss 关固定机位）时静默跳过。
+        /// </summary>
+        private void SnapCameraToPlayer()
+        {
+            if (_player == null)
+            {
+                return;
+            }
+
+            var follow = Camera.main != null ? Camera.main.GetComponent<CameraFollow2D>() : null;
+            if (follow == null)
+            {
+                follow = FindObjectOfType<CameraFollow2D>();
+            }
+
+            follow?.SnapToTarget(_player.transform);
         }
     }
 }
