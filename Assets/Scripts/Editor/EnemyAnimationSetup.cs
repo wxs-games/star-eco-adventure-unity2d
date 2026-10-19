@@ -319,6 +319,13 @@ namespace StarEco.EditorTools
             }
             else
             {
+                // 静态单位（Tower01）也必须有 Rigidbody2D，否则它与玩家 AttackHitbox 之间
+                // 不会产生任何 trigger 事件 —— 玩家的近战判定将永远打不到它。
+                // 用 Kinematic 而非省略：不模拟动力学、不被推动，但保留 trigger 事件收发能力。
+                var rb = go.AddComponent<Rigidbody2D>();
+                rb.bodyType = RigidbodyType2D.Kinematic;
+                rb.gravityScale = 0f;
+                rb.freezeRotation = true;
                 var col = go.AddComponent<BoxCollider2D>();
                 col.size = colliderSize;
                 col.offset = colliderOffset;

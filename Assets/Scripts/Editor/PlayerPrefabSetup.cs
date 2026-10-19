@@ -5,17 +5,14 @@ using UnityEngine;
 namespace StarEco.EditorTools
 {
     /// <summary>
-    /// Player 预制体战斗/环保组件固化（T17 依赖）：
-    /// M3/M5 开发时这些组件是直接挂在 SampleScene 的 Player 实例上的，导致 Player.prefab 本身
-    /// 只有 M2 的输入/物理组件 —— 任何新场景实例化该预制体都会缺少战斗与环保功能。
-    /// 本工具把它们补进预制体并注入配置资产，使预制体成为唯一事实来源。
-    /// 实现走 PrefabUtility.LoadPrefabContents 隔离上下文（预制体资产禁止直接增删子物体）。
-    /// 菜单：StarEco → Setup → Player Prefab（幂等，可重复运行）
+    /// Player 预制体战斗/环保组件固化（T17 依赖）。
+    /// 把战斗、喷雾、近战判定等组件统一固化到 Player.prefab。
     /// </summary>
     public static class PlayerPrefabSetup
     {
         private const string PrefabPath = "Assets/Prefabs/Player/Player.prefab";
-        private const string HitboxName = "SprayHitbox";
+        private const string SprayHitboxName = "SprayHitbox";
+        private const string AttackHitboxName = "AttackHitbox";
 
         [MenuItem("StarEco/Setup/Player Prefab")]
         public static void Run()
@@ -30,7 +27,6 @@ namespace StarEco.EditorTools
             var root = PrefabUtility.LoadPrefabContents(PrefabPath);
             try
             {
-                // —— PlayerCombat（M3）——
                 var combat = root.GetComponent<StarEco.Combat.PlayerCombat>();
                 if (combat == null)
                 {
@@ -38,7 +34,6 @@ namespace StarEco.EditorTools
                     log.AppendLine("已添加 PlayerCombat");
                 }
 
-                // —— PurifyTank（M5）——
                 var tank = root.GetComponent<StarEco.Eco.PurifyTank>();
                 if (tank == null)
                 {
@@ -46,17 +41,20 @@ namespace StarEco.EditorTools
                     log.AppendLine("已添加 PurifyTank");
                 }
 
-                // —— SprayHitbox 子物体（M5 判定盒）——
-                var hitboxGo = root.transform.Find(HitboxName);
-                if (hitboxGo == null)
+                var bodyCol = root.GetComponent<BoxCollider2D>();
+                float halfW = bodyCol != null ? bodyCol.size.x * 0.5f : 0.8f;
+
+                // 近战判定盒：盒体从身体右缘向前铺开，而非从身体中心外推。
+                // 半宽 1.2，故中心置于 halfW + 0.35，盒左缘正好贴住身体右缘（无空隙），
+                // 盒右缘伸到 halfW + 1.55 ≈ 2.4 单位处，覆盖一段挥击距离。
+                const float AttackHalfW = 1.2f;
+                float attackCenterX = halfW + AttackHalfW * 0.3f;
+
+                var sprayHitboxGo = root.transform.Find(SprayHitboxName);
+                if (sprayHitboxGo == null)
                 {
-                    var child = new GameObject(HitboxName);
+                    var child = new GameObject(SprayHitboxName);
                     child.transform.SetParent(root.transform, false);
-                    // Center pivot：碰撞体与视觉同中心，喷射盒沿 +X 前伸到身体右缘外，
-                    // y=0 即身体中心（喷射源自手持净化器，约在腰胸之间）。
-                    // size(1.4,1.2) 是与 PPU 无关的手写世界单位，无需随 PPU 缩放。
-                    var bodyCol = root.GetComponent<BoxCollider2D>();
-                    float halfW = bodyCol != null ? bodyCol.size.x * 0.5f : 0.8f;
                     child.transform.localPosition = new Vector3(halfW + 0.55f, 0f, 0f);
                     child.layer = root.layer;
 
@@ -65,15 +63,48 @@ namespace StarEco.EditorTools
                     col.size = new Vector2(1.4f, 1.2f);
                     child.AddComponent<StarEco.Eco.SprayHitbox>();
 
-                    hitboxGo = child.transform;
-                    log.AppendLine("已创建 SprayHitbox 子物体（沿 +X 前伸至身体右缘外，y=0，size 1.4x1.2，Trigger）");
+                    sprayHitboxGo = child.transform;
+                    log.AppendLine("已创建 SprayHitbox 子物体（size 1.4x1.2）");
                 }
                 else
                 {
                     log.AppendLine("SprayHitbox 子物体已存在");
                 }
 
-                // —— SprayController（M5）——
+                var attackHitboxGo = root.transform.Find(AttackHitboxName);
+                if (attackHitboxGo == null)
+                {
+                    var child = new GameObject(AttackHitboxName);
+                    child.transform.SetParent(root.transform, false);
+                    child.transform.localPosition = new Vector3(attackCenterX, 0.05f, 0f);
+                    child.layer = root.layer;
+
+                    var col = child.AddComponent<BoxCollider2D>();
+                    col.isTrigger = true;
+                    col.size = new Vector2(AttackHalfW * 2f, 1.5f);
+                    col.enabled = false;
+
+                    attackHitboxGo = child.transform;
+                    log.AppendLine($"已创建 AttackHitbox 子物体（size {AttackHalfW * 2f}x1.5，中心 x={attackCenterX:F2}）");
+                }
+                else
+                {
+                    attackHitboxGo.localPosition = new Vector3(attackCenterX, 0.05f, 0f);
+                    attackHitboxGo.gameObject.layer = root.layer;
+                    var col = attackHitboxGo.GetComponent<BoxCollider2D>() ?? attackHitboxGo.gameObject.AddComponent<BoxCollider2D>();
+                    col.isTrigger = true;
+                    col.size = new Vector2(AttackHalfW * 2f, 1.5f);
+                    col.enabled = false;
+                    log.AppendLine($"AttackHitbox 子物体已校正（中心 x={attackCenterX:F2}）");
+                }
+
+                var attackHitbox = root.GetComponent<StarEco.Combat.AttackHitbox>();
+                if (attackHitbox == null)
+                {
+                    attackHitbox = root.AddComponent<StarEco.Combat.AttackHitbox>();
+                    log.AppendLine("已添加 AttackHitbox 组件");
+                }
+
                 var spray = root.GetComponent<StarEco.Eco.SprayController>();
                 if (spray == null)
                 {
@@ -81,14 +112,14 @@ namespace StarEco.EditorTools
                     log.AppendLine("已添加 SprayController");
                 }
 
-                // —— 注入配置与引用（私有字段）——
                 Inject(combat, "_config", combatConfig);
                 Inject(tank, "_config", ecoConfig);
+                Inject(attackHitbox, "_hitbox", attackHitboxGo.GetComponent<Collider2D>());
 
                 var spraySo = new SerializedObject(spray);
                 SetIfPresent(spraySo, "_config", ecoConfig);
                 SetIfPresent(spraySo, "_fxPurifyPrefab", fxOneShot);
-                SetIfPresent(spraySo, "_hitbox", hitboxGo.GetComponent<StarEco.Eco.SprayHitbox>());
+                SetIfPresent(spraySo, "_hitbox", sprayHitboxGo.GetComponent<StarEco.Eco.SprayHitbox>());
                 spraySo.ApplyModifiedPropertiesWithoutUndo();
 
                 EditorUtility.SetDirty(root);
@@ -100,7 +131,6 @@ namespace StarEco.EditorTools
             }
 
             AssetDatabase.SaveAssets();
-
             Debug.Log("[PlayerPrefabSetup] Player 预制体组件固化完成 ✓\n" + log);
         }
 
