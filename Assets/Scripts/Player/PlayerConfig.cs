@@ -56,7 +56,7 @@ namespace StarEco.Player
 
         [Header("碰撞")]
         [Tooltip("地面层掩码（默认 Ground）")]
-        public LayerMask GroundLayer = ~0;
+        public LayerMask GroundLayer = 1 << 10;
 
         [Tooltip("地面检测射线额外长度")]
         public float GroundCheckSkin = 0.05f;
@@ -65,6 +65,7 @@ namespace StarEco.Player
         public static PlayerConfig CreateDefault()
         {
             var config = CreateInstance<PlayerConfig>();
+            config.GroundLayer = 1 << 10;
             Debug.LogWarning("[PlayerConfig] 未找到配置资产，已使用代码默认值。");
             return config;
         }

@@ -27,5 +27,5 @@ MonoBehaviour:
   HurtKnockback: 6
   GroundLayer:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 1024
   GroundCheckSkin: 0.05

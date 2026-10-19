@@ -142,7 +142,13 @@ namespace StarEco.Player
                 return;
             }
 
-            // 空中不允许二段跳；触地 → Land
+            // 二段跳：当前先复用第一段跳动画状态（上升仍走 Jump，后续可单独替换第二段动画片段）
+            if (Player.HasJumpBuffer && Player.TryConsumeJump())
+            {
+                return;
+            }
+
+            // 触地 → Land
             if (Player.IsGrounded && Player.VerticalVelocity <= 0.01f)
             {
                 Machine.SwitchState<PlayerLandState>();

@@ -37,6 +37,7 @@ namespace StarEco.EditorTools
             var camGo = new GameObject("Main Camera");
             camGo.tag = "MainCamera";
             var cam = camGo.AddComponent<Camera>();
+            camGo.AddComponent<AudioListener>();
             cam.orthographic = true;
             cam.orthographicSize = 5.5f;
             cam.backgroundColor = new Color(0.06f, 0.10f, 0.09f, 1f);
