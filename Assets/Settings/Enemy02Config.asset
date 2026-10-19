@@ -19,7 +19,7 @@ MonoBehaviour:
   KnockbackResponse: 1
   MoveSpeed: 2
   AttackDamage: 1
-  AttackRange: 14
+  AttackRange: 10
   AttackInterval: 1.2
   AttackKnockback: 0
   PerceptionRadius: 16
@@ -37,7 +37,7 @@ MonoBehaviour:
   AnimFrameRate: 12
   PlayerLayer:
     serializedVersion: 2
-    m_Bits: 256
+    m_Bits: 257
   GroundLayer:
     serializedVersion: 2
     m_Bits: 1024

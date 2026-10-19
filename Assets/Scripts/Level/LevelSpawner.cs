@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using StarEco.Framework;
 using StarEco.Eco.Events;
 using StarEco.EnemyAI;
@@ -154,6 +155,15 @@ namespace StarEco.Level
 
             var instance = PoolManager.Instance.Get(prefabComponent);
             instance.MarkPooled();
+
+            // 池根节点在 DontDestroyOnLoad，下发出来的对象默认也留在该 Scene。
+            // 运行时把敌人显式搬回关卡场景，避免层级混乱和跨场景残留副作用。
+            var targetScene = anchor.gameObject.scene;
+            if (targetScene.IsValid() && instance.gameObject.scene != targetScene)
+            {
+                SceneManager.MoveGameObjectToScene(instance.gameObject, targetScene);
+            }
+
             instance.transform.position = anchor.position;
 
             if (_player != null)
