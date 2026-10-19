@@ -40,12 +40,25 @@ namespace StarEco.UI
         private LevelManager _level;
         private float _tankBlinkTimer;
         private bool _tankWarned;
+        // GC 优化：缓存上一帧文本，仅在数值变化时才重新生成字符串，避免每帧 ToString 分配
+        private int _lastTankCurrent = -1;
+        private int _lastTankCapacity = -1;
+        private int _lastPurityPercent = -1;
 
         private static readonly Color HeartFull = new Color(1f, 0.35f, 0.42f);
         private static readonly Color HeartEmpty = new Color(0.30f, 0.30f, 0.34f, 0.85f);
         private static readonly Color TankFillColor = new Color(0.35f, 0.75f, 1f);
         private static readonly Color PurityFillColor = new Color(0.49f, 0.99f, 0.60f);
         private static readonly Color ChargeFillColor = new Color(1f, 0.85f, 0.35f);
+
+        private Sprite _heartFullSprite;
+        private Sprite _heartEmptySprite;
+        private Sprite _tankFrameSprite;
+        private Sprite _tankFillSprite;
+        private Sprite _purityFrameSprite;
+        private Sprite _purityFillSprite;
+        private Sprite _chargeFrameSprite;
+        private Sprite _chargeFillSprite;
 
         private void Awake()
         {
@@ -120,16 +133,26 @@ namespace StarEco.UI
             var font = UIUtility.BuiltinFont;
             var root = canvas.transform;
 
+            LoadHudSprites();
+
             // 左上：HP 心形 + 净化剂条
             var statusGo = UIUtility.CreateObject("Status", root);
-            UIUtility.TopLeftAnchor(statusGo, new Vector2(460f, 130f), new Vector2(30f, -30f));
+            UIUtility.TopLeftAnchor(statusGo, new Vector2(390f, 112f), new Vector2(26f, -22f));
+
+            var statusBg = UIUtility.CreateImage("PanelBg", statusGo.transform,
+                new Color(0.04f, 0.08f, 0.12f, 0.72f));
+            var statusBgRt = statusBg.GetComponent<RectTransform>();
+            statusBgRt.anchorMin = new Vector2(0f, 0f);
+            statusBgRt.anchorMax = new Vector2(1f, 1f);
+            statusBgRt.offsetMin = new Vector2(-10f, -8f);
+            statusBgRt.offsetMax = new Vector2(10f, 8f);
 
             var heartsGo = UIUtility.CreateObject("Hearts", statusGo.transform);
             var heartsRt = heartsGo.GetComponent<RectTransform>();
             heartsRt.anchorMin = new Vector2(0f, 1f);
             heartsRt.anchorMax = new Vector2(0f, 1f);
             heartsRt.pivot = new Vector2(0f, 1f);
-            heartsRt.sizeDelta = new Vector2(260f, 48f);
+            heartsRt.sizeDelta = new Vector2(240f, 40f);
             heartsRt.anchoredPosition = Vector2.zero;
 
             _hearts = new Image[5];
@@ -141,28 +164,31 @@ namespace StarEco.UI
                 rt.anchorMax = new Vector2(0f, 0.5f);
                 rt.pivot = new Vector2(0.5f, 0.5f);
                 rt.sizeDelta = new Vector2(44f, 44f);
-                rt.anchoredPosition = new Vector2(24f + i * 50f, 0f);
+                rt.anchoredPosition = new Vector2(22f + i * 46f, 0f);
                 _hearts[i] = heartGo.AddComponent<Image>();
-                _hearts[i].color = HeartFull;
+                _hearts[i].color = Color.white;
+                _hearts[i].preserveAspect = true;
+                _hearts[i].sprite = _heartFullSprite;
+                rt.sizeDelta = new Vector2(38f, 34f);
             }
 
             var tankBar = UIUtility.CreateBar("TankBar", statusGo.transform,
-                new Vector2(380f, 26f), new Vector2(190f, -78f),
-                new Color(0f, 0f, 0f, 0.55f), TankFillColor, out _);
-            tankBar.transform.SetParent(statusGo.transform, false);
+                new Vector2(320f, 28f), new Vector2(0f, -18f),
+                new Color(0f, 0f, 0f, 0.55f), TankFillColor, out var tankBarGo);
             _tankFill = tankBar;
+            ApplyHudBarStyle(tankBarGo, _tankFrameSprite, _tankFillSprite, 8f);
 
             var tankTextGo = UIUtility.CreateObject("TankText", statusGo.transform);
             var tankTextRt = tankTextGo.GetComponent<RectTransform>();
             tankTextRt.anchorMin = new Vector2(0f, 0f);
             tankTextRt.anchorMax = new Vector2(0f, 0f);
             tankTextRt.pivot = new Vector2(0f, 0f);
-            tankTextRt.sizeDelta = new Vector2(380f, 30f);
-            tankTextRt.anchoredPosition = new Vector2(0f, -108f);
+            tankTextRt.sizeDelta = new Vector2(320f, 22f);
+            tankTextRt.anchoredPosition = new Vector2(0f, -88f);
             _tankText = tankTextGo.AddComponent<Text>();
             _tankText.font = font;
-            _tankText.fontSize = 24;
-            _tankText.alignment = TextAnchor.MiddleLeft;
+            _tankText.fontSize = 18;
+            _tankText.alignment = TextAnchor.MiddleCenter;
             _tankText.color = TankFillColor;
             _tankText.text = "净化剂 0/0";
 
@@ -171,9 +197,17 @@ namespace StarEco.UI
             UIUtility.TopLeftAnchor(chargeGo, new Vector2(380f, 18f), new Vector2(0f, -112f));
             _chargeRoot = chargeGo;
 
-            var chargeBg = UIUtility.CreateImage("Background", chargeGo.transform,
-                new Color(0f, 0f, 0f, 0.55f));
+            var chargeBg = UIUtility.CreateImage("Background", chargeGo.transform, Color.white);
             UIUtility.Stretch(chargeBg.GetComponent<RectTransform>());
+            if (_chargeFrameSprite != null)
+            {
+                chargeBg.sprite = _chargeFrameSprite;
+                chargeBg.type = Image.Type.Sliced;
+            }
+            else
+            {
+                chargeBg.color = new Color(0f, 0f, 0f, 0.55f);
+            }
 
             var chargeFillGo = UIUtility.CreateObject("Fill", chargeGo.transform);
             var chargeFillRt = chargeFillGo.GetComponent<RectTransform>();
@@ -182,25 +216,29 @@ namespace StarEco.UI
             chargeFillRt.offsetMin = Vector2.zero;
             chargeFillRt.offsetMax = Vector2.zero;
             _chargeFill = chargeFillGo.AddComponent<Image>();
-            _chargeFill.color = ChargeFillColor;
+            _chargeFill.color = _chargeFillSprite != null ? Color.white : ChargeFillColor;
             _chargeFill.type = Image.Type.Filled;
             _chargeFill.fillMethod = Image.FillMethod.Horizontal;
             _chargeFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            if (_chargeFillSprite != null)
+            {
+                _chargeFill.sprite = _chargeFillSprite;
+                chargeFillRt.offsetMin = new Vector2(7f, 7f);
+                chargeFillRt.offsetMax = new Vector2(-7f, -7f);
+            }
 
             chargeGo.SetActive(false);
 
-            // 右上：净化值进度条
+            // 右上：净化值进度条（向中央收拢，减少左右割裂）
             var purityGo = UIUtility.CreateObject("PurityPanel", root);
-            UIUtility.TopLeftAnchor(purityGo, new Vector2(420f, 96f), new Vector2(-450f, -30f));
-            // TopLeftAnchor 的 pos 是相对左上；这里用 anchorMax 方案改为右上更直观
             var purityRt = purityGo.GetComponent<RectTransform>();
-            purityRt.anchorMin = new Vector2(1f, 1f);
-            purityRt.anchorMax = new Vector2(1f, 1f);
-            purityRt.pivot = new Vector2(1f, 1f);
-            purityRt.sizeDelta = new Vector2(420f, 96f);
-            purityRt.anchoredPosition = new Vector2(-30f, -30f);
+            purityRt.anchorMin = new Vector2(0.5f, 1f);
+            purityRt.anchorMax = new Vector2(0.5f, 1f);
+            purityRt.pivot = new Vector2(0.5f, 1f);
+            purityRt.sizeDelta = new Vector2(320f, 82f);
+            purityRt.anchoredPosition = new Vector2(470f, -22f);
 
-            var purityLabel = UIUtility.CreateText("Label", purityGo.transform, "星球净化值", 26,
+            var purityLabel = UIUtility.CreateText("Label", purityGo.transform, "星球净化值", 22,
                 TextAnchor.MiddleLeft, PurityFillColor);
             var purityLabelRt = purityLabel.GetComponent<RectTransform>();
             purityLabelRt.anchorMin = new Vector2(0f, 1f);
@@ -210,11 +248,12 @@ namespace StarEco.UI
             purityLabelRt.anchoredPosition = Vector2.zero;
 
             _purityFill = UIUtility.CreateBar("Bar", purityGo.transform,
-                new Vector2(420f, 34f), new Vector2(0f, -56f),
-                new Color(0f, 0f, 0f, 0.55f), PurityFillColor, out _);
+                new Vector2(320f, 30f), new Vector2(0f, -46f),
+                new Color(0f, 0f, 0f, 0.55f), PurityFillColor, out var purityBarGo);
             _purityFill.fillAmount = 0f;
+            ApplyHudBarStyle(purityBarGo, _purityFrameSprite, _purityFillSprite, 8f);
 
-            _purityText = UIUtility.CreateText("Percent", purityGo.transform, "0%", 26,
+            _purityText = UIUtility.CreateText("Percent", purityGo.transform, "0%", 22,
                 TextAnchor.MiddleRight, TextMainColor());
             var purityTextRt = _purityText.GetComponent<RectTransform>();
             purityTextRt.anchorMin = new Vector2(0f, 1f);
@@ -332,6 +371,55 @@ namespace StarEco.UI
             RefreshCharge();
         }
 
+        private void LoadHudSprites()
+        {
+            _heartFullSprite = Resources.Load<Sprite>("UI/HUD/hud_heart_full");
+            _heartEmptySprite = Resources.Load<Sprite>("UI/HUD/hud_heart_empty");
+            _tankFrameSprite = Resources.Load<Sprite>("UI/HUD/hud_tank_frame");
+            _tankFillSprite = Resources.Load<Sprite>("UI/HUD/hud_tank_fill");
+            _purityFrameSprite = Resources.Load<Sprite>("UI/HUD/hud_purity_frame");
+            _purityFillSprite = Resources.Load<Sprite>("UI/HUD/hud_purity_fill");
+            _chargeFrameSprite = Resources.Load<Sprite>("UI/HUD/hud_charge_frame");
+            _chargeFillSprite = Resources.Load<Sprite>("UI/HUD/hud_charge_fill");
+        }
+
+        private static void ApplyHudBarStyle(GameObject barGo, Sprite frameSprite, Sprite fillSprite, float inset)
+        {
+            if (barGo == null)
+            {
+                return;
+            }
+
+            var bg = barGo.transform.Find("Background")?.GetComponent<Image>();
+            var fill = barGo.transform.Find("Fill")?.GetComponent<Image>();
+            if (bg == null || fill == null)
+            {
+                return;
+            }
+
+            if (frameSprite != null)
+            {
+                bg.sprite = frameSprite;
+                bg.type = Image.Type.Sliced;
+                bg.color = Color.white;
+                bg.preserveAspect = false;
+            }
+
+            if (fillSprite != null)
+            {
+                fill.sprite = fillSprite;
+                fill.type = Image.Type.Filled;
+                fill.fillMethod = Image.FillMethod.Horizontal;
+                fill.fillOrigin = (int)Image.OriginHorizontal.Left;
+                fill.color = Color.white;
+                fill.preserveAspect = false;
+            }
+
+            var fillRt = fill.rectTransform;
+            fillRt.offsetMin = new Vector2(inset, inset);
+            fillRt.offsetMax = new Vector2(-inset, -inset);
+        }
+
         private void RefreshHearts()
         {
             int hp = _player.Combat.CurrentHP;
@@ -345,7 +433,15 @@ namespace StarEco.UI
                 }
 
                 bool full = i < hp;
-                _hearts[i].color = full ? HeartFull : HeartEmpty;
+                _hearts[i].color = Color.white;
+                if (_heartFullSprite != null && _heartEmptySprite != null)
+                {
+                    _hearts[i].sprite = full ? _heartFullSprite : _heartEmptySprite;
+                }
+                else
+                {
+                    _hearts[i].color = full ? HeartFull : HeartEmpty;
+                }
 
                 // HP 上限超过 5 时超出部分隐藏，避免越界（M3 MaxHP=5）
                 _hearts[i].gameObject.SetActive(i < max);
@@ -365,7 +461,13 @@ namespace StarEco.UI
 
             if (_tankText != null)
             {
-                _tankText.text = $"净化剂 {tank.Current}/{tank.Capacity}";
+                // 仅在数值变化时重新生成字符串，避免每帧 ToString 分配（GC 优化项 1）
+                if (tank.Current != _lastTankCurrent || tank.Capacity != _lastTankCapacity)
+                {
+                    _lastTankCurrent = tank.Current;
+                    _lastTankCapacity = tank.Capacity;
+                    _tankText.text = $"净化剂 {tank.Current}/{tank.Capacity}";
+                }
             }
 
             // 不足提示：低于蓄力消耗时条体闪烁
@@ -426,7 +528,13 @@ namespace StarEco.UI
 
             if (_purityText != null)
             {
-                _purityText.text = $"{percent * 100f:F0}%";
+                // 仅在百分比变化时重新生成字符串（GC 优化项 1）
+                int percentRounded = Mathf.RoundToInt(percent * 100f);
+                if (percentRounded != _lastPurityPercent)
+                {
+                    _lastPurityPercent = percentRounded;
+                    _purityText.text = $"{percentRounded}%";
+                }
             }
         }
     }
