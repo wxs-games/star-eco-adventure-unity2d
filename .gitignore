@@ -47,3 +47,27 @@ Thumbs.db
 .workbuddy/
 Assets/Screenshots/
 Assets/Screenshots.meta
+
+# 一次性编辑器调试脚本：用完即弃，文件保留在本地磁盘，不入库
+Assets/Scripts/Editor/Apply*.cs*
+Assets/Scripts/Editor/Diagnose*.cs*
+Assets/Scripts/Editor/Fix*.cs*
+Assets/Scripts/Editor/Generate*.cs*
+Assets/Scripts/Editor/Inspect*.cs*
+Assets/Scripts/Editor/Log*.cs*
+Assets/Scripts/Editor/Open*.cs*
+Assets/Scripts/Editor/Patch*.cs*
+Assets/Scripts/Editor/Refresh*.cs*
+Assets/Scripts/Editor/Upgrade*.cs*
+Assets/Scripts/Editor/Verify*.cs*
+Assets/Scripts/Editor/Widen*.cs*
+Assets/Scripts/Editor/LevelDecorPass.cs*
+Assets/Scripts/Editor/Level03BindBossHealthBar.cs*
+Assets/Editor.meta
+Assets/Editor/FixAttackRange.cs*
+
+# Coplay 工具生成的临时计划模板（空壳）
+Assets/CoplayPlan.md*
+
+# 编译检查日志
+compile_check.log
