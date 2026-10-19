@@ -332,8 +332,11 @@ namespace StarEco.Player
             }
 
             Vector2 size = col.bounds.size;
-            // 探测盒放在脚底正下方：玩家底边 ≈ Body.y - size.y/2，下探 0.25u 覆盖堆顶
-            Vector2 probeCenter = new Vector2(Body.position.x, Body.position.y - size.y * 0.5f - 0.02f);
+            // 身体碰撞体带圆角时，物理外形比 bounds 外扩 r（bounds 仍按 size 返回），
+            // 真实脚底 = Body.y - size.y/2 - r，探测盒需按此下移，否则探不到脚下的堆顶。
+            float edgeRadius = col is BoxCollider2D box ? box.edgeRadius : 0f;
+            // 探测盒放在脚底正下方：玩家底边 ≈ Body.y - size.y/2 - r，下探 0.25u 覆盖堆顶
+            Vector2 probeCenter = new Vector2(Body.position.x, Body.position.y - size.y * 0.5f - edgeRadius - 0.02f);
             Vector2 probeSize = new Vector2(size.x * 0.9f, 0.25f);
 
             foreach (var c in Physics2D.OverlapBoxAll(probeCenter, probeSize, 0f))

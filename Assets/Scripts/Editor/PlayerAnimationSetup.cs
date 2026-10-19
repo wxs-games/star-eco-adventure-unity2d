@@ -24,6 +24,11 @@ namespace StarEco.EditorTools
         private const string ConfigPath = "Assets/Settings/PlayerConfig.asset";
         private const string ControllerPath = "Assets/Animations/Player/Player.controller";
         private const string PrefabPath = "Assets/Prefabs/Player/Player.prefab";
+        private const string BodyPhysicsMaterialPath = "Assets/Settings/PlayerFrictionless.physicsMaterial2D";
+        // 身体碰撞体圆角半径：BoxCollider2D 的 edgeRadius 会把物理外形整体向外膨胀 r
+        // （而 Collider2D.bounds 仍按 size 返回），所以必须同时把 size 扣掉 2r，
+        // 物理足迹才与无圆角时完全一致，贴地高度与地面检测不受影响。
+        private const float BodyEdgeRadius = 0.15f;
 
         // 目录名 → (clip名, 是否循环, 采样率)。采样率取排期表 Samples 列（未声明则用默认 12）。
         private const float DefaultFrameRate = 12f;
@@ -493,9 +498,13 @@ namespace StarEco.EditorTools
                 // PPU=378 后角色视觉高约 2 世界单位（原 PPU=100 时是 8.33）。
                 // Pivot = Center（.meta alignment:0）→ bounds 中心即 transform 原点，
                 // 碰撞体 offset 取 0 即与视觉重合；size 取视觉 ×0.9 留宽容手感。
-                var size = displaySprite.bounds.size * 0.9f;
-                collider.size = size;
+                Vector2 size = (Vector2)displaySprite.bounds.size * 0.9f;
                 collider.offset = Vector2.zero;
+                // 圆角 + 无摩擦材质：滑过方块/平台接缝时不被"啃住"（2026-10-20 用户选定方案）
+                collider.size = size - Vector2.one * (BodyEdgeRadius * 2f);
+                collider.edgeRadius = BodyEdgeRadius;
+                collider.sharedMaterial =
+                    AssetDatabase.LoadAssetAtPath<PhysicsMaterial2D>(BodyPhysicsMaterialPath);
             }
 
             go.AddComponent<Animator>().runtimeAnimatorController = controller;

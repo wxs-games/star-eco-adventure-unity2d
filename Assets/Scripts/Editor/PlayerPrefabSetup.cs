@@ -42,7 +42,8 @@ namespace StarEco.EditorTools
                 }
 
                 var bodyCol = root.GetComponent<BoxCollider2D>();
-                float halfW = bodyCol != null ? bodyCol.size.x * 0.5f : 0.8f;
+                // 身体碰撞体带 edgeRadius 时物理半宽 = size.x/2 + r（bounds 不含 r），判定盒按物理半宽摆放
+                float halfW = bodyCol != null ? bodyCol.size.x * 0.5f + bodyCol.edgeRadius : 0.8f;
 
                 // 近战判定盒：盒体从身体右缘向前铺开，而非从身体中心外推。
                 // 半宽 1.2，故中心置于 halfW + 0.35，盒左缘正好贴住身体右缘（无空隙），
