@@ -70,7 +70,7 @@ Player（既有）
 | `PlayerSprayState.cs` | 玩家 FSM 喷洒状态：Enter 开判定盒播 Interact、Exit 关盒；期间移速因子 | R2、R10 |
 | `PlayerChargeState.cs` | 玩家 FSM 蓄力状态：站定、蓄力进度、未满松开取消 / 蓄满松开触发净化波（播 HeavyAttack） | R3、R10 |
 | `PurifyTank.cs` | 净化剂资源：当前值/容量/消耗/回复、`PurifyTankChangedEvent` 广播、夹取 | R4 |
-| `GarbagePile.cs` | 垃圾堆：实现 `IPurifiable`、净化进度、Sprite 颜色插值、完成表现（fx/事件/阻挡 Collider 关闭） | R5 |
+| `GarbagePile.cs` | 垃圾堆：实现 `IPurifiable`、净化进度、Sprite 颜色插值、完成换绿植贴图（`_cleanSprite`）、完成表现（fx/事件/阻挡 Collider 关闭） | R5 |
 | `TowerPurifiable.cs` | 塔净化适配器：实现 `IPurifiable`，内部调 `Tower01Controller.RequestDisable()` | R8 |
 | `PuritySystem.cs` | 净化值统计：场景级注册收集、总量/已净化、`PurityChangedEvent` 广播、100% one-shot 事件、空场景防御 | R6 |
 | `AtmosphereController.cs` | 氛围：订阅净化值 → 污染度 → `Camera.backgroundColor` 平滑插值（灰紫↔自然绿） | R7 |
@@ -165,7 +165,7 @@ SprayController（每 SprayTickSeconds）
 | `PollutedColor` | 灰紫 `(0.45, 0.40, 0.52)` | 污染态背景色（GDD 主色板） |
 | `CleanColor` | 自然绿 `(0.56, 0.74, 0.50)` | 清新态背景色 |
 | `AtmosphereLerpSpeed` | 2 | 背景色平滑速率（1/s） |
-| `GarbagePollutedTint` / `GarbageCleanTint` | 灰褐 / 淡绿 | 垃圾堆占位变色两端 |
+| `GarbagePollutedTint` / `GarbageCleanTint` | 灰褐 / 淡绿 | 垃圾堆净化进度变色两端（完成时换 `garbage_pile_clean.png` 绿植） |
 
 ### 3.2 事件表（全部 struct，经 EventCenter，零 GC）
 
@@ -197,7 +197,7 @@ SprayController（每 SprayTickSeconds）
 | 净化波走动画事件帧 vs 同帧 | 同帧结算 | 无连段时序；防止动画被打断丢判定（M4 事件帧模式适用于"表现窗口=判定窗口"的近战，不适合瞬发 AOE） |
 | 敌人可被净化"秒杀" vs 只受伤 | 只受伤（走 DamageInfo） | GDD 仅"持续伤害消耗加倍"；净化即死的例外留给 M6 削弱机制 |
 | 进度中断衰减 | 不衰减 | 手感宽容；防"差 0.1 秒清零重来"挫败 |
-| 垃圾美术缺失 | WhiteSquare 占位 + 颜色插值 | 不阻塞 M5 进度；美术后补零逻辑改动 |
+| 垃圾美术缺失 / 净化视觉弱 | 真素材 + 进度颜色插值 + 完成换绿植贴图 | 视觉反馈明确；贴图缺失时回退颜色插值 |
 | `OnTriggerStay2D` vs Enter/Exit 列表 | Enter/Exit 维护列表 + Stay 兜底 | Stay 每帧回调成本高且顺序不定；列表缓存组件引用零每帧 GetComponent |
 | 池化目标中途 SetActive(false) | 目标方 `OnDisable` 时从列表剔除；喷洒结算前判 null | M4 经验：池化对象生命周期与外部列表不同步是 NRE 高发点 |
 | 背景色插值影响 | 仅 `Camera.backgroundColor` | 内置管线零成本；全场景 tint 需遍历渲染器，收益低成本高，留给 M10 评估 |

@@ -15,6 +15,9 @@ namespace StarEco.Eco
         [SerializeField] private EcoConfig _config;
         [SerializeField] private FxOneShot _fxPurifyPrefab;
 
+        [Tooltip("净化完成后的贴图（绿油油草地/灌木）；未配置则退回纯色插值")]
+        [SerializeField] private Sprite _cleanSprite;
+
         [Tooltip("净化阈值：-1 = 跟随 EcoConfig（按 BlocksPath 分流），≥0 显式覆盖")]
         [SerializeField] private int _purifyRequired = -1;
 
@@ -28,6 +31,7 @@ namespace StarEco.Eco
         [SerializeField] private string _targetId = "GarbagePile";
 
         private SpriteRenderer _sprite;
+        private Sprite _originalSprite;
         private BoxCollider2D _collider;
         private int _progress;
         private bool _purified;
@@ -48,9 +52,10 @@ namespace StarEco.Eco
                 _config = Resources.Load<EcoConfig>("EcoConfig") ?? EcoConfig.CreateDefault();
             }
 
-            // 初始态：污染色
+            // 初始态：污染色；记住原始贴图，重置时还原
             if (_sprite != null)
             {
+                _originalSprite = _sprite.sprite;
                 _sprite.color = _config.GarbagePollutedTint;
             }
         }
@@ -87,7 +92,16 @@ namespace StarEco.Eco
 
             if (_sprite != null)
             {
-                _sprite.color = _config.GarbageCleanTint;
+                if (_cleanSprite != null)
+                {
+                    // 净化完成：换成绿油油的草地/灌木贴图（与污染垃圾形成强对比）
+                    _sprite.sprite = _cleanSprite;
+                    _sprite.color = Color.white;
+                }
+                else
+                {
+                    _sprite.color = _config.GarbageCleanTint;
+                }
             }
 
             FxOneShot.Play(_fxPurifyPrefab, transform.position);
@@ -129,6 +143,10 @@ namespace StarEco.Eco
 
             if (_sprite != null)
             {
+                if (_originalSprite != null)
+                {
+                    _sprite.sprite = _originalSprite;   // 还原污染贴图
+                }
                 _sprite.color = _config != null ? _config.GarbagePollutedTint : Color.gray;
             }
         }

@@ -50,11 +50,11 @@
 
 ## R5 垃圾堆与污染源（GarbagePile）
 
-> **美术动作**：占位（WhiteSquare 色块：污染色 → 净化色渐变；美术后补仅换 Sprite） | **代码落点**：`Assets/Scripts/Eco/GarbagePile.cs`
+> **美术动作**：真素材（`garbage_pile.png`）；净化中颜色插值，净化完成换 `garbage_pile_clean.png`（绿植） | **代码落点**：`Assets/Scripts/Eco/GarbagePile.cs`
 
 - THE SYSTEM SHALL 提供垃圾堆组件实现 `IPurifiable`：配置净化阈值 `PurifyRequired` 与净化值贡献 `PurityValue`。
 - WHILE 垃圾堆被喷洒中（净化进度增长），THE SYSTEM SHALL 其 Sprite 颜色由污染色向净化色按进度插值（给玩家即时反馈）。
-- WHEN 垃圾堆净化完成，THE SYSTEM SHALL 播放 `fx_purify`（池化）、广播净化完成事件（R1）、此后不再参与任何净化结算。
+- WHEN 垃圾堆净化完成，THE SYSTEM SHALL 播放 `fx_purify`（池化）、广播净化完成事件（R1）、并将 Sprite 换为净化后绿植贴图（`_cleanSprite`；未配置时回退为净化色），此后不再参与任何净化结算。
 - WHEN 挡路型垃圾堆（`BlocksPath = true`）净化完成，THE SYSTEM SHALL 关闭其阻挡 Collider（通路打开）并使 Sprite 变淡/隐藏（视觉上"清掉"）。
 - THE SYSTEM SHALL 挡路型垃圾堆的 `PurifyRequired` 显著高于普通垃圾堆（数值设计：普通垃圾 2 秒喷洒可清，挡路垃圾需蓄力净化 1~2 次，见 design §3）。
 - IF 未净化的挡路垃圾堆与玩家/敌人重叠，THE SYSTEM SHALL 保持实体阻挡（非 Trigger Collider，复用现有层规则）。
