@@ -12,13 +12,14 @@ namespace StarEco.Combat
     [RequireComponent(typeof(PlayerController))]
     public class AttackHitbox : MonoBehaviour
     {
-        [Tooltip("攻击 trigger 碰撞体（挂 Player 根上的 BoxCollider2D，IsTrigger=true）")]
+        [Tooltip("攻击 trigger 碰撞体（允许挂在 Player 子物体上）")]
         [SerializeField] private Collider2D _hitbox;
 
         private readonly HashSet<IHittable> _hitThisWindow = new HashSet<IHittable>();
         private PlayerController _player;
         private PlayerCombat _combat;
         private bool _windowOpen;
+        private Vector3 _hitboxLocalPosition;
 
         /// <summary>当前攻击段号：由 PlayerAttackState 在 Enter/衔接/退出时写入（第三段命中附击退）。</summary>
         public int CurrentSegment { get; set; }
@@ -29,10 +30,9 @@ namespace StarEco.Combat
             _combat = GetComponent<PlayerCombat>();
             if (_hitbox == null)
             {
-                // 未指定时找自身上的 trigger 碰撞体（与实体 BoxCollider2D 区分）
-                foreach (var col in GetComponents<Collider2D>())
+                foreach (var col in GetComponentsInChildren<Collider2D>(true))
                 {
-                    if (col.isTrigger)
+                    if (col != null && col.isTrigger)
                     {
                         _hitbox = col;
                         break;
@@ -42,8 +42,16 @@ namespace StarEco.Combat
 
             if (_hitbox != null)
             {
+                _hitboxLocalPosition = _hitbox.transform.localPosition;
+                _hitboxLocalPosition.x = Mathf.Abs(_hitboxLocalPosition.x);
                 _hitbox.enabled = false;
+                MirrorHitbox();
             }
+        }
+
+        private void LateUpdate()
+        {
+            MirrorHitbox();
         }
 
         // ===== Animation Event 入口（帧号见排期表「动画事件帧」列）=====
@@ -94,6 +102,20 @@ namespace StarEco.Combat
                 KnockbackPower = CurrentSegment == 3 ? thirdKnock : 0f
             };
             target.TakeDamage(info);
+        }
+
+        private void MirrorHitbox()
+        {
+            if (_hitbox == null || _player == null || _player.Sprite == null)
+            {
+                return;
+            }
+
+            float facing = _player.Sprite.flipX ? -1f : 1f;
+            var pos = _hitbox.transform.localPosition;
+            pos.x = facing * _hitboxLocalPosition.x;
+            pos.y = _hitboxLocalPosition.y;
+            _hitbox.transform.localPosition = pos;
         }
 
         /// <summary>伤害来源方向（受击者 → 来源）：与攻击者面朝方向相反，击退按其反方向施加即远离攻击者。</summary>
