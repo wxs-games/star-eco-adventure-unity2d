@@ -113,20 +113,18 @@ namespace StarEco.Eco
                 TargetId = _targetId
             });
 
-            // 挡路型：开通路 + 视觉变淡（R5）
-            if (_blocksPath)
+            // 净化完成：一律关闭阻挡碰撞体，净化后的目标不再挡路（R5）
+            if (_collider != null)
             {
-                if (_collider != null)
-                {
-                    _collider.enabled = false;
-                }
+                _collider.enabled = false;
+            }
 
-                if (_sprite != null)
-                {
-                    var c = _sprite.color;
-                    c.a = 0.3f;
-                    _sprite.color = c;
-                }
+            // 挡路型额外视觉变淡，提示通路已打开
+            if (_blocksPath && _sprite != null)
+            {
+                var c = _sprite.color;
+                c.a = 0.3f;
+                _sprite.color = c;
             }
         }
 

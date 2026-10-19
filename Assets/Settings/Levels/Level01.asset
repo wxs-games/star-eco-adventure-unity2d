@@ -21,7 +21,7 @@ MonoBehaviour:
     Label: "\u6E05\u7406\u6563\u843D\u7684\u5783\u573E\u5806"
   - Type: 1
     Required: 1
-    Label: "\u51C0\u5316\u6C61\u67D3\u76D1\u63A7\u5854"
+    Label: "\u51FB\u6BC1\u6C61\u67D3\u76D1\u63A7\u5854"
   - Type: 2
     Required: 100
     Label: "\u628A\u5173\u5361\u51C0\u5316\u503C\u63A8\u5230 100%"

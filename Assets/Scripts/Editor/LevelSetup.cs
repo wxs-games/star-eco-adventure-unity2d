@@ -69,13 +69,13 @@ namespace StarEco.EditorTools
             config.TimeLimit = 0f;
             config.IntroText = "这颗星球已经被垃圾污染了。用喷壶把污染源清理干净，让天空重新变绿。";
 
-            // 目标链：3 个污染源 → 1 座塔 → 净化度 100%
+            // 目标链：3 个污染源 → 1 座塔（攻击击毁）→ 净化度 100%
             config.Objectives = new[]
             {
                 new StarEco.Level.LevelConfig.LevelObjective(
                     StarEco.Level.LevelObjectiveType.PurifyTargets, 3, "清理散落的垃圾堆"),
                 new StarEco.Level.LevelConfig.LevelObjective(
-                    StarEco.Level.LevelObjectiveType.PurifyTowers, 1, "净化污染监控塔"),
+                    StarEco.Level.LevelObjectiveType.PurifyTowers, 1, "击毁污染监控塔"),
                 new StarEco.Level.LevelConfig.LevelObjective(
                     StarEco.Level.LevelObjectiveType.ReachPurity, 100, "把关卡净化值推到 100%")
             };
@@ -193,18 +193,14 @@ namespace StarEco.EditorTools
             PlacePrefab(GarbageWallPrefab, "GarbageWall1", "GarbageWall1", new Vector3(6.5f, 0.83f, 0f), log);
             log.AppendLine("已放置 Garbage1~3(y=0.36) + GarbageWall1(y=0.83)，y=视觉半高使底边贴地");
 
-            // —— 塔（挂 TowerPurifiable 适配器）——
+            // —— 塔（攻击击毁，不挂净化适配器）——
             var towerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(TowerPrefab);
             if (towerPrefab != null)
             {
                 var tower = (GameObject)PrefabUtility.InstantiatePrefab(towerPrefab);
                 tower.transform.position = new Vector3(10f, 1.5f, 0f);
                 tower.name = "Tower01";
-                var adapter = tower.GetComponent<StarEco.Eco.TowerPurifiable>() ?? tower.AddComponent<StarEco.Eco.TowerPurifiable>();
-                var so = new SerializedObject(adapter);
-                so.FindProperty("_targetId").stringValue = "Tower01";
-                so.ApplyModifiedPropertiesWithoutUndo();
-                log.AppendLine("已放置 Tower01（增挂 TowerPurifiable）");
+                log.AppendLine("已放置 Tower01（攻击击毁，不加 TowerPurifiable）");
             }
 
             // —— 刷怪锚点 ——

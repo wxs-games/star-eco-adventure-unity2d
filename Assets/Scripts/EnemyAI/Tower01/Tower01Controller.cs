@@ -30,9 +30,39 @@ namespace StarEco.EnemyAI
 
         public bool IsDisabled => _isDisabled;
 
-        /// <summary>塔不可死：免疫一切伤害与硬直，Disable 仅经 RequestDisable（M6 检查点）触发。</summary>
+        /// <summary>
+        /// 可被攻击击杀（与怪物一致）：扣血 + 受击闪白 + 广播受伤事件；血尽即被击毁。
+        /// 不走基类的受击硬直/死亡状态机 —— 塔只注册 Idle/Aim/Fire/Disable，
+        /// 共用 TryHandleCombatTransitions 会切到未注册的 EnemyHurtState/EnemyDieState；
+        /// 这里直接复用既有 Disable 终态作为"被击毁"表现。
+        /// </summary>
         public override void TakeDamage(DamageInfo info)
         {
+            if (_isDisabled || IsDead || IsSpawnImmune || info.Amount <= 0)
+            {
+                return;
+            }
+
+            CurrentHP = Mathf.Max(0, CurrentHP - info.Amount);
+            LastHitDirection = info.SourceDirection;
+            AudioManager.Instance?.PlaySfx(HitSfxId);
+
+            // 与小怪共用同一受伤事件与受击闪白（血条据此刷新）
+            EventCenter.Publish(new EnemyDamagedEvent
+            {
+                Enemy = this,
+                CurrentHP = CurrentHP,
+                MaxHP = Config != null ? Config.MaxHP : CurrentHP,
+                Amount = info.Amount
+            });
+
+            HitFlash.Play(Sprite);
+
+            if (CurrentHP <= 0)
+            {
+                IsDead = true;
+                RequestDisable();   // 被击毁：Die 动画 + 关闭碰撞体 + 广播关闭事件
+            }
         }
 
         /// <summary>外部请求关闭塔（幂等：不重播/不报错/不重复广播）。</summary>

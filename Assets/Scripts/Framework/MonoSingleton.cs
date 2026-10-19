@@ -35,8 +35,13 @@ namespace StarEco.Framework
             }
         }
 
-        /// <summary>实例是否已存在（不触发创建）。</summary>
-        public static bool HasInstance => _instance != null;
+        /// <summary>
+        /// 实例是否可用（不触发创建）。
+        /// 与 <see cref="Instance"/> 判定保持一致：应用退出期（_quitting）Instance 会返回 null，
+        /// HasInstance 若仍为 true，调用方 "if (HasInstance) Instance.X()" 会在退出 Play/OnDestroy
+        /// 阶段对 null 调用 → 空引用。二者必须同源。
+        /// </summary>
+        public static bool HasInstance => !_quitting && _instance != null;
 
         protected virtual void Awake()
         {

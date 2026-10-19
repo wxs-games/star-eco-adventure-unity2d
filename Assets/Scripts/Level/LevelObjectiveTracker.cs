@@ -3,6 +3,7 @@ using UnityEngine;
 using StarEco.Framework;
 using StarEco.Eco;
 using StarEco.Eco.Events;
+using StarEco.EnemyAI;
 using StarEco.EnemyAI.Events;
 using StarEco.Level.Events;
 
@@ -73,6 +74,7 @@ namespace StarEco.Level
             EventCenter.Subscribe<EnemyDeathEvent>(OnEnemyDied);
             EventCenter.Subscribe<PurityChangedEvent>(OnPurityChanged);
             EventCenter.Subscribe<AnimalRescuedEvent>(OnAnimalRescued);   // M9 R2
+            EventCenter.Subscribe<TowerDisableEvent>(OnTowerDestroyed);   // 炮塔改为攻击击毁后由此计数
         }
 
         private void OnDisable()
@@ -81,6 +83,7 @@ namespace StarEco.Level
             EventCenter.Unsubscribe<EnemyDeathEvent>(OnEnemyDied);
             EventCenter.Unsubscribe<PurityChangedEvent>(OnPurityChanged);
             EventCenter.Unsubscribe<AnimalRescuedEvent>(OnAnimalRescued);
+            EventCenter.Unsubscribe<TowerDisableEvent>(OnTowerDestroyed);
         }
 
         /// <summary>
@@ -158,6 +161,13 @@ namespace StarEco.Level
         private void OnEnemyDied(EnemyDeathEvent evt)
         {
             _defeatedEnemies++;
+            Evaluate();
+        }
+
+        /// <summary>炮塔被击毁（攻击击杀）后计入"击毁塔"目标。</summary>
+        private void OnTowerDestroyed(TowerDisableEvent evt)
+        {
+            _purifiedTowers++;
             Evaluate();
         }
 
@@ -278,6 +288,12 @@ namespace StarEco.Level
             var behaviours = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             for (int i = 0; i < behaviours.Length; i++)
             {
+                // 塔改为"攻击击毁"：按场景现存的 Tower01 数量统计可击毁塔数
+                if (behaviours[i] is Tower01Controller tower && !tower.IsDisabled)
+                {
+                    towers++;
+                }
+
                 if (behaviours[i] is IPurifiable target && !target.IsPurified)
                 {
                     if (behaviours[i] is WaterBlockage)
@@ -287,10 +303,6 @@ namespace StarEco.Level
                     }
 
                     available++;
-                    if (behaviours[i].GetType().Name.Contains("TowerPurifiable"))
-                    {
-                        towers++;
-                    }
                 }
             }
 

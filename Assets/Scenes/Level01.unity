@@ -1270,32 +1270,8 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 4949119208494556586, guid: 126ec813260d81247a5887d6179cca92, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 492581882}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 126ec813260d81247a5887d6179cca92, type: 3}
---- !u!1 &492581881 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 4949119208494556586, guid: 126ec813260d81247a5887d6179cca92, type: 3}
-  m_PrefabInstance: {fileID: 492581880}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &492581882
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 492581881}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 75dfab47d5c323f4da878fb28a6488d2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _config: {fileID: 0}
-  _purifyRequired: -1
-  _purityValue: -1
-  _targetId: Tower01
 --- !u!1 &546768413
 GameObject:
   m_ObjectHideFlags: 0
