@@ -28,6 +28,9 @@ namespace StarEco.UI
         private float _typeTimer;
         private bool _lineComplete;
 
+        // 避免逐帧 Substring 产生的 GC：对每行文本只构建一次“0..N”的前缀缓存。
+        private string[] _typedLines;
+
         private void Awake()
         {
             Build();
@@ -105,7 +108,14 @@ namespace StarEco.UI
 
             if (_bodyText != null)
             {
-                _bodyText.text = entry.Text.Substring(0, _charCount);
+                if (_typedLines != null && _charCount >= 0 && _charCount < _typedLines.Length)
+                {
+                    _bodyText.text = _typedLines[_charCount];
+                }
+                else
+                {
+                    _bodyText.text = entry.Text != null ? entry.Text : string.Empty;
+                }
             }
 
             if (_charCount >= entry.Text.Length)
@@ -136,9 +146,15 @@ namespace StarEco.UI
             _typeTimer = 0f;
             _lineComplete = false;
 
+            _typedLines = null;
             if (_bodyText != null)
             {
                 _bodyText.text = string.Empty;
+            }
+
+            if (entry != null && !string.IsNullOrEmpty(entry.Text) && _bodyText != null)
+            {
+                BuildTypedLines(entry.Text);
             }
 
             UpdateHint();
@@ -206,6 +222,31 @@ namespace StarEco.UI
             }
 
             return UIUtility.AccentGreen;
+        }
+
+        private void BuildTypedLines(string fullText)
+        {
+            if (string.IsNullOrEmpty(fullText))
+            {
+                _typedLines = null;
+                return;
+            }
+
+            int len = fullText.Length;
+            if (len <= 0)
+            {
+                _typedLines = null;
+                return;
+            }
+
+            // index=0..len，分别对应“0..N字符”的前缀（只在开启一行时构建，避免逐帧 Substring）。
+            var lines = new string[len + 1];
+            lines[0] = string.Empty;
+            for (int i = 1; i <= len; i++)
+            {
+                lines[i] = fullText.Substring(0, i);
+            }
+            _typedLines = lines;
         }
 
         // ===== 构建 =====

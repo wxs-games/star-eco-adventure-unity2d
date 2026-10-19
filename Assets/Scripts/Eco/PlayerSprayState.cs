@@ -9,8 +9,11 @@ namespace StarEco.Player
     /// </summary>
     public class PlayerSprayState : PlayerStateBase
     {
+        private static readonly int InteractStateHash = Animator.StringToHash("Interact");
+
         private SprayController _spray;
         private PurifyTank _tank;
+        private Animator _animator;
 
         public PlayerSprayState(PlayerController player, PlayerStateMachine machine)
             : base(player, machine) { }
@@ -19,6 +22,7 @@ namespace StarEco.Player
         {
             _spray = Player.GetComponent<SprayController>();
             _tank = Player.GetComponent<PurifyTank>();
+            _animator = Player.GetComponent<Animator>();
             Player.TryFireAnim(PlayerAnimParams.Interact);
             _spray?.BeginSpray();
         }
@@ -46,6 +50,17 @@ namespace StarEco.Player
             {
                 Machine.SwitchState<PlayerAirState>();
                 return;
+            }
+
+            // 长按持续喷雾：若 Interact 片段播完又退回 locomotion，就在仍按住 K 时再次触发，
+            // 这样当前占位喷雾动画会持续循环表现，直到松键或净化剂耗尽。
+            if (_animator != null && !_animator.IsInTransition(0))
+            {
+                var state = _animator.GetCurrentAnimatorStateInfo(0);
+                if (state.shortNameHash != InteractStateHash)
+                {
+                    Player.TryFireAnim(PlayerAnimParams.Interact);
+                }
             }
 
             // 松开 / 净化剂耗尽 → 自动退出（R2，不报错不产生负值）

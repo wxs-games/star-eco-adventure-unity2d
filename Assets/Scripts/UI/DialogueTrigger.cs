@@ -14,6 +14,9 @@ namespace StarEco.UI
         [Tooltip("对话数据 Id（Resources/Data/dialogues.json）")]
         [SerializeField] private string _dialogueId = "ava_intro";
 
+        [Tooltip("后续重复对话 Id（为空则按 _dialogueId + _repeat 规则查找；找不到则继续使用首段对话）")]
+        [SerializeField] private string _repeatDialogueId = string.Empty;
+
         [Tooltip("交互键，默认 E")]
         [SerializeField] private KeyCode _interactKey = KeyCode.E;
 
@@ -28,6 +31,7 @@ namespace StarEco.UI
         private GameObject _bubble;
         private Text _bubbleText;
         private bool _playing;
+        private bool _hasTalkedOnce;
 
         private void OnEnable()
         {
@@ -72,12 +76,35 @@ namespace StarEco.UI
                 return;
             }
 
-            // 对话播放中不重复触发（面板自己处理推进）
+            // 对话播放中不重复触发（面板自己处理推进）。
+            // 关键：最后一句也是用 E 关闭面板，如果这里仅靠 panelOpen 判断，
+            // 同一帧里面板刚关闭时会再次被 GetKeyDown(E) 立即重开，形成“无限循环”。
             var panel = FindObjectOfType<DialoguePanel>();
             bool panelOpen = panel != null && panel.IsOpen;
-            if (!panelOpen && Input.GetKeyDown(_interactKey))
+
+            if (_playing)
             {
-                var data = DialogueRepository.Find(_dialogueId);
+                if (panelOpen)
+                {
+                    return;
+                }
+
+                // 等交互键完全抬起后，才允许下一次重新触发。
+                if (Input.GetKey(_interactKey))
+                {
+                    return;
+                }
+
+                _playing = false;
+                if (_bubble != null)
+                {
+                    _bubble.SetActive(_playerInRange);
+                }
+            }
+
+            if (!_playing && Input.GetKeyDown(_interactKey))
+            {
+                var data = ResolveDialogue();
                 if (data == null)
                 {
                     Debug.LogError($"[DialogueTrigger] 未找到对话：{_dialogueId}");
@@ -92,7 +119,29 @@ namespace StarEco.UI
                 UIManager.SafeOpen(DialoguePanel.PanelId);
                 panel = FindObjectOfType<DialoguePanel>();
                 panel?.Play(data);
+                _playing = true;
+                _hasTalkedOnce = true;
             }
+        }
+
+        private DialogueData ResolveDialogue()
+        {
+            if (!_hasTalkedOnce)
+            {
+                return DialogueRepository.Find(_dialogueId);
+            }
+
+            string repeatId = string.IsNullOrEmpty(_repeatDialogueId)
+                ? _dialogueId + "_repeat"
+                : _repeatDialogueId;
+
+            var repeatData = DialogueRepository.Find(repeatId);
+            if (repeatData != null)
+            {
+                return repeatData;
+            }
+
+            return DialogueRepository.Find(_dialogueId);
         }
 
         private void BuildBubble()

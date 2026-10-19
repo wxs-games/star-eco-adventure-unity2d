@@ -43,6 +43,30 @@
             ]
         },
         {
+            "Id": "ava_intro_repeat",
+            "Once": false,
+            "Entries": [
+                {
+                    "Speaker": "生态守卫者 · 艾娃",
+                    "AvatarTint": "#7CFC98",
+                    "Text": "又见面啦。先继续清理附近的塑料垃圾，净化值涨上去之后，这颗星球的呼吸会慢慢恢复。",
+                    "EventId": ""
+                },
+                {
+                    "Speaker": "生态守卫者 · 艾娃",
+                    "AvatarTint": "#7CFC98",
+                    "Text": "如果前面有大片障碍，就长按 L 蓄力；如果有污染生物靠近，就按 J 先把它们击退。",
+                    "EventId": ""
+                },
+                {
+                    "Speaker": "生态守卫者 · 艾娃",
+                    "AvatarTint": "#7CFC98",
+                    "Text": "准备好了就继续出发吧，我会在这里看着你把这颗星球救回来。",
+                    "EventId": ""
+                }
+            ]
+        },
+        {
             "Id": "signboard_plastic",
             "Once": false,
             "Entries": [

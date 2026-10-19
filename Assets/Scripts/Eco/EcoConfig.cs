@@ -52,8 +52,14 @@ namespace StarEco.Eco
         [Tooltip("净化剂容量（GDD §8 = 100）")]
         public int TankCapacity = 100;
 
-        [Tooltip("开局净化剂（GDD §8 = 50）")]
-        public int InitialTank = 50;
+        [Tooltip("开局净化剂（当前关卡体验：默认满槽开局）")]
+        public int InitialTank = 100;
+
+        [Tooltip("停止喷洒后，开始自动回复前的等待时间（秒）")]
+        public float TankRechargeDelay = 1.5f;
+
+        [Tooltip("净化剂自动回复速度（点/秒）")]
+        public float TankRechargePerSecond = 12f;
 
         [Tooltip("拾取物单次回复量")]
         public int PickupTankAmount = 20;

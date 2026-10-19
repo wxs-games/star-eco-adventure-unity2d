@@ -168,7 +168,6 @@ namespace StarEco.Eco
             var targets = _hitbox.Targets;
 
             int purifyAmount = Mathf.CeilToInt((_config != null ? _config.SprayDPS : 2) * tick);
-            bool hitEnemy = false;
 
             for (int i = 0; i < targets.Count; i++)
             {
@@ -181,25 +180,11 @@ namespace StarEco.Eco
                     continue;
                 }
 
-                // 通道二：对污染生物持续伤害（无击退；层过滤防自伤）
-                if (target.Hittable != null && IsEnemyLayer(target.Collider.gameObject))
-                {
-                    Vector2 dir = (Vector2)transform.position - (Vector2)target.Collider.bounds.center;
-                    target.Hittable.TakeDamage(new DamageInfo(purifyAmount, dir.normalized, gameObject)
-                    {
-                        IsPurify = true   // M8：Boss 按此标记套用净化倍率
-                    });
-                    hitEnemy = true;
-                }
+                // 喷壶只负责净化场景目标，不再直接击杀敌人。
             }
 
-            // 净化剂消耗：基础速率，命中敌方加倍（GDD §3.1）
+            // 净化剂消耗：按基础速率持续扣除。
             float rate = (_config != null ? _config.TankConsumePerSecond : 8) * tick;
-            if (hitEnemy)
-            {
-                rate *= _config != null ? _config.EnemySprayCostMultiplier : 2;
-            }
-
             _tank.Consume(Mathf.CeilToInt(rate));
 
             // fx_purify 节流播放（每 2 tick 一次）
@@ -258,7 +243,7 @@ namespace StarEco.Eco
 
         // ===== 蓄力净化波（同帧结算，R3：不等动画事件帧）=====
 
-        /// <summary>释放净化波：范围内 IPurifiable 收净化量、敌方收伤害（带击退），扣除净化剂。</summary>
+        /// <summary>释放净化波：范围内仅净化 IPurifiable，不再对敌方直接造成伤害。</summary>
         public void ReleasePurifyWave()
         {
             _tank?.Consume(_config != null ? _config.HeavyCost : 25);
@@ -293,17 +278,7 @@ namespace StarEco.Eco
                     continue;
                 }
 
-                var hittable = other.GetComponentInParent<IHittable>();
-                if (hittable != null && IsEnemyLayer(other.gameObject))
-                {
-                    Vector2 dir = ((Vector2)transform.position - (Vector2)other.bounds.center).normalized;
-                    hittable.TakeDamage(new DamageInfo(
-                        _config != null ? _config.HeavyDamage : 3, dir, gameObject)
-                    {
-                        KnockbackPower = _config != null ? _config.HeavyKnockback : 8f,
-                        IsPurify = true   // M8：蓄力净化波同样计为净化伤害
-                    });
-                }
+                // 蓄力波同样不再直接伤害敌人，敌人需靠近战攻击处理。
             }
 
             if (_heavyReleaseSfx != null)
