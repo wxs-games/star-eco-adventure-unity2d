@@ -10,8 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 8385951175216187951}
   - component: {fileID: 7711726814801472868}
-  - component: {fileID: 764039381399112714}
   - component: {fileID: 3856070942590266446}
+  - component: {fileID: 4719818574721998461}
   m_Layer: 0
   m_Name: GarbagePile
   m_TagString: Untagged
@@ -86,8 +86,27 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!61 &764039381399112714
-BoxCollider2D:
+--- !u!114 &3856070942590266446
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2231106049984160008}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4ba034844c5202f48ae3306f7d3fdf43, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _config: {fileID: 11400000, guid: 000763bf7438471499478357ff388c71, type: 2}
+  _fxPurifyPrefab: {fileID: 2503825716971219817, guid: 12ac78a39c003c44192709a11ab7c706, type: 3}
+  _cleanSprite: {fileID: 21300000, guid: eed610315d1f45a5b777f92e1d1470aa, type: 3}
+  _purifyRequired: -1
+  _purityValue: -1
+  _blocksPath: 0
+  _targetId: GarbagePile
+--- !u!60 &4719818574721998461
+PolygonCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -128,25 +147,35 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  serializedVersion: 2
-  m_Size: {x: 1.4415929, y: 0.6511062}
-  m_EdgeRadius: 0
---- !u!114 &3856070942590266446
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2231106049984160008}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4ba034844c5202f48ae3306f7d3fdf43, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _config: {fileID: 11400000, guid: 000763bf7438471499478357ff388c71, type: 2}
-  _fxPurifyPrefab: {fileID: 2503825716971219817, guid: 12ac78a39c003c44192709a11ab7c706, type: 3}
-  _cleanSprite: {fileID: 21300000, guid: eed610315d1f45a5b777f92e1d1470aa, type: 3}
-  _purifyRequired: -1
-  _purityValue: -1
-  _blocksPath: 0
-  _targetId: GarbagePile
+  m_Points:
+    m_Paths:
+    - - {x: -0.8009, y: -0.2356}
+      - {x: -0.5774, y: -0.2754}
+      - {x: -0.4425, y: -0.2467}
+      - {x: -0.3805, y: -0.3153}
+      - {x: -0.1504, y: -0.2887}
+      - {x: -0.0243, y: -0.333}
+      - {x: 0.2367, y: -0.2754}
+      - {x: 0.3805, y: -0.3064}
+      - {x: 0.4049, y: -0.2622}
+      - {x: 0.5022, y: -0.3108}
+      - {x: 0.6062, y: -0.2622}
+      - {x: 0.6858, y: -0.2777}
+      - {x: 0.781, y: -0.2135}
+      - {x: 0.5597, y: -0.0741}
+      - {x: 0.5819, y: -0.0188}
+      - {x: 0.4712, y: 0.0631}
+      - {x: 0.3761, y: 0.0476}
+      - {x: 0.3363, y: 0.229}
+      - {x: 0.0885, y: 0.2069}
+      - {x: 0.042, y: 0.1626}
+      - {x: 0.0553, y: 0.0896}
+      - {x: 0.0199, y: 0.0874}
+      - {x: -0.0907, y: 0.2688}
+      - {x: -0.2876, y: 0.3617}
+      - {x: -0.3341, y: 0.3086}
+      - {x: -0.2898, y: 0.2356}
+      - {x: -0.3009, y: 0.1162}
+      - {x: -0.4425, y: 0.1139}
+      - {x: -0.4735, y: -0.0476}
+  m_UseDelaunayMesh: 0

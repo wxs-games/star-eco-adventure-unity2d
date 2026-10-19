@@ -32,7 +32,7 @@ namespace StarEco.Eco
 
         private SpriteRenderer _sprite;
         private Sprite _originalSprite;
-        private BoxCollider2D _collider;
+        private Collider2D _collider;
         private int _progress;
         private bool _purified;
 
@@ -45,7 +45,7 @@ namespace StarEco.Eco
         private void Awake()
         {
             _sprite = GetComponent<SpriteRenderer>();
-            _collider = GetComponent<BoxCollider2D>();
+            _collider = GetComponent<Collider2D>();
 
             if (_config == null)
             {
