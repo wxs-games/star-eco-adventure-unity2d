@@ -50,7 +50,7 @@ SPECS = [
     dict(name='Player_HeavyAttack',cols=6, rows=3, n=18, cell=(692,833), target=760),
     dict(name='Player_Die',        cols=7, rows=1, n=7,  cell=(692,833), target=760),
     dict(name='Enemy03_Spawn',     cols=2, rows=2, n=4,  cell=(993,1124), target=900),
-    dict(name='Tower01_Aim',       cols=2, rows=2, n=4,  cell=(942,979), target=890),
+    dict(name='Tower01_Aim',       cols=2, rows=2, n=4,  cell=(942,979), target=890, anchor='base'),
     dict(name='Tower01_Fire',      cols=3, rows=2, n=6,  cell=(942,979), target=890, anchor='base'),
     dict(name='Boss01_Special',    cols=5, rows=3, n=14, cell=(831,798), target=760),
     dict(name='Boss01_Enrage',     cols=3, rows=2, n=6,  cell=(831,798), target=760),
