@@ -50,9 +50,9 @@ SPECS = [
     dict(name='Player_HeavyAttack',cols=6, rows=3, n=18, cell=(692,833), target=760),
     dict(name='Player_Die',        cols=7, rows=1, n=7,  cell=(692,833), target=760),
     dict(name='Enemy03_Spawn',     cols=2, rows=2, n=4,  cell=(993,1124), target=900),
-    # 注：Tower01_Aim 不在本表 —— 其塔体要求与 Tower01_Idle 定妆逐像素一致，
-    #     文生图无法保证，改由 make_aim_from_idle.py 从 Idle 4 帧派生（塔体零改动 + 炮口蓄能光效）。
-    #     若在此重新登记，跑全量管线会用 Sheets/raw/Tower01_Aim_raw.png 覆盖掉派生结果。
+    # 注：Tower01 的 Idle/Aim/Disable 均不在本表 —— 三套的塔体要求与定妆图 Tower01_Fire_00
+    #     逐像素一致，文生图无法保证，改由 make_tower_sets_from_fire.py 以 Fire_00 为底图派生
+    #     （塔体零改动 + 背景区叠加效果）。若在此重新登记，跑全量管线会用 raw 覆盖掉派生结果。
     dict(name='Tower01_Fire',      cols=3, rows=2, n=6,  cell=(942,979), target=890, anchor='base'),
     dict(name='Boss01_Special',    cols=5, rows=3, n=14, cell=(831,798), target=760),
     dict(name='Boss01_Enrage',     cols=3, rows=2, n=6,  cell=(831,798), target=760),
