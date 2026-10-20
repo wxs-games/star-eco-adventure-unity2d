@@ -88,16 +88,16 @@ ArtAssets\
 | Enemy03_Hurt | 2 | 2×1 | 20 | 否 | 帧1 |
 | Enemy03_Die | 10 | 5×2 | 15 | 否 | 帧10 DieEnd（坍塌冒烟） |
 
-### Tower01 毒气防御塔（关卡3·固定）Cell 1039×979 / 20 帧　localScale ≈ 0.77（约1.8单位）
+### Tower01 毒气防御塔（关卡3·固定）Cell 1039×979 / 19 帧　localScale ≈ 0.77（约1.8单位）
 | Clip | 帧 | 网格 | Samples | 循环 | 事件 |
 |---|---|---|---|---|---|
 | Tower01_Idle | 4 | 2×2 | 12 | 是 | 警戒灯/风扇 |
 | Tower01_Aim | 4 | 2×2 | 12 | 否 | 帧4 锁定音（攻击前摇） |
 | Tower01_Fire | 6 | 3×2 | 12 | 否 | 帧3 HitOn（喷毒）/ 帧5 HitOff |
-| Tower01_Disable | 6 | 3×2 | 12 | 否 | 帧6 停机（被净化变灰） |
+| Tower01_Disable | 5 | 3×2 | 12 | 否 | 帧5 停机（被净化变灰） |
 
 > Tower01 四套**统一 1039×979**（画格与 Fire 同规格，塔体在格内的像素坐标四套完全一致，切换 Clip 时零位移，故不再按底座锚点自适应宽度）；高度 979、底留白不变。
-> 定妆图 = `Tower01_Fire_00`（射击第一帧）。Tower01_Idle / Aim / Disable **不走生成式管线**：塔体逐像素取自 Fire_00，仅在背景区叠加效果 —— Idle：罐顶警戒灯辉光脉动 + 风扇轮缘风影弧；Aim：炮口蓄能绿气由弱到强；Disable：逐帧去饱和变灰 + 顶部升烟。派生脚本见 `Tools/art-pipeline/make_tower_sets_from_fire.py`（三套的第 1 帧均与 Fire_00 逐像素相同）。
+> 定妆图 = `Tower01_Fire_00`（射击第一帧）。Tower01_Idle / Aim / Disable **不走生成式管线**：塔体逐像素取自 Fire_00，仅在背景区叠加效果 —— Idle：罐顶警戒灯辉光脉动 + 风扇轮缘风影弧；Aim：炮口蓄能绿气由弱到强；Disable：逐帧去饱和变灰 + 顶部升烟。派生脚本见 `Tools/art-pipeline/make_tower_sets_from_fire.py`（三套的第 1 帧均与 Fire_00 逐像素相同）。Disable 做 **5 帧**是刻意与 `Disable.anim` 的 5 个键（00..04、末键 t=1/3 s）对齐，使**末帧即「全灰停机」终态**而不是永不播放的第 6 帧。
 > 四套 Clip 同一座塔：粗短炮管一律朝左上 + 圆顶橄榄绿锈蚀塔身 + 塔身左侧大红圆灯 + 顶部金框白色压力表 + 右侧红顶黄黑斜条纹罐 + 右下黑色辐条风扇轮 + 喇叭形铆钉底座。
 
 ### Boss01 工厂污染核心（关卡3 最终 BOSS）Cell 831×798 / 77 帧　localScale ≈ 2.25（约4.5单位）

@@ -8,12 +8,12 @@
 三套的效果（除 Disable 的「变灰」按语义作用于塔体颜色外，其余一律只写在背景区）：
   Idle   : 塔体不动；罐顶红色警戒灯辉光脉动 + 风扇轮外侧风影弧（对应 警戒灯/风扇）
   Aim    : 塔体不动；炮口绿气蓄能，由弱到强（攻击前摇，末帧锁定最强）
-  Disable: 塔体几何不动；逐帧去饱和变灰（被净化停机），顶部冒烟，末帧全灰
+  Disable: 塔体几何不动；逐帧去饱和变灰（被净化停机），顶部冒烟，末帧全灰（5 帧，末帧即终态）
 
 硬约束（脚本保证）：
   - 画格与 Fire 同为 1039x979，塔体在格内的像素坐标与 Fire_00 完全相同 -> 四套零位移；
   - 底图 alpha<=8 的背景区才叠加；塔体（alpha>8）像素除 Disable 的变灰外逐点不变；
-  - 输出沿用 Frames/<name>/<name>_NN.png 原名与原帧数（Idle 4 / Aim 4 / Disable 6），
+  - 输出沿用 Frames/<name>/<name>_NN.png 原名与原帧数（Idle 4 / Aim 4 / Disable 5），
     .meta/guid 不变 -> 三个 .anim 引用不失效。
 
 用法：python make_tower_sets_from_fire.py
@@ -210,8 +210,10 @@ def main():
     ys, xs = np.where(base[..., 3] > ALPHA_MIN)
     sx = float((xs.min() + xs.max()) / 2 + 52)      # 顶部偏右：从塔身最高处升起
     sy = float(ys.min() + 112)
-    plan = [(0.00, 1.00, 0.00), (0.08, 1.00, 0.25), (0.22, 0.99, 0.50),
-            (0.45, 0.97, 0.70), (0.70, 0.95, 0.85), (1.00, 0.92, 1.00)]
+    # 5 帧：Disable.anim 只有 5 个键（00..04，末键 t=1/3 s），故素材也做 5 帧，
+    # 让末帧就是「全灰停机」终态，避免第 6 帧永远播不到。
+    plan = [(0.00, 1.00, 0.00), (0.10, 1.00, 0.22), (0.32, 0.99, 0.50),
+            (0.65, 0.97, 0.78), (1.00, 0.92, 1.00)]
     dis = [Image.fromarray(disable_frame(base, t, dim, smoke_plume(sx, sy, st)), 'RGBA')
            for (t, dim, st) in plan]
     write_set('Tower01_Disable', dis, 3)
