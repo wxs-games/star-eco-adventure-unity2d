@@ -24,6 +24,7 @@ except ImportError:
 # 脚本位于 <工程根>\Tools\art-pipeline\，向上两级定位工程根（含 Assets 的目录），免配置路径
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'Assets', 'Art', 'Art')
 BOT_GAP = 7          # 与既有素材一致的脚底留白
+BASE_BAND = 74       # 底座锚点带高度（脚底留白之上），见 base_anchor_x
 WHITE_THR = 232      # 近白阈值
 BLACK_THR = 60       # 近黑阈值
 KEEP_RATIO = 0.12    # 小于最大连通域该比例的碎影丢弃
@@ -50,6 +51,7 @@ SPECS = [
     dict(name='Player_Die',        cols=7, rows=1, n=7,  cell=(692,833), target=760),
     dict(name='Enemy03_Spawn',     cols=2, rows=2, n=4,  cell=(993,1124), target=900),
     dict(name='Tower01_Aim',       cols=2, rows=2, n=4,  cell=(942,979), target=890),
+    dict(name='Tower01_Fire',      cols=3, rows=2, n=6,  cell=(942,979), target=890, anchor='base'),
     dict(name='Boss01_Special',    cols=5, rows=3, n=14, cell=(831,798), target=760),
     dict(name='Boss01_Enrage',     cols=3, rows=2, n=6,  cell=(831,798), target=760),
 ]
@@ -151,6 +153,54 @@ def content_rgba(cell_rgb, alpha):
     rgba = np.dstack([cell_rgb, alpha])
     return Image.fromarray(rgba, 'RGBA').crop(bbox), bbox
 
+def tile_parts(alpha, largest_only):
+    """返回某格清理后的主体数；(0, True) 表示空帧。"""
+    m = alpha > ALPHA_MIN
+    if not m.any():
+        return 0
+    if largest_only:      # 只留最大域，必然是 1
+        return 1
+    if not HAVE_SCIPY:
+        return 1
+    lbl, nn = ndimage.label(m)
+    areas = ndimage.sum(m, lbl, range(1, nn + 1))
+    return int((areas >= areas.max() * KEEP_RATIO).sum())
+
+def check_tiles(master, cols, rows, n, name, largest_only, parts):
+    """网格校验：每格清理后应恰好含 parts 个主体，否则报错中止。
+
+    分量数偏多几乎总是 raw 的真实网格与声明的 cols×rows 不符：按声明切格会跨行，
+    一格叠进两个半截身体（Tower01_Fire 出过的坏图就是这样静默通过的）；
+    分量数为 0 则说明该格被切空。发现不符直接 raise，避免再产出坏 sheet。
+    """
+    H, W = master.shape[:2]
+    cellw, cellh = W // cols, H // rows
+    bad = []
+    for i in range(n):
+        r, c = divmod(i, cols)
+        tile = master[r*cellh:(r+1)*cellh, c*cellw:(c+1)*cellw]
+        cnt = tile_parts(tile[..., 3], largest_only)
+        if cnt != parts:
+            bad.append(f'f{i}={cnt}')
+    if bad:
+        raise RuntimeError(
+            f'{name}: 网格校验未通过 —— 每格期望 {parts} 个主体，实得 [{" ".join(bad)}]；'
+            f'raw={W}x{H} 按 {cols}x{rows} 切格得 {cellw}x{cellh}。'
+            f'请核对 raw 的真实网格与声明是否一致（每帧须完整落在自己的格内）。')
+
+def base_anchor_x(alpha, bbox):
+    """主体「底座带」的水平中心，在内容 bbox 内的相对 x。
+    固定式单位（炮塔）的炮管朝向逐帧变化时，按整帧内容 bbox 居中会把塔身带偏
+    （Tower01_Fire 实测底座中心极差 91px）；改用底座锚点后塔身不再左右滑动。"""
+    ys = np.where((alpha > ALPHA_MIN).any(axis=1))[0]
+    y1 = ys.max()
+    top = max(ys.min(), y1 - BOT_GAP - BASE_BAND + 1)
+    bot = max(ys.min() + 1, y1 - BOT_GAP + 1)
+    xs = np.where((alpha[top:bot, :] > ALPHA_MIN).any(axis=0))[0]
+    if len(xs) == 0:            # 兜底：内容过扁时退回整帧中心
+        xs = np.where((alpha > ALPHA_MIN).any(axis=0))[0]
+    return (xs.min() + xs.max() + 1) / 2 - bbox[0]
+
 def process(spec):
     name = spec['name']; cols=spec['cols']; rows=spec['rows']; n=spec['n']
     cw, ch = spec['cell']; target = spec['target']
@@ -161,29 +211,38 @@ def process(spec):
     master, matted = load_master(raw_p)
     H, W = master.shape[:2]
     cellw, cellh = W//cols, H//rows
-    frames = []
+    check_tiles(master, cols, rows, n, name, spec.get('largest', False), spec.get('parts', 1))
+    frames, anchors = [], []
     for i in range(n):
         r, c = divmod(i, cols)
         tile = master[r*cellh:(r+1)*cellh, c*cellw:(c+1)*cellw]
         a = tile[..., 3]
         gate = clean_mask(a > ALPHA_MIN, spec.get('largest', False))
         alpha = np.where(gate, a, 0).astype(np.uint8)
-        f, _ = content_rgba(tile[..., :3], alpha)
+        f, bbox = content_rgba(tile[..., :3], alpha)
         frames.append(f)
+        anchors.append(base_anchor_x(alpha, bbox) if f is not None else None)
     # 坏帧替换: replace={目标帧: 来源帧}, 如末帧与水印重叠被切时用首帧替补
     for dst, src in (spec.get('replace') or {}).items():
-        frames[dst] = frames[src]
-    ok = [f for f in frames if f is not None]
+        frames[dst] = frames[src]; anchors[dst] = anchors[src]
+    ok = [(f, ax) for f, ax in zip(frames, anchors) if f is not None]
     if len(ok) < max(1, n-2):
         raise RuntimeError(f'{name}: 有效帧过少 {len(ok)}/{n}')
     # ref: 基准身高取条内最高帧（max）。若按中位数，最高帧缩放后会超出画格被裁，
-    # 死亡这类「站立帧少、躺平帧多」的双峰分布尤其明显（max 亦即站立帧高度）
+    # 死亡这类「站立帧少、躺平帧多」的双峰分布尤其明显（max亦即站立帧高度）
     ref_mode = spec.get('ref', 'max')
-    heights = sorted(f.height for f in ok)
+    heights = sorted(f.height for f, _ in ok)
     ref_h = max(heights) if ref_mode == 'max' else heights[len(heights)//2]
     scale = target / ref_h
-    # 画格宽度同样以条内最宽帧为基准：固定 692 会把挥砍等横向大动作左右裁掉
-    cw_out = max(cw, max(round(f.width*scale) for f in ok))
+    anchor = spec.get('anchor')
+    if anchor == 'base':
+        # 底座锚点模式：每帧把底座中心摆到画格中心，画格宽取各帧「底座到内容两端」
+        # 的最大值×2，保证炮管/毒雾伸得最远的那帧也不被裁。
+        half = max(max(ax, f.width - ax) * scale for f, ax in ok)
+        cw_out = max(cw, int(np.ceil(half * 2)))
+    else:
+        # 画格宽度以条内最宽帧为基准：固定 692 会把挥砍等横向大动作左右裁掉
+        cw_out = max(cw, max(round(f.width*scale) for f in frames if f is not None))
     sub = os.path.join(ROOT, subdir_for(name))
     fdir = os.path.join(sub, 'Frames', name); os.makedirs(fdir, exist_ok=True)
     sheet = Image.new('RGBA', (cw_out*cols, ch*rows), (0,0,0,0))
@@ -196,7 +255,9 @@ def process(spec):
                 a = f.split()[-1].filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.6))
                 f.putalpha(a)
             # 溢出防裁：宽/高超格时 clamp 到 0，让溢出端从右/下裁掉，保住 bbox 左上（人物主体）
-            x = max(0, (cw_out - nw)//2)
+            # 底座锚点模式改为按底座中心定位（塔身不随炮管朝向滑动），否则按内容 bbox 居中
+            x = max(0, round(cw_out/2 - anchors[i]*scale)) if anchor == 'base' \
+                else max(0, (cw_out - nw)//2)
             y = max(0, ch - BOT_GAP - nh)
             out.paste(f, (x, y))        # 目标全透明, 直贴保留 straight alpha, 避免 mask 混合压暗边缘
         out.save(os.path.join(fdir, f'{name}_{i:02d}.png'))
@@ -205,7 +266,8 @@ def process(spec):
     sheet.save(sp)
     src_kind = '阈值抠图' if matted else '原生 alpha'
     wide = f'  画格宽={cw_out}(基准{cw}+自适应)' if cw_out != cw else ''
-    print(f'[OK] {name}: {n}帧  来源={src_kind}  raw格={cellw}x{cellh}{wide}  '
+    anc = '  锚点=底座' if anchor == 'base' else ''
+    print(f'[OK] {name}: {n}帧  来源={src_kind}  raw格={cellw}x{cellh}{wide}{anc}  '
           f'基准身高[{ref_mode}]={ref_h}  scale={scale:.3f}  -> {os.path.relpath(sp, ROOT)}')
 
 if __name__ == '__main__':
