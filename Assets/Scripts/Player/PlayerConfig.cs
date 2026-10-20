@@ -70,6 +70,9 @@ namespace StarEco.Player
         [Tooltip("空中每段允许的翻滚次数（落地重置）")]
         public int AirDodgeCount = 1;
 
+        [Tooltip("翻滚穿透层：翻滚期间本体不与该层发生物理碰撞（可穿过怪物、不被顶回）")]
+        public LayerMask DodgePassThroughLayers = 1 << 9;
+
         /// <summary>翻滚水平速度（由距离/时长推导，避免两处手填不一致）。</summary>
         public float DodgeSpeed => DodgeDuration > 0f ? DodgeDistance / DodgeDuration : 0f;
 

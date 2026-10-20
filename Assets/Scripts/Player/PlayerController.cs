@@ -42,6 +42,10 @@ namespace StarEco.Player
         private float _dodgeCooldownTimer;
         private int _airDodgesUsed;
 
+        // 翻滚穿透：本体碰撞体在翻滚期间排除怪物层
+        private Collider2D _bodyCollider;
+        private int _baseExcludeLayers;
+
         // 受击
         private bool _pendingHurt;
         private float _invincibleTimer;
@@ -59,6 +63,12 @@ namespace StarEco.Player
             Combat = GetComponent<StarEco.Combat.PlayerCombat>();
             Spray = GetComponent<StarEco.Eco.SprayController>();
             Body.freezeRotation = true;
+
+            _bodyCollider = GetComponent<Collider2D>();
+            if (_bodyCollider != null)
+            {
+                _baseExcludeLayers = _bodyCollider.excludeLayers.value;
+            }
 
             if (_config == null)
             {
@@ -252,6 +262,22 @@ namespace StarEco.Player
             }
 
             Sprite.flipX = dir < 0f;
+        }
+
+        /// <summary>
+        /// 翻滚穿透：开启时本体碰撞体排除怪物层，翻滚中可穿过敌人、不被其碰撞体顶回；
+        /// 关闭时还原为初始排除层。由 <see cref="PlayerDodgeState"/> 在 Enter/Exit 成对调用。
+        /// </summary>
+        public void SetDodgePassThrough(bool on)
+        {
+            if (_bodyCollider == null || _config == null)
+            {
+                return;
+            }
+
+            _bodyCollider.excludeLayers = on
+                ? _baseExcludeLayers | _config.DodgePassThroughLayers.value
+                : _baseExcludeLayers;
         }
 
         /// <summary>水平移动（状态机在 FixedTick 调用；air 参数控制空中控制力；speedFactor 为移速因子，喷洒减速用）。</summary>

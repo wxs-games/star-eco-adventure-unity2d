@@ -89,7 +89,7 @@ namespace StarEco.EditorTools
             {
                 var clipName = Path.GetFileName(dir); // 如 Enemy01_Idle
                 var shortName = clipName.Substring(clipName.LastIndexOf('_') + 1); // 如 Idle
-                bool loop = shortName == "Idle" || shortName == "Move" || shortName == "Chase" || shortName == "Aim";
+                bool loop = shortName == "Idle" || shortName == "Move" || shortName == "Chase";
                 var clip = BuildClip(clipName, shortName, dir, outputRoot, loop, DefaultFps);
                 if (clip != null) clips[shortName] = clip;
             }

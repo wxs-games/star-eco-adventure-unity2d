@@ -11,7 +11,7 @@ namespace StarEco.EnemyAI
         public override void Tick()
         {
             if (TryHandleCombatTransitions()) return;
-            if (Controller.HasTarget)
+            if (Controller.HasTarget && Controller.AttackCooldownTimer <= 0f)
             {
                 Machine.SwitchState<Tower01AimState>();
             }
@@ -84,10 +84,8 @@ namespace StarEco.EnemyAI
                 _timer -= Time.deltaTime;
                 if (_timer <= 0f)
                 {
-                    if (Controller.HasTarget)
-                        Machine.SwitchState<Tower01AimState>();
-                    else
-                        Machine.SwitchState<Tower01IdleState>();
+                    // 回到 Idle 等攻击冷却走完，再由 Idle 的门控决定是否重新瞄准
+                    Machine.SwitchState<Tower01IdleState>();
                 }
             }
         }

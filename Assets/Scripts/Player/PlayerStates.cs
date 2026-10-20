@@ -322,7 +322,7 @@ namespace StarEco.Player
 
     /// <summary>
     /// 翻滚闪避（R1-R5）：时长内以配置速度位移，全程无敌；方向取当前水平输入，无输入取朝向。
-    /// 时长/距离/无敌/冷却均来自 PlayerConfig；翻滚期间锁输入。
+    /// 时长/距离/无敌/冷却均来自 PlayerConfig；翻滚期间锁输入，并穿透怪物（不与怪物层碰撞、不被顶回）。
     /// </summary>
     public class PlayerDodgeState : PlayerStateBase
     {
@@ -342,10 +342,12 @@ namespace StarEco.Player
             Player.BeginDodge(_dir);                        // 起冷却 / 开无敌窗 / 记空中次数
             Player.TryFireAnim(PlayerAnimParams.Roll);      // 触发已有 Roll 动画状态
             Player.InputLocked = true;                      // 翻滚期间锁输入（R5）
+            Player.SetDodgePassThrough(true);               // 翻滚期间穿过怪物（不与怪物层发生碰撞）
         }
 
         public override void Exit()
         {
+            Player.SetDodgePassThrough(false);
             Player.InputLocked = false;
         }
 

@@ -30,6 +30,9 @@ MonoBehaviour:
   DodgeInvincibleTime: 0.33
   DodgeCooldown: 0.6
   AirDodgeCount: 1
+  DodgePassThroughLayers:
+    serializedVersion: 2
+    m_Bits: 512
   GroundLayer:
     serializedVersion: 2
     m_Bits: 1024

@@ -6,7 +6,7 @@ using StarEco.EnemyAI.Events;
 namespace StarEco.EnemyAI
 {
     /// <summary>
-    /// Tower01 毒气防御塔：固定单位，Idle→Aim→Fire→Aim 循环，Disable 终态。
+    /// Tower01 毒气防御塔：固定单位，Idle→Aim→Fire→Idle（攻击冷却）循环，Disable 终态。
     /// IsStatic=true，KnockbackResponse=0，无 Rigidbody2D，默认不可死。
     /// </summary>
     public class Tower01Controller : EnemyControllerBase
@@ -120,15 +120,12 @@ namespace StarEco.EnemyAI
             }
         }
 
-        /// <summary>Animation Event: FireEnd — Fire → 冷却后 Aim/Idle。</summary>
+        /// <summary>Animation Event: FireEnd — 开火结束，回 Idle 等冷却。</summary>
         public void OnFireEnd()
         {
             if (Machine.CurrentType == typeof(Tower01FireState))
             {
-                if (HasTarget)
-                    Machine.SwitchState<Tower01AimState>();
-                else
-                    Machine.SwitchState<Tower01IdleState>();
+                Machine.SwitchState<Tower01IdleState>();
             }
         }
 

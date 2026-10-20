@@ -31,7 +31,7 @@ MonoBehaviour:
   ProjectileMaxRange: 14
   ProjectilePrewarm: 4
   AimSeconds: 0.4
-  FireSeconds: 0.3
+  FireSeconds: 0.5
   SpawnSeconds: 0
   DropTable: {fileID: 0}
   AnimFrameRate: 12
