@@ -206,3 +206,30 @@ alpha-first 精灵图集管线：入口先归一化为**透明底 RGBA master**�
 `TextureImporter` 反射确认**不存在** `spriteAlignment` / `spriteMeshType`（只有无用的 `spritePivot`），写 `.meta` 的 `alignment: 1` 也不生效——`sprite.bounds.center.y` 始终是 `-高/2`，即**实际按 Center pivot 处理**。
 因此所有道具统一用 Center 语义摆放：`position.y = 地面顶面(0) + 高度/2`（悬浮物再加 yOffset），`localScale` 归一为 1。
 FullRect / pivot 一律在 `.meta` 文本层设置，不走 API。
+
+## 七、UI 素材（M11：主菜单）
+
+目录 `Assets/Resources/UI/Menu/`（与 `UI/HUD/` 同级）。主菜单原先全靠运行时代码画纯色块，本次整体换成 AI 生成贴图。
+
+| 素材 | 源尺寸 → 导入尺寸 | 用途 | 用法 |
+|---|---|---|---|
+| `menu_bg.png` | 2560×1440 → 1920×1080 | 全屏背景插画（左净水雨林 / 右污染工厂，中段刻意压暗留白） | 背景 Image，Type=**Simple**，Stretch |
+| `menu_title_plate.png` | 2172×792 → 2048×747 | 标题牌匾，垫在「星际环保」之下 | RectTransform **700×255**，Type=Simple |
+| `menu_button.png` | 2114×740 → 2048×717 | 按钮玻璃绿底板，6 个按钮共用一张 | **340×74**，Type=Simple |
+
+- 加载入口：`StarEco.UI.MenuArt`（`Resources.Load<Sprite>("UI/Menu/…")`，缓存；取不到时自动回退原纯色表现）。
+- 按钮皮肤会把 `Image.color` 置白并重设颜色渐变（常态白 / 悬停 ×1.25 / 按下 ×0.72 / 禁用灰）。
+
+**生成与后处理约定**
+
+- 含文字的贴图一律不生成文字（AI 中文字形不可靠）。中文标题仍由 `Text` 组件渲染，牌匾只做边框装饰。
+- 抠底走**洋红键**而非白底：提示词要求主体置于纯洋红 `#FF00FF` 背景；脚本 `_tmp/menu/process.py` 以 `min(r-g, b-g)` 计算 alpha，并把与主体**不连通**的微弱光晕整体清零（首版未清，缩到 340px 后整屏浮一层绿雾），最后 despill 把残留洋红压回绿色域。
+- `.meta` 以现有 HUD 帧贴图为模板生成（`spriteBorder` 归零，Simple 不需要九宫格 border）。
+- 导入时 `maxTextureSize=2048` 会把 2114 / 2172 宽的图等比缩到 2048，观感无影响。
+
+**踩坑：`Text` 大字号必须给够行框高度**
+
+`UIUtility.CreateText` 的 `verticalOverflow` 固定为 `Truncate`。96 号字整行高约 **136px**，标题 RectTransform 只给 130px 时整行被丢弃（`cachedTextGenerator.lineCount == 0`），标题完全不显示且**不报任何错**；行框已给到 170px。
+
+另：运行时 `AddComponent<Button>()` **不会**自动填 `targetGraphic`（`Selectable.Reset()` 仅在编辑器执行），需手动赋值，否则悬停/按下的颜色渐变不生效、换皮也会因 `targetGraphic` 为空而静默跳过。
+

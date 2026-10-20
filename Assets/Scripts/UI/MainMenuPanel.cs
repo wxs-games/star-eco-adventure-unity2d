@@ -64,27 +64,50 @@ namespace StarEco.UI
 
             var root = canvas.transform;
 
+            // 背景：AI 生成的主菜单插画（素材缺失时退回纯色底，保证可运行）
             var bg = UIUtility.CreateImage("Background", root, new Color(0.06f, 0.10f, 0.09f, 1f));
             UIUtility.Stretch(bg.GetComponent<RectTransform>());
+            var bgSprite = MenuArt.Background;
+            if (bgSprite != null)
+            {
+                var bgImage = bg.GetComponent<Image>();
+                bgImage.sprite = bgSprite;
+                bgImage.type = Image.Type.Simple;
+                bgImage.color = Color.white;
+                bgImage.preserveAspect = false;
+            }
 
-            // 顶部氛围色带（暗示污染→清新的主题）
-            var band = UIUtility.CreateImage("Band", root,
-                new Color(0.29f, 0.60f, 0.36f, 0.35f));
-            var bandRt = band.GetComponent<RectTransform>();
-            bandRt.anchorMin = new Vector2(0f, 1f);
-            bandRt.anchorMax = new Vector2(1f, 1f);
-            bandRt.pivot = new Vector2(0.5f, 1f);
-            bandRt.sizeDelta = new Vector2(0f, 220f);
-            bandRt.anchoredPosition = Vector2.zero;
+            // 压暗层：保证标题与按钮在任何底图上都清晰可读
+            var dim = UIUtility.CreateImage("ReadabilityDim", root, new Color(0f, 0f, 0f, 0.28f));
+            UIUtility.Stretch(dim.GetComponent<RectTransform>());
+
+            // 标题牌匾：AI 生成的装饰边框，垫在标题文字之下
+            var plateSprite = MenuArt.TitlePlate;
+            if (plateSprite != null)
+            {
+                var plate = UIUtility.CreateImage("TitlePlate", root, Color.white);
+                var plateImage = plate.GetComponent<Image>();
+                plateImage.sprite = plateSprite;
+                plateImage.type = Image.Type.Simple;
+
+                var plateRt = plate.GetComponent<RectTransform>();
+                plateRt.anchorMin = new Vector2(0.5f, 1f);
+                plateRt.anchorMax = new Vector2(0.5f, 1f);
+                plateRt.pivot = new Vector2(0.5f, 0.5f);
+                plateRt.sizeDelta = new Vector2(700f, 255f);
+                plateRt.anchoredPosition = new Vector2(0f, -130f);
+            }
 
             var title = UIUtility.CreateText("Title", root, "星际环保", 96,
                 TextAnchor.MiddleCenter, UIUtility.TextMain);
+            // 注意：Text 的 verticalOverflow 为 Truncate，96 号字整行高约 136px，
+            // 行框必须留够高度，否则整行被丢弃、标题完全不显示（曾踩）。
             var titleRt = title.GetComponent<RectTransform>();
             titleRt.anchorMin = new Vector2(0.5f, 1f);
             titleRt.anchorMax = new Vector2(0.5f, 1f);
             titleRt.pivot = new Vector2(0.5f, 1f);
-            titleRt.sizeDelta = new Vector2(0f, 130f);
-            titleRt.anchoredPosition = new Vector2(0f, -60f);
+            titleRt.sizeDelta = new Vector2(900f, 170f);
+            titleRt.anchoredPosition = new Vector2(0f, -45f);
 
             var subtitle = UIUtility.CreateText("Subtitle", root, "—— 动作冒险 · 毕业设计 ——", 32,
                 TextAnchor.MiddleCenter, UIUtility.AccentGreen);
@@ -92,8 +115,8 @@ namespace StarEco.UI
             subtitleRt.anchorMin = new Vector2(0.5f, 1f);
             subtitleRt.anchorMax = new Vector2(0.5f, 1f);
             subtitleRt.pivot = new Vector2(0.5f, 1f);
-            subtitleRt.sizeDelta = new Vector2(0f, 50f);
-            subtitleRt.anchoredPosition = new Vector2(0f, -190f);
+            subtitleRt.sizeDelta = new Vector2(900f, 50f);
+            subtitleRt.anchoredPosition = new Vector2(0f, -265f);
 
             // 按钮列
             var column = UIUtility.CreateObject("Buttons", root);
@@ -139,6 +162,12 @@ namespace StarEco.UI
             var quitButton = UIUtility.CreateButton("QuitButton", column.transform, "退出游戏",
                 new Vector2(340f, 74f), new Vector2(0f, -250f));
             quitButton.onClick.AddListener(OnQuitClicked);
+
+            // 按钮皮肤：换成 AI 生成的玻璃绿贴图（素材缺失时保留原纯色按钮）
+            foreach (var button in column.GetComponentsInChildren<Button>(true))
+            {
+                MenuArt.ApplyButtonSkin(button);
+            }
 
             _versionText = UIUtility.CreateText("Version", root,
                 "Unity 2021.3 · M7 原型", 22, TextAnchor.LowerRight,
@@ -225,6 +254,89 @@ namespace StarEco.UI
                 case 3: return Level03;
                 default: return Level01;
             }
+        }
+    }
+
+    /// <summary>
+    /// 主菜单美术资源入口（M11）：统一从 Resources 加载 AI 生成的贴图并缓存。
+    /// 素材缺失时返回 null，调用方回退到原有纯色表现，保证界面始终可运行。
+    /// </summary>
+    public static class MenuArt
+    {
+        private const string Root = "UI/Menu/";
+
+        private static Sprite _background;
+        private static Sprite _titlePlate;
+        private static Sprite _button;
+        private static bool _loaded;
+
+        /// <summary>主菜单全屏背景插画。</summary>
+        public static Sprite Background
+        {
+            get { EnsureLoaded(); return _background; }
+        }
+
+        /// <summary>标题装饰牌匾。</summary>
+        public static Sprite TitlePlate
+        {
+            get { EnsureLoaded(); return _titlePlate; }
+        }
+
+        /// <summary>按钮玻璃底板。</summary>
+        public static Sprite Button
+        {
+            get { EnsureLoaded(); return _button; }
+        }
+
+        private static void EnsureLoaded()
+        {
+            if (_loaded)
+            {
+                return;
+            }
+
+            _loaded = true;
+            _background = Resources.Load<Sprite>(Root + "menu_bg");
+            _titlePlate = Resources.Load<Sprite>(Root + "menu_title_plate");
+            _button = Resources.Load<Sprite>(Root + "menu_button");
+        }
+
+        /// <summary>
+        /// 把按钮底图换成贴图，并重设颜色渐变（贴图正常显示为原色，
+        /// 悬停提亮、按下压暗、禁用转灰）。素材缺失时保持原纯色按钮不动。
+        /// </summary>
+        public static void ApplyButtonSkin(Button button)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            // 运行时 AddComponent<Button> 不会自动填 targetGraphic（Reset 仅编辑器执行），
+            // 这里补上并顺带修好悬停/按下的颜色渐变。
+            var image = button.targetGraphic as Image;
+            if (image == null)
+            {
+                image = button.GetComponent<Image>();
+                button.targetGraphic = image;
+            }
+
+            var sprite = Button;
+            if (sprite == null || image == null)
+            {
+                return;
+            }
+
+            image.sprite = sprite;
+            image.type = Image.Type.Simple;
+            image.color = Color.white;
+
+            var colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1.25f, 1.25f, 1.25f, 1f);
+            colors.pressedColor = new Color(0.72f, 0.72f, 0.72f, 1f);
+            colors.disabledColor = new Color(0.42f, 0.42f, 0.45f, 1f);
+            button.colors = colors;
         }
     }
 }
