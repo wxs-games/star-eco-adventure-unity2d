@@ -496,15 +496,20 @@ namespace StarEco.EditorTools
             if (displaySprite != null)
             {
                 // PPU=378 后角色视觉高约 2 世界单位（原 PPU=100 时是 8.33）。
-                // Pivot = Center（.meta alignment:0）→ bounds 中心即 transform 原点，
-                // 碰撞体 offset 取 0 即与视觉重合；size 取视觉 ×0.9 留宽容手感。
+                // Pivot = Center（.meta alignment:0）→ bounds 中心即 transform 原点；
+                // size 取视觉 ×0.9 留宽容手感。
                 Vector2 size = (Vector2)displaySprite.bounds.size * 0.9f;
-                collider.offset = Vector2.zero;
                 // 圆角 + 无摩擦材质：滑过方块/平台接缝时不被"啃住"（2026-10-20 用户选定方案）
                 collider.size = size - Vector2.one * (BodyEdgeRadius * 2f);
                 collider.edgeRadius = BodyEdgeRadius;
                 collider.sharedMaterial =
                     AssetDatabase.LoadAssetAtPath<PhysicsMaterial2D>(BodyPhysicsMaterialPath);
+
+                // offset 取 0（与视觉同心）时，物理底边比精灵脚底高 5% 精灵高，站立时精灵脚底
+                // 陷进地面约 0.11u。下移 offset 让物理底边（含圆角半径 r 的向外膨胀）正好贴住
+                // 精灵脚底 —— 与敌人碰撞体同一约定（2026-10-20 修复）。
+                collider.offset = new Vector2(0f,
+                    collider.size.y * 0.5f + BodyEdgeRadius - displaySprite.bounds.size.y * 0.5f);
             }
 
             go.AddComponent<Animator>().runtimeAnimatorController = controller;

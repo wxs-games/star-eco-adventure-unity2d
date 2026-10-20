@@ -25,6 +25,11 @@ MonoBehaviour:
   LandLockTime: 0.06
   HurtInvincibleTime: 1
   HurtKnockback: 6
+  DodgeDuration: 0.333
+  DodgeDistance: 3
+  DodgeInvincibleTime: 0.33
+  DodgeCooldown: 0.6
+  AirDodgeCount: 1
   GroundLayer:
     serializedVersion: 2
     m_Bits: 1024

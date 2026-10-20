@@ -53,6 +53,21 @@ namespace StarEco.Player
             return TryHandleDieTransition() || TryHandleHurtTransition();
         }
 
+        /// <summary>
+        /// 闪避（翻滚）触发检查：可闪避且本帧按下左 Shift → 切入 Dodge 状态。
+        /// 发生转移返回 true（调用方应立即 return）。
+        /// </summary>
+        protected bool TryStartDodge()
+        {
+            if (Player.CanStartDodge && Player.ConsumeDodgeInput())
+            {
+                Machine.SwitchState<PlayerDodgeState>();
+                return true;
+            }
+
+            return false;
+        }
+
         /// <summary>地面移动通用转移：Idle ⇄ Run。</summary>
         protected void SwitchGroundLocomotion()
         {

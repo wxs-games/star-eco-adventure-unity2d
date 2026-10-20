@@ -24,6 +24,7 @@ namespace StarEco.Player
         public float HorizontalInput { get; private set; }
         public bool JumpPressedThisFrame { get; private set; }
         public bool JumpReleasedThisFrame { get; private set; }
+        public bool DodgePressedThisFrame { get; private set; }
         public bool IsGrounded { get; private set; }
         public float VerticalVelocity => Body.velocity.y;
         public bool IsDead { get; private set; }
@@ -36,6 +37,10 @@ namespace StarEco.Player
         private float _jumpBufferCounter;
         private bool _canJump = true;   // 起跳窗口（地面/土狼时间）是否可用
         private int _remainingAirJumps; // 额外空中跳次数：当前需求为二段跳，所以这里是“剩余 1 次二段跳”
+
+        // 闪避（翻滚）
+        private float _dodgeCooldownTimer;
+        private int _airDodgesUsed;
 
         // 受击
         private bool _pendingHurt;
@@ -71,6 +76,7 @@ namespace StarEco.Player
             _machine.Register(new PlayerRunState(this, _machine));
             _machine.Register(new PlayerAirState(this, _machine));
             _machine.Register(new PlayerLandState(this, _machine));
+            _machine.Register(new PlayerDodgeState(this, _machine));
             _machine.Register(new PlayerAttackState(this, _machine));
             _machine.Register(new PlayerSprayState(this, _machine));
             _machine.Register(new PlayerChargeState(this, _machine));
@@ -121,6 +127,7 @@ namespace StarEco.Player
                 HorizontalInput = 0f;
                 JumpPressedThisFrame = false;
                 JumpReleasedThisFrame = false;
+                DodgePressedThisFrame = false;
                 return;
             }
 
@@ -147,6 +154,9 @@ namespace StarEco.Player
                 // 可变跳高：提前松键 = 短跳
                 Body.velocity = new Vector2(Body.velocity.x, Body.velocity.y * _config.JumpCutMultiplier);
             }
+
+            // 闪避（翻滚）：左 Shift
+            DodgePressedThisFrame = Input.GetKeyDown(KeyCode.LeftShift);
         }
 
         private void UpdateTimers()
@@ -157,6 +167,7 @@ namespace StarEco.Player
                 _coyoteCounter = _config.CoyoteTime;
                 _canJump = true;
                 _remainingAirJumps = 1;
+                _airDodgesUsed = 0;   // 落地重置空中闪避次数（R1）
             }
             else
             {
@@ -167,6 +178,12 @@ namespace StarEco.Player
             if (_jumpBufferCounter > 0f)
             {
                 _jumpBufferCounter -= Time.deltaTime;
+            }
+
+            // 闪避冷却
+            if (_dodgeCooldownTimer > 0f)
+            {
+                _dodgeCooldownTimer -= Time.deltaTime;
             }
         }
 
@@ -204,6 +221,38 @@ namespace StarEco.Player
 
         /// <summary>跳跃缓冲是否有效（触地瞬间自动起跳用）。</summary>
         public bool HasJumpBuffer => _jumpBufferCounter > 0f;
+
+        // ===== 闪避（翻滚）=====
+
+        /// <summary>当前是否可以起翻滚：冷却已结束，且（在地面，或空中次数未用尽）。</summary>
+        public bool CanStartDodge =>
+            _config != null && _dodgeCooldownTimer <= 0f
+            && (IsGrounded || _airDodgesUsed < _config.AirDodgeCount);
+
+        /// <summary>状态机消费闪避输入：仅当前帧有效，消费即清。</summary>
+        public bool ConsumeDodgeInput()
+        {
+            if (!DodgePressedThisFrame)
+            {
+                return false;
+            }
+
+            DodgePressedThisFrame = false;
+            return true;
+        }
+
+        /// <summary>进入翻滚：起冷却、开无敌窗、空中计数 +1，并按方向翻转朝向。</summary>
+        public void BeginDodge(float dir)
+        {
+            _dodgeCooldownTimer = _config.DodgeCooldown;
+            _invincibleTimer = Mathf.Max(_invincibleTimer, _config.DodgeInvincibleTime);
+            if (!IsGrounded)
+            {
+                _airDodgesUsed++;
+            }
+
+            Sprite.flipX = dir < 0f;
+        }
 
         /// <summary>水平移动（状态机在 FixedTick 调用；air 参数控制空中控制力；speedFactor 为移速因子，喷洒减速用）。</summary>
         public void MoveHorizontally(bool inAir, float speedFactor = 1f)
@@ -332,11 +381,12 @@ namespace StarEco.Player
             }
 
             Vector2 size = col.bounds.size;
-            // 身体碰撞体带圆角时，物理外形比 bounds 外扩 r（bounds 仍按 size 返回），
-            // 真实脚底 = Body.y - size.y/2 - r，探测盒需按此下移，否则探不到脚下的堆顶。
+            // 身体碰撞体带圆角时，物理外形比 bounds 外扩 r（bounds 仍按 size 返回）；
+            // 又因碰撞体 offset 已下移对齐精灵脚底，真实脚底 = col.bounds.min.y - r，
+            // 不能再假设碰撞体与 transform 同心（2026-10-20）。
             float edgeRadius = col is BoxCollider2D box ? box.edgeRadius : 0f;
-            // 探测盒放在脚底正下方：玩家底边 ≈ Body.y - size.y/2 - r，下探 0.25u 覆盖堆顶
-            Vector2 probeCenter = new Vector2(Body.position.x, Body.position.y - size.y * 0.5f - edgeRadius - 0.02f);
+            // 探测盒放在脚底正下方：下探 0.25u 覆盖堆顶
+            Vector2 probeCenter = new Vector2(Body.position.x, col.bounds.min.y - edgeRadius - 0.02f);
             Vector2 probeSize = new Vector2(size.x * 0.9f, 0.25f);
 
             foreach (var c in Physics2D.OverlapBoxAll(probeCenter, probeSize, 0f))
@@ -419,6 +469,8 @@ namespace StarEco.Player
             InputLocked = false;
             _pendingHurt = false;
             _knockbackVelocity = Vector2.zero;
+            _dodgeCooldownTimer = 0f;
+            _airDodgesUsed = 0;
 
             if (Body != null)
             {

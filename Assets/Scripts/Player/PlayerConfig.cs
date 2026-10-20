@@ -54,6 +54,25 @@ namespace StarEco.Player
         [Tooltip("受击击退速度 (u/s)")]
         public float HurtKnockback = 6f;
 
+        [Header("闪避（翻滚）")]
+        [Tooltip("翻滚总时长 (s)，与 Roll 动画等长")]
+        public float DodgeDuration = 0.333f;
+
+        [Tooltip("翻滚总位移距离 (u)")]
+        public float DodgeDistance = 3f;
+
+        [Tooltip("翻滚期间无敌时长 (s)")]
+        public float DodgeInvincibleTime = 0.33f;
+
+        [Tooltip("翻滚冷却 (s)")]
+        public float DodgeCooldown = 0.6f;
+
+        [Tooltip("空中每段允许的翻滚次数（落地重置）")]
+        public int AirDodgeCount = 1;
+
+        /// <summary>翻滚水平速度（由距离/时长推导，避免两处手填不一致）。</summary>
+        public float DodgeSpeed => DodgeDuration > 0f ? DodgeDistance / DodgeDuration : 0f;
+
         [Header("碰撞")]
         [Tooltip("地面层掩码（默认 Ground）")]
         public LayerMask GroundLayer = 1 << 10;

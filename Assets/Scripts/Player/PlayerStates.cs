@@ -21,6 +21,11 @@ namespace StarEco.Player
                 return;
             }
 
+            if (TryStartDodge())
+            {
+                return;
+            }
+
             if (Player.Combat != null && Player.Combat.ConsumeAttackPressed())
             {
                 Machine.SwitchState<PlayerAttackState>();
@@ -74,6 +79,11 @@ namespace StarEco.Player
         public override void Tick()
         {
             if (TryHandleCombatTransitions())
+            {
+                return;
+            }
+
+            if (TryStartDodge())
             {
                 return;
             }
@@ -136,6 +146,11 @@ namespace StarEco.Player
                 return;
             }
 
+            if (TryStartDodge())
+            {
+                return;
+            }
+
             if (Player.Combat != null && Player.Combat.ConsumeAttackPressed())
             {
                 Machine.SwitchState<PlayerAttackState>();
@@ -185,6 +200,11 @@ namespace StarEco.Player
         public override void Tick()
         {
             if (TryHandleCombatTransitions())
+            {
+                return;
+            }
+
+            if (TryStartDodge())
             {
                 return;
             }
@@ -297,6 +317,65 @@ namespace StarEco.Player
         public override void Tick()
         {
             // 死亡是终态；重生逻辑由 LevelFlow（M6）通过重载场景/回检查点实现
+        }
+    }
+
+    /// <summary>
+    /// 翻滚闪避（R1-R5）：时长内以配置速度位移，全程无敌；方向取当前水平输入，无输入取朝向。
+    /// 时长/距离/无敌/冷却均来自 PlayerConfig；翻滚期间锁输入。
+    /// </summary>
+    public class PlayerDodgeState : PlayerStateBase
+    {
+        private float _timer;
+        private float _dir;
+
+        public PlayerDodgeState(PlayerController player, PlayerStateMachine machine)
+            : base(player, machine) { }
+
+        public override void Enter()
+        {
+            _timer = Player.Config.DodgeDuration;
+            _dir = Mathf.Abs(Player.HorizontalInput) > 0.01f
+                ? Mathf.Sign(Player.HorizontalInput)
+                : (Player.Sprite.flipX ? -1f : 1f);
+
+            Player.BeginDodge(_dir);                        // 起冷却 / 开无敌窗 / 记空中次数
+            Player.TryFireAnim(PlayerAnimParams.Roll);      // 触发已有 Roll 动画状态
+            Player.InputLocked = true;                      // 翻滚期间锁输入（R5）
+        }
+
+        public override void Exit()
+        {
+            Player.InputLocked = false;
+        }
+
+        public override void FixedTick()
+        {
+            // 保留竖直分量（空中翻滚不被重力打断水平位移），水平按配置速度推进
+            Player.Body.velocity = new Vector2(_dir * Player.Config.DodgeSpeed, Player.Body.velocity.y);
+        }
+
+        public override void Tick()
+        {
+            if (TryHandleDieTransition())
+            {
+                return;
+            }
+
+            _timer -= Time.deltaTime;
+            if (_timer > 0f)
+            {
+                return;
+            }
+
+            if (Player.IsGrounded)
+            {
+                SwitchGroundLocomotion();
+            }
+            else
+            {
+                Machine.SwitchState<PlayerAirState>();
+            }
         }
     }
 }
