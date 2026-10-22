@@ -15,10 +15,10 @@ MonoBehaviour:
   EnemyTypeId: Tower01
   IsStatic: 1
   AttackKind: 1
-  MaxHP: 8
+  MaxHP: 16
   KnockbackResponse: 0
   MoveSpeed: 0
-  AttackDamage: 1
+  AttackDamage: 2
   AttackRange: 12
   AttackInterval: 1.5
   AttackKnockback: 0

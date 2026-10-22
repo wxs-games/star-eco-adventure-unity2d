@@ -20,11 +20,8 @@ namespace StarEco.Level
         /// <summary>本局拾取物数量。</summary>
         public int PickupCount { get; private set; }
 
-        /// <summary>检查点快照中的耗时基准（恢复后继续累加，见 design §2.4）。</summary>
-        public float SnapshotElapsed { get; private set; }
-
-        /// <summary>本局已耗时（秒）= 快照基准 + 本次存活时长。</summary>
-        public float ElapsedSeconds => SnapshotElapsed + _accumulated;
+        /// <summary>本局已耗时（秒）。</summary>
+        public float ElapsedSeconds => _accumulated;
 
         private void OnEnable()
         {
@@ -53,23 +50,6 @@ namespace StarEco.Level
         {
             KillCount = 0;
             PickupCount = 0;
-            SnapshotElapsed = 0f;
-            _accumulated = 0f;
-        }
-
-        /// <summary>检查点提交快照：把当前耗时记为基准（R4）。</summary>
-        public void CommitSnapshotElapsed()
-        {
-            SnapshotElapsed = ElapsedSeconds;
-            _accumulated = 0f;
-        }
-
-        /// <summary>把快照中的统计值写回（检查点恢复时用）。</summary>
-        public void RestoreFromSnapshot(int kills, int pickups, float elapsed)
-        {
-            KillCount = Mathf.Max(0, kills);
-            PickupCount = Mathf.Max(0, pickups);
-            SnapshotElapsed = Mathf.Max(0f, elapsed);
             _accumulated = 0f;
         }
 

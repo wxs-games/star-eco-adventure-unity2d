@@ -11,7 +11,7 @@ namespace StarEco.Eco
     public class EcoConfig : ScriptableObject
     {
         [Header("喷洒")]
-        [Tooltip("喷洒净化量/秒（对垃圾）；同时是对敌伤害/秒（GDD §8 = 2）")]
+        [Tooltip("喷洒净化量/秒（仅作用于可净化目标；喷壶不对敌造成伤害，GDD §8 = 2）")]
         public int SprayDPS = 2;
 
         [Tooltip("喷洒结算周期 (s)，4 次/秒，净化量按周期向上取整")]
@@ -20,7 +20,7 @@ namespace StarEco.Eco
         [Tooltip("喷洒中移速因子（1 = 不减速；GDD 横版手感：减速不锁死）")]
         public float SprayMoveSpeedFactor = 0.3f;
 
-        [Tooltip("命中敌方目标时的净化剂消耗倍率（GDD §3.1 加倍 = 2）")]
+        [Tooltip("预留：命中敌方目标时的净化剂消耗倍率（当前喷壶不对敌，未启用）")]
         public int EnemySprayCostMultiplier = 2;
 
         [Tooltip("喷洒基础净化剂消耗/秒")]
@@ -33,7 +33,7 @@ namespace StarEco.Eco
         [Tooltip("净化波单个可净化目标收到的净化量")]
         public int HeavyPurifyAmount = 40;
 
-        [Tooltip("净化波对敌伤害（≈1.5 倍夹钳三段总伤）")]
+        [Tooltip("预留：净化波对敌伤害（当前净化波只净化，未启用）")]
         public int HeavyDamage = 3;
 
         [Tooltip("净化波对敌击退速度 (u/s)")]

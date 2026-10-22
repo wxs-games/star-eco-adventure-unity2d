@@ -15,7 +15,7 @@ MonoBehaviour:
   EnemyTypeId: Enemy02
   IsStatic: 0
   AttackKind: 1
-  MaxHP: 4
+  MaxHP: 8
   KnockbackResponse: 1
   MoveSpeed: 2
   AttackDamage: 1

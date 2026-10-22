@@ -157,7 +157,8 @@ namespace StarEco.Player
                 return;
             }
 
-            // 二段跳：当前先复用第一段跳动画状态（上升仍走 Jump，后续可单独替换第二段动画片段）
+            // 空中不再有二段跳：TryConsumeJump 在离地后恒为 false，
+            // 保留这次调用只是让“落地前预输入”继续由 Land 状态接力缓冲。
             if (Player.HasJumpBuffer && Player.TryConsumeJump())
             {
                 return;
@@ -316,7 +317,7 @@ namespace StarEco.Player
 
         public override void Tick()
         {
-            // 死亡是终态；重生逻辑由 LevelFlow（M6）通过重载场景/回检查点实现
+            // 死亡是终态；重生逻辑由 LevelManager（M6）在失败后重载本关实现
         }
     }
 

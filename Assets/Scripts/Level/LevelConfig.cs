@@ -73,7 +73,7 @@ namespace StarEco.Level
             [Tooltip("同时存在上限（名额；敌人死亡后回收）")]
             public int MaxAlive = 2;
 
-            [Tooltip("基础生成间隔 (s)，实际间隔 = 该值 × Lerp(0.5, 1.5, 污染度)")]
+            [Tooltip("基础生成间隔 (s)，实际间隔 = 该值 × Lerp(1.5, 0.5, 污染度)，污染越高间隔越短")]
             public float BaseInterval = 4f;
 
             [Tooltip("仅在该序号目标完成后才开始生成（-1 = 一开始就刷）")]
@@ -90,7 +90,7 @@ namespace StarEco.Level
         public string LevelName = "第一关：污染初现的星球";
 
         [Header("出生点")]
-        [Tooltip("无检查点可恢复时的出生位置")]
+        [Tooltip("关卡开始时玩家的出生位置")]
         public Vector2 SpawnPoint = new Vector2(0f, 2f);
 
         [Header("目标链")]

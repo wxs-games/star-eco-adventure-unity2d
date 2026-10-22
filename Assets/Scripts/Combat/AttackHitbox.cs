@@ -102,6 +102,10 @@ namespace StarEco.Combat
                 KnockbackPower = CurrentSegment == 3 ? thirdKnock : 0f
             };
             target.TakeDamage(info);
+
+            // 命中手感：短顿帧 + 轻震屏（第三段收尾更重一点）
+            bool heavy = CurrentSegment == 3;
+            HitFeel.Play(heavy ? 0.075f : 0.05f, heavy ? 0.10f : 0.055f);
         }
 
         private void MirrorHitbox()

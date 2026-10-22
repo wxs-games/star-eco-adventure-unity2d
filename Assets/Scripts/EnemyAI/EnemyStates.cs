@@ -14,7 +14,7 @@ namespace StarEco.EnemyAI
 
             if (!Controller.HasTarget || Controller.IsStunned) return;
 
-            if (Controller.InAttackRange && Controller.AttackCooldownTimer <= 0f)
+            if (Controller.InAttackRange && Controller.AttackCooldownTimer <= 0f && !DialogueActive)
             {
                 if (Config.AttackKind == EnemyConfig.AttackKindEnum.Melee)
                     Machine.SwitchState<EnemyMeleeAttackState>();
@@ -54,7 +54,7 @@ namespace StarEco.EnemyAI
                 return;
             }
 
-            if (Controller.InAttackRange && Controller.AttackCooldownTimer <= 0f)
+            if (Controller.InAttackRange && Controller.AttackCooldownTimer <= 0f && !DialogueActive)
             {
                 if (Config.AttackKind == EnemyConfig.AttackKindEnum.Melee)
                     Machine.SwitchState<EnemyMeleeAttackState>();
@@ -89,7 +89,7 @@ namespace StarEco.EnemyAI
 
             if (Controller.AttackCooldownTimer <= 0f)
             {
-                if (Controller.HasTarget && Controller.InAttackRange)
+                if (Controller.HasTarget && Controller.InAttackRange && !DialogueActive)
                 {
                     Controller.AttackCooldownTimer = Config.AttackInterval;
                     Controller.TryFireAnim(EnemyAnimParams.Attack);
@@ -126,7 +126,7 @@ namespace StarEco.EnemyAI
 
             if (Controller.AttackCooldownTimer <= 0f)
             {
-                if (Controller.HasTarget && Controller.InAttackRange)
+                if (Controller.HasTarget && Controller.InAttackRange && !DialogueActive)
                 {
                     Controller.AttackCooldownTimer = Config.AttackInterval;
                     Controller.TryFireAnim(EnemyAnimParams.Attack);

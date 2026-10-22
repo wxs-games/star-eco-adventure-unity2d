@@ -17,7 +17,16 @@ namespace StarEco.EnemyAI
         private bool _isDisabled;
         private bool _disableBroadcasted;
 
+        /// <summary>
+        /// 塔首次关闭时触发一次。攻击击毁与净化关闭都会走到这里，
+        /// 供 TowerPurifiable 把“击毁”也计入净化值（否则会漏 10%）。
+        /// </summary>
+        public event System.Action Disabled;
+
         protected override System.Type InitialStateType => typeof(Tower01IdleState);
+
+        /// <summary>美术炮口默认朝左，flipX 语义与常规（默认朝右）相反。</summary>
+        protected override bool SpriteFacesLeftByDefault => true;
 
         protected override void BuildStateMachine()
         {
@@ -45,7 +54,7 @@ namespace StarEco.EnemyAI
 
             CurrentHP = Mathf.Max(0, CurrentHP - info.Amount);
             LastHitDirection = info.SourceDirection;
-            AudioManager.Instance?.PlaySfx(HitSfxId);
+            AudioManager.Instance?.PlaySfx(HitSfxId, 0.05f);
 
             // 与小怪共用同一受伤事件与受击闪白（血条据此刷新）
             EventCenter.Publish(new EnemyDamagedEvent
@@ -72,10 +81,8 @@ namespace StarEco.EnemyAI
             _isDisabled = true;
             EnsureMachine();
             Machine.SwitchState<Tower01DisableState>();
+            Disabled?.Invoke();
         }
-
-        /// <summary>M6 检查点恢复用空壳（M4 不自行调用）。</summary>
-        public void RequestReactivate() { }
 
         /// <summary>广播关闭事件（只广播一次）。</summary>
         public void BroadcastDisableOnce()

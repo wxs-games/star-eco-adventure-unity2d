@@ -1,5 +1,6 @@
 using UnityEngine;
 using StarEco.Player;
+using StarEco.UI;
 
 namespace StarEco.Combat
 {
@@ -16,10 +17,10 @@ namespace StarEco.Combat
 
         public CombatConfig Config => _config;
 
-        /// <summary>当前 HP（运行时状态，M6 存档读写对象）。</summary>
+        /// <summary>当前 HP（整数定点，单位「半心点」：2 点 = 1 颗心；远程 1 点伤害 = 半颗心）。</summary>
         public int CurrentHP { get; private set; }
 
-        public int MaxHP => _config != null ? _config.MaxHP : 5;
+        public int MaxHP => _config != null ? _config.MaxHP : 10;
 
         /// <summary>本帧攻击输入。状态机各状态每帧消费；未被消费则随下帧刷新（不会带过下一帧）。</summary>
         public bool AttackPressedThisFrame { get; private set; }
@@ -54,22 +55,18 @@ namespace StarEco.Combat
             return true;
         }
 
-        // ===== 生命恢复（M6 检查点快照恢复入口） =====
-
-        /// <summary>
-        /// 恢复 HP 到指定值（夹取 [0, MaxHP]）。
-        /// 刻意不碰 PlayerController.IsDead —— 复活是 LevelManager 的流程决策，不在伤害组件里做。
-        /// </summary>
-        public void RestoreHP(int hp)
-        {
-            CurrentHP = Mathf.Clamp(hp, 0, MaxHP);
-        }
-
         // ===== IHittable =====
 
         public void TakeDamage(DamageInfo info)
         {
             if (_player == null || _player.IsDead)
+            {
+                return;
+            }
+
+            // 对话期间玩家免伤：攻击侧（弹体/判定盒/状态机）已有门控，
+            // 这里在受击入口再兜一层，覆盖环境伤害等所有漏网来源。
+            if (DialoguePanel.IsDialogueActive)
             {
                 return;
             }

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using StarEco.Combat;
+using StarEco.UI;
 
 namespace StarEco.EnemyAI
 {
@@ -68,6 +69,12 @@ namespace StarEco.EnemyAI
         private void OnTriggerEnter2D(Collider2D other)
         {
             if (!_windowOpen)
+            {
+                return;
+            }
+
+            // 对话期间敌人暂停攻击：判定盒不结算伤害（也不登记，避免对话结束后补刀）
+            if (DialoguePanel.IsDialogueActive)
             {
                 return;
             }

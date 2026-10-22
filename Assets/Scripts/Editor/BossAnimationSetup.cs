@@ -278,9 +278,9 @@ namespace StarEco.EditorTools
 
             config = ScriptableObject.CreateInstance<StarEco.Boss.BossConfig>();
             config.EnemyTypeId = "Boss01";
-            config.MaxHP = 30;
+            config.MaxHP = 80;
             config.MoveSpeed = 2.2f;
-            config.AttackDamage = 1;
+            config.AttackDamage = 2;
             config.AttackRange = 2.2f;
             config.AttackInterval = 2.0f;
             config.AttackKnockback = 6f;

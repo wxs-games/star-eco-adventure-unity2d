@@ -66,8 +66,8 @@ namespace StarEco.Boss
         {
             var config = CreateInstance<BossConfig>();
             config.EnemyTypeId = "Boss01";
-            config.MaxHP = 30;
-            Debug.LogWarning("[BossConfig] 未找到配置资产，已使用代码默认值（HP 30 / 60% / 30%）。");
+            config.MaxHP = 80;
+            Debug.LogWarning("[BossConfig] 未找到配置资产，已使用代码默认值（HP 80 半心点 = 40 心 / 60% / 30%）。");
             return config;
         }
     }

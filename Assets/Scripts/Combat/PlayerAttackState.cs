@@ -27,7 +27,7 @@ namespace StarEco.Player
             _combat = Player.Combat;
             _nextQueued = false;
             _comboWindowTimer = 0f;
-            AudioManager.Instance?.PlaySfx(SfxId.Attack);   // M10
+            AudioManager.Instance?.PlaySfx(SfxId.Attack, 0.05f);   // M10：挥击音，轻微变调避免连击机械感
 
             if (!Player.IsGrounded)
             {

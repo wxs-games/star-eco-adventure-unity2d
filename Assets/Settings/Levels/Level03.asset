@@ -25,8 +25,8 @@ MonoBehaviour:
   SpawnEntries:
   - Prefab: {fileID: 1356261701017059432, guid: e32bdb7fd9d90494b92ae0fcdbc47035, type: 3}
     Anchors: []
-    MaxAlive: 2
-    BaseInterval: 8
+    MaxAlive: 1
+    BaseInterval: 10
     RequiredObjectiveIndex: -1
   Star3Purity: 100
   Star2Purity: 60

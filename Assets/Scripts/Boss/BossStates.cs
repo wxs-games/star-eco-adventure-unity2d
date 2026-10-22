@@ -42,7 +42,8 @@ namespace StarEco.Boss
                 return;
             }
 
-            if (TryBeginSkill()) return;
+            // 对话期间不发动技能（移动/追击照常）
+            if (!DialogueActive && TryBeginSkill()) return;
 
             if (!Boss.InMeleeRange)
             {
@@ -101,6 +102,9 @@ namespace StarEco.Boss
                 Machine.SwitchState<BossIdleState>();
                 return;
             }
+
+            // 对话期间不发动技能：保持追击（移动在 FixedTick）
+            if (DialogueActive) return;
 
             if (Boss.IsSpecialReady)
             {

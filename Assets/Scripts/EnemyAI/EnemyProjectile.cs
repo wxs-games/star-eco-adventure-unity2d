@@ -1,6 +1,7 @@
 using UnityEngine;
 using StarEco.Combat;
 using StarEco.Framework;
+using StarEco.UI;
 
 namespace StarEco.EnemyAI
 {
@@ -13,6 +14,7 @@ namespace StarEco.EnemyAI
     {
         private Rigidbody2D _body;
         private SpriteRenderer _sprite;
+        private TrailRenderer _trail;
 
         private EnemyProjectile _sourcePrefab;
         private Vector2 _direction;
@@ -44,6 +46,7 @@ namespace StarEco.EnemyAI
         {
             _body = GetComponent<Rigidbody2D>();
             _sprite = GetComponent<SpriteRenderer>();
+            _trail = GetComponent<TrailRenderer>();
         }
 
         private void OnEnable()
@@ -68,9 +71,17 @@ namespace StarEco.EnemyAI
             _resolved = false;
             _launched = true;
 
+            // 弹体造型朝右，按飞行方向旋转（扇形弹幕也能正对目标）
+            transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(_direction.y, _direction.x) * Mathf.Rad2Deg);
             if (_sprite != null)
             {
-                _sprite.flipX = _direction.x < 0f;
+                _sprite.flipX = false;
+            }
+            // 池复用后清掉上一次的拖尾残影，避免从旧位置拉出一条长线
+            if (_trail != null)
+            {
+                _trail.Clear();
+                _trail.emitting = true;
             }
         }
 
@@ -114,7 +125,7 @@ namespace StarEco.EnemyAI
                 return;
             }
 
-            // 装饰性触发体（知识卡/告示牌/检查点等）不吸收弹体。
+            // 装饰性触发体（知识卡/告示牌/剧情触发区等）不吸收弹体。
             // 塔口/花蕊旁的装饰触发体会在出膛瞬间吃掉弹体，导致炮塔与远程怪永远打不到玩家；
             // 只有实体碰撞体（地面/墙体/障碍）才按「触地归还」结算。
             if (other.isTrigger)
@@ -127,6 +138,12 @@ namespace StarEco.EnemyAI
 
         private void ResolveWithHit(IHittable target)
         {
+            // 对话期间敌人暂停攻击：已飞出的弹体不结算伤害，继续飞行至射程后归还
+            if (DialoguePanel.IsDialogueActive)
+            {
+                return;
+            }
+
             _resolved = true;
             var dmg = new DamageInfo(_damage, -_direction, _source)
             {

@@ -15,7 +15,7 @@ MonoBehaviour:
   MoveSpeed: 6
   AirControlRatio: 0.85
   Acceleration: 60
-  JumpVelocity: 12
+  JumpVelocity: 13
   JumpCutMultiplier: 0.5
   GravityScale: 3
   FallGravityMultiplier: 1.6

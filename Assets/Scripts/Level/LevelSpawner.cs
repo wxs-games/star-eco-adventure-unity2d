@@ -9,7 +9,7 @@ namespace StarEco.Level
 {
     /// <summary>
     /// 污染度驱动的动态刷怪器（R5）：每条目独立计时、锚点轮询、对象池生成、名额随死亡回收。
-    /// 间隔 = BaseInterval × Lerp(0.5, 1.5, 污染度)（污染越高刷得越快）。
+    /// 间隔 = BaseInterval × Lerp(1.5, 0.5, 污染度)（污染越高乘数越小，刷得越快）。
     /// </summary>
     public class LevelSpawner : MonoBehaviour
     {
@@ -18,12 +18,16 @@ namespace StarEco.Level
         [Tooltip("锚点命名约定：关卡配置里 Anchors 为空时，运行时按此名前缀在场景中查找锚点（场景对象无法序列化进 asset）")]
         [SerializeField] private string _anchorNamePrefix = "SpawnAnchor";
 
+        [Tooltip("每只敌人的重生次数上限（1 = 被打死后只重生一次，0 = 不重生）。每条目总生成数 = MaxAlive × (1 + 该值)")]
+        [SerializeField] private int _respawnsPerEnemy = 1;
+
         private LevelObjectiveTracker _tracker;
         private Transform _player;
         private EnemyControllerBase[] _prefabComponents;
         private Transform[][] _anchors;
         private float[] _timers;
         private int[] _aliveCounts;
+        private int[] _spawnedTotals;   // 每条目累计生成数（含重生），用于限制重生次数
         private int[] _anchorCursor;
         private float _pollution = 1f;
         private bool _running;
@@ -53,6 +57,7 @@ namespace StarEco.Level
             _anchors = new Transform[count][];
             _timers = new float[count];
             _aliveCounts = new int[count];
+            _spawnedTotals = new int[count];
             _anchorCursor = new int[count];
             _running = count > 0;
 
@@ -103,6 +108,13 @@ namespace StarEco.Level
                     continue;
                 }
 
+                // 重生次数上限：条目总生成数 = MaxAlive × (1 + 重生次数)，用完后不再补充
+                int spawnLimit = entry.MaxAlive * (1 + Mathf.Max(0, _respawnsPerEnemy));
+                if (_spawnedTotals[i] >= spawnLimit)
+                {
+                    continue;
+                }
+
                 // 目标链解锁检查（R5）
                 if (entry.RequiredObjectiveIndex >= 0 &&
                     (_tracker == null || !_tracker.IsObjectiveCompleted(entry.RequiredObjectiveIndex)))
@@ -121,13 +133,15 @@ namespace StarEco.Level
                 if (TrySpawn(i, entry))
                 {
                     _aliveCounts[i]++;
+                    _spawnedTotals[i]++;
                 }
             }
         }
 
         private float CurrentInterval(LevelConfig.SpawnEntry entry)
         {
-            return Mathf.Max(0.2f, entry.BaseInterval * Mathf.Lerp(0.5f, 1.5f, _pollution));
+            // 污染度 1（脏）→ 0.5 倍间隔（刷得快）；污染度 0（干净）→ 1.5 倍间隔（刷得慢）。
+            return Mathf.Max(0.2f, entry.BaseInterval * Mathf.Lerp(1.5f, 0.5f, _pollution));
         }
 
         private bool TrySpawn(int index, LevelConfig.SpawnEntry entry)
@@ -207,6 +221,10 @@ namespace StarEco.Level
             {
                 return;   // 交给 TrySpawn 报错跳过
             }
+
+            // FindObjectsByType 返回顺序不保证稳定，先按名字排序：
+            // 否则条目 0/1 每次会话可能取到不同锚点，出生位置随机漂移。
+            matched.Sort((a, b) => string.Compare(a.name, b.name, System.StringComparison.Ordinal));
 
             // 按条目序号取模分配锚点：条目 0 用 0,2,4…；条目 1 用 1,3,5…
             // 存运行时数组，绝不回写 LevelConfig 资产（避免 Editor 下资产被标脏持久化场景对象引用）

@@ -15,10 +15,10 @@ MonoBehaviour:
   EnemyTypeId: Boss01
   IsStatic: 0
   AttackKind: 0
-  MaxHP: 30
+  MaxHP: 80
   KnockbackResponse: 1
   MoveSpeed: 2.2
-  AttackDamage: 1
+  AttackDamage: 2
   AttackRange: 2.2
   AttackInterval: 2
   AttackKnockback: 6

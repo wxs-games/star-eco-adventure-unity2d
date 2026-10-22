@@ -2,6 +2,7 @@ using UnityEngine;
 using StarEco.Combat;
 using StarEco.Framework;
 using StarEco.EnemyAI.Events;
+using StarEco.UI;
 
 namespace StarEco.EnemyAI
 {
@@ -87,6 +88,15 @@ namespace StarEco.EnemyAI
         protected virtual void Update()
         {
             EnsureMachine();
+
+            // 对话期间敌人整体定住：停移动、停状态机、停感知与计时，
+            // 动画由 EnemyAnimatorDriver 按 Body 速度自动切回 Idle。
+            if (DialoguePanel.IsDialogueActive)
+            {
+                StopMoving();
+                return;
+            }
+
             if (IsDead)
             {
                 Machine.Tick();
@@ -100,6 +110,13 @@ namespace StarEco.EnemyAI
         protected virtual void FixedUpdate()
         {
             EnsureMachine();
+
+            if (DialoguePanel.IsDialogueActive)
+            {
+                Body.velocity = new Vector2(0f, Body.velocity.y);
+                return;
+            }
+
             if (IsDead)
             {
                 return;
@@ -158,15 +175,23 @@ namespace StarEco.EnemyAI
 
         // ===== 朝向 =====
 
+        /// <summary>
+        /// 美术默认朝向约定：true = 原图正面/炮口朝左（如 Tower01），此时 flipX 语义与常规相反。
+        /// 默认 false（原图朝右），子类按素材实际朝向覆写。
+        /// </summary>
+        protected virtual bool SpriteFacesLeftByDefault => false;
+
         public void FaceTarget()
         {
             if (Target != null && Sprite != null)
             {
-                Sprite.flipX = Target.position.x < transform.position.x;
+                bool targetOnLeft = Target.position.x < transform.position.x;
+                Sprite.flipX = SpriteFacesLeftByDefault ? !targetOnLeft : targetOnLeft;
             }
         }
 
-        public bool IsFacingLeft => Sprite != null && Sprite.flipX;
+        public bool IsFacingLeft => Sprite != null
+            && (SpriteFacesLeftByDefault ? !Sprite.flipX : Sprite.flipX);
         public Vector2 FacingDirection => IsFacingLeft ? Vector2.left : Vector2.right;
 
         // ===== 移动 =====
@@ -209,7 +234,7 @@ namespace StarEco.EnemyAI
             LastHitDirection = info.SourceDirection;
             _pendingHurt = true;
             _hurtStunTimer = _config.HurtStunSeconds;
-            AudioManager.Instance?.PlaySfx(HitSfxId);   // M10：受击音效（Boss 覆写为 BossHit）
+            AudioManager.Instance?.PlaySfx(HitSfxId, 0.05f);   // M10：受击音效（Boss 覆写为 BossHit）
 
             if (_config.KnockbackResponse > 0f && info.KnockbackPower > 0f && Body != null)
             {

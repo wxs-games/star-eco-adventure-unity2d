@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b772540833e5ce4fabe52eeb93d17b5, type: 3}
   m_Name: CombatConfig
   m_EditorClassIdentifier: 
-  MaxHP: 5
-  AttackDamage: 1
+  MaxHP: 10
+  AttackDamage: 2
   ComboWindowSeconds: 0.15
   ThirdHitKnockback: 6
   SegmentEndTimes:

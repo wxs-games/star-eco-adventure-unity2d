@@ -7,7 +7,7 @@ namespace StarEco.Combat
     /// </summary>
     public struct DamageInfo
     {
-        /// <summary>伤害值。</summary>
+        /// <summary>伤害值（整数定点，单位「半心点」：2 点 = 1 颗心；Enemy02 远程毒弹 1 点 = 半颗心）。</summary>
         public int Amount;
 
         /// <summary>指向伤害来源的方向（受击者 → 来源），击退按其反方向施加。</summary>

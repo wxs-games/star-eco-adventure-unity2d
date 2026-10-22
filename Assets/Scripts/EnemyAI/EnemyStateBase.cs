@@ -1,4 +1,5 @@
 using UnityEngine;
+using StarEco.UI;
 
 namespace StarEco.EnemyAI
 {
@@ -11,6 +12,11 @@ namespace StarEco.EnemyAI
         protected readonly EnemyControllerBase Controller;
         protected readonly EnemyStateMachine Machine;
         protected EnemyConfig Config => Controller.Config;
+
+        /// <summary>
+        /// 对话进行中（全局只读）：对话期间敌人不发动攻击，但移动/追击照常。
+        /// </summary>
+        protected static bool DialogueActive => DialoguePanel.IsDialogueActive;
 
         protected EnemyStateBase(EnemyControllerBase controller, EnemyStateMachine machine)
         {

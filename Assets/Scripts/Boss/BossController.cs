@@ -70,7 +70,7 @@ namespace StarEco.Boss
             BossCfg = _config as BossConfig;
             if (BossCfg == null)
             {
-                Debug.LogWarning("[BossController] 配置不是 BossConfig，已回落到默认 Boss 配置（HP 30）。");
+                Debug.LogWarning("[BossController] 配置不是 BossConfig，已回落到默认 Boss 配置（HP 80 半心点 = 40 心）。");
                 BossCfg = BossConfig.CreateDefault();
                 _config = BossCfg;
             }

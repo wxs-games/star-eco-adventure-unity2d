@@ -23,8 +23,8 @@ namespace StarEco.EnemyAI
         public AttackKindEnum AttackKind = AttackKindEnum.Melee;
 
         [Header("生命")]
-        [Tooltip("最大 HP（GDD §8 初值：Enemy01/02/03 = 3/4/5；Tower01 = 0 不可死）")]
-        public int MaxHP = 3;
+        [Tooltip("最大血量（半心点：2 点 = 1 颗心；Enemy01/02/03 = 6/8/10 = 3/4/5 颗心）")]
+        public int MaxHP = 6;
 
         [Tooltip("受击击退系数（Tower01 固定 0，受击不位移）")]
         public float KnockbackResponse = 1f;
@@ -34,8 +34,8 @@ namespace StarEco.EnemyAI
         public float MoveSpeed = 1.5f;
 
         [Header("攻击")]
-        [Tooltip("对玩家伤害值")]
-        public int AttackDamage = 1;
+        [Tooltip("对玩家伤害值（半心点：2 点 = 1 颗心；Enemy02 远程毒弹为 1 点 = 半颗心）")]
+        public int AttackDamage = 2;
 
         [Tooltip("攻击距离 (u)，Enemy02 远程大于 Enemy01")]
         public float AttackRange = 1.0f;

@@ -13,6 +13,14 @@ namespace StarEco.Player
     {
         [SerializeField] private PlayerConfig _config;
 
+        [Header("脚步音效")]
+        [Tooltip("低于该水平速度不出声（单位/秒）")]
+        [SerializeField] private float _footstepSpeedThreshold = 0.8f;
+        [Tooltip("慢走时的迈步间隔")]
+        [SerializeField] private float _footstepIntervalSlow = 0.42f;
+        [Tooltip("全速奔跑时的迈步间隔")]
+        [SerializeField] private float _footstepIntervalFast = 0.26f;
+
         public PlayerConfig Config => _config;
         public Rigidbody2D Body { get; private set; }
         public SpriteRenderer Sprite { get; private set; }
@@ -36,7 +44,7 @@ namespace StarEco.Player
         private float _coyoteCounter;
         private float _jumpBufferCounter;
         private bool _canJump = true;   // 起跳窗口（地面/土狼时间）是否可用
-        private int _remainingAirJumps; // 额外空中跳次数：当前需求为二段跳，所以这里是“剩余 1 次二段跳”
+        private bool _jumpCutPending;   // 按键在起跳前已松开：本次起跳要按短跳处理
 
         // 闪避（翻滚）
         private float _dodgeCooldownTimer;
@@ -50,6 +58,11 @@ namespace StarEco.Player
         private bool _pendingHurt;
         private float _invincibleTimer;
         private Vector2 _knockbackVelocity;
+
+        // 脚步音效：迈步计时 + 当前踩在几片草丛里（可重叠，用计数而非布尔）
+        private float _footstepTimer;
+        private int _grassContacts;
+        private bool _wasGrounded;
 
         // 常量输入轴（旧版 Input Manager）
         private const string AxisHorizontal = "Horizontal";
@@ -103,6 +116,7 @@ namespace StarEco.Player
             UpdateInvincibility();
             UpdateStuckEscape();
             _machine.Tick();
+            UpdateFootsteps();
         }
 
         private void FixedUpdate()
@@ -156,13 +170,22 @@ namespace StarEco.Player
             if (JumpPressedThisFrame)
             {
                 _jumpBufferCounter = _config.JumpBufferTime;
+                _jumpCutPending = false;   // 新的一次按键，重新决定本次跳高
             }
 
             JumpReleasedThisFrame = Input.GetButtonUp(ButtonJump);
-            if (JumpReleasedThisFrame && Body.velocity.y > 0f)
+            if (JumpReleasedThisFrame)
             {
-                // 可变跳高：提前松键 = 短跳
-                Body.velocity = new Vector2(Body.velocity.x, Body.velocity.y * _config.JumpCutMultiplier);
+                if (_jumpBufferCounter > 0f)
+                {
+                    // 还没起跳就松手（同帧点按 / 空中预输入后松手）→ 本次起跳按短跳处理
+                    _jumpCutPending = true;
+                }
+                else if (Body.velocity.y > 0f)
+                {
+                    // 可变跳高：上升途中松键 = 短跳
+                    Body.velocity = new Vector2(Body.velocity.x, Body.velocity.y * _config.JumpCutMultiplier);
+                }
             }
 
             // 闪避（翻滚）：左 Shift
@@ -176,7 +199,6 @@ namespace StarEco.Player
             {
                 _coyoteCounter = _config.CoyoteTime;
                 _canJump = true;
-                _remainingAirJumps = 1;
                 _airDodgesUsed = 0;   // 落地重置空中闪避次数（R1）
             }
             else
@@ -200,29 +222,28 @@ namespace StarEco.Player
         // ===== 物理能力 =====
 
         /// <summary>
-        /// 尝试消耗一次跳跃：
-        /// - 地面/土狼时间内：执行第一段跳；
-        /// - 已离地且额外次数>0：执行第二段跳（当前先复用第一段跳动画逻辑，占位）。
+        /// 尝试起跳：只在着地（或土狼时间窗口内）生效，空中不再有二段跳。
+        /// 跳高由跳跃键按住时长决定（松手截断）。
         /// </summary>
         public bool TryConsumeJump()
         {
-            bool allowGroundJump = _coyoteCounter > 0f && _canJump;
-            bool allowAirJump = !IsGrounded && _remainingAirJumps > 0;
-            bool allowed = allowGroundJump || allowAirJump;
+            bool allowed = _coyoteCounter > 0f && _canJump;
             if (allowed)
             {
-                if (allowGroundJump)
-                {
-                    _coyoteCounter = 0f;
-                    _canJump = false;
-                }
-                else
-                {
-                    _remainingAirJumps--;
-                }
+                _coyoteCounter = 0f;
+                _canJump = false;
 
                 _jumpBufferCounter = 0f;
                 Body.velocity = new Vector2(Body.velocity.x, _config.JumpVelocity);
+
+                // 按键在起跳前就已松开（同帧点按，或空中预输入后松手）→ 本次起跳截断为短跳。
+                // ReadInput 的截断发生在起跳之前，那一帧速度还是地面值，必须在这里补一次。
+                if (_jumpCutPending)
+                {
+                    _jumpCutPending = false;
+                    Body.velocity = new Vector2(Body.velocity.x, Body.velocity.y * _config.JumpCutMultiplier);
+                }
+
                 AudioManager.Instance?.PlaySfx(SfxId.Jump);   // M10
             }
 
@@ -298,6 +319,72 @@ namespace StarEco.Player
             Body.velocity = new Vector2(0f, Body.velocity.y);
         }
 
+        // ===== 脚步 / 草丛音效 =====
+
+        /// <summary>草丛感应区进入时调用（可重叠，计数累加）。</summary>
+        public void AddGrassContact()
+        {
+            _grassContacts++;
+        }
+
+        /// <summary>草丛感应区离开/销毁时调用。</summary>
+        public void RemoveGrassContact()
+        {
+            if (_grassContacts > 0)
+            {
+                _grassContacts--;
+            }
+        }
+
+        /// <summary>
+        /// 迈步音效：着地且水平速度超过阈值时按速度间隔出声；
+        /// 踩在草丛里换成沙沙声，普通地面用脚步。
+        /// </summary>
+        private void UpdateFootsteps()
+        {
+            if (IsDead || InputLocked || !IsGrounded)
+            {
+                _footstepTimer = 0f;
+                _wasGrounded = IsGrounded;
+                return;
+            }
+
+            // 落地首帧留出间隔，避免与 Land 音效叠在一起
+            if (!_wasGrounded)
+            {
+                _wasGrounded = true;
+                _footstepTimer = _footstepIntervalFast;
+                return;
+            }
+
+            float speed = Mathf.Abs(Body.velocity.x);
+            if (speed < _footstepSpeedThreshold)
+            {
+                _footstepTimer = 0f;   // 静止后再次起步立即出声
+                return;
+            }
+
+            _footstepTimer -= Time.deltaTime;
+            if (_footstepTimer > 0f)
+            {
+                return;
+            }
+
+            float speedRatio = _config != null
+                ? Mathf.Clamp01(speed / Mathf.Max(0.01f, _config.MoveSpeed))
+                : 1f;
+            _footstepTimer = Mathf.Lerp(_footstepIntervalSlow, _footstepIntervalFast, speedRatio);
+
+            if (_grassContacts > 0)
+            {
+                AudioManager.Instance?.PlaySfx(SfxId.GrassRustle, 0.12f);
+            }
+            else
+            {
+                AudioManager.Instance?.PlaySfx(SfxId.Footstep, 0.07f);
+            }
+        }
+
         public void SetKnockback(Vector2 velocity)
         {
             Body.velocity = velocity;
@@ -322,26 +409,66 @@ namespace StarEco.Player
 
         private void UpdateGrounded()
         {
-            var bounds = Sprite.bounds;
-            float castDistance = _config.GroundCheckSkin + 0.02f;
+            // 以“物理脚底”为基准做面积探测：真地面、草垛、台阶等任何非触发器实体碰撞体都能站。
+            // 旧实现用三根零宽射线取样，会漏掉两种情况：
+            //   1) 支撑面不平整（草垛顶是斜/凸面），中轴取样点落在低于脚底的位置，探距不够；
+            //   2) 取样点取自比碰撞体更宽的精灵包围盒，可能落到支撑物轮廓之外。
+            // BoxCollider2D 的 edgeRadius 会外扩物理外形，故真实脚底 = bounds.min.y - edgeRadius。
+            if (_bodyCollider == null)
+            {
+                IsGrounded = false;
+                return;
+            }
 
-            // 旧逻辑只有“脚底中心”一根射线：站在窄平台/方块边缘时，
-            // 身体还压在平台上，但中心点已经探出边缘，导致误判成未落地。
-            // 改为脚底左/中/右三点探测，只要任一点命中 GroundLayer 就算落地。
-            float inset = Mathf.Min(0.05f, bounds.extents.x * 0.25f);
-            float leftX = bounds.min.x + inset;
-            float centerX = bounds.center.x;
-            float rightX = bounds.max.x - inset;
-            float originY = bounds.min.y + 0.02f;
+            var colBounds = _bodyCollider.bounds;
+            float edgeRadius = _bodyCollider is BoxCollider2D box ? box.edgeRadius : 0f;
+            float footY = colBounds.min.y - edgeRadius;
+            float halfWidth = Mathf.Max(colBounds.extents.x + edgeRadius * 0.5f, 0.05f);
 
-            bool hitLeft = Physics2D.Raycast(new Vector2(leftX, originY), Vector2.down,
-                castDistance, _config.GroundLayer);
-            bool hitCenter = Physics2D.Raycast(new Vector2(centerX, originY), Vector2.down,
-                castDistance, _config.GroundLayer);
-            bool hitRight = Physics2D.Raycast(new Vector2(rightX, originY), Vector2.down,
-                castDistance, _config.GroundLayer);
+            // 探测盒上沿略高于脚底（容差同旧的 GroundCheckSkin），下探一段覆盖支撑面
+            float probeDepth = _config.GroundCheckSkin + 0.02f;
+            Vector2 probeCenter = new Vector2(colBounds.center.x, footY + 0.02f - probeDepth * 0.5f);
+            Vector2 probeSize = new Vector2(halfWidth * 2f, probeDepth);
 
-            IsGrounded = hitLeft || hitCenter || hitRight;
+            IsGrounded = HasSolidSupport(probeCenter, probeSize);
+        }
+
+        // 脚底支撑探测复用缓冲，避免每帧产生托管分配
+        private static readonly Collider2D[] _supportHits = new Collider2D[8];
+
+        /// <summary>
+        /// 脚底探测盒是否压着“非触发器实体支撑”（真地面、草垛、台阶等）。
+        /// 排除自身碰撞体与动态刚体（敌人、弹体），避免被误判成地面。
+        /// </summary>
+        private bool HasSolidSupport(Vector2 center, Vector2 size)
+        {
+            int mask = Physics2D.AllLayers & ~(1 << gameObject.layer);
+            int count = Physics2D.OverlapBoxNonAlloc(center, size, 0f, _supportHits, mask);
+            for (int i = 0; i < count; i++)
+            {
+                var collider = _supportHits[i];
+                if (collider == null || !collider.enabled || collider.isTrigger)
+                {
+                    continue;
+                }
+
+                // 自身/子物体碰撞体（如判定盒）不算支撑
+                if (collider.transform.IsChildOf(transform))
+                {
+                    continue;
+                }
+
+                // 动态刚体（敌人、弹体）会移动，不是可靠站台
+                var attached = collider.attachedRigidbody;
+                if (attached != null && attached.bodyType == RigidbodyType2D.Dynamic)
+                {
+                    continue;
+                }
+
+                return true;
+            }
+
+            return false;
         }
 
         // ===== 卡住自救 =====
@@ -356,12 +483,14 @@ namespace StarEco.Player
         private float _escapeDir;
 
         /// <summary>
-        /// 卡住自救（2026-10-19 实测补漏）：地面检测只认 <see cref="PlayerConfig.GroundLayer"/>，
-        /// 而垃圾堆等可净化目标是 Default 层实体碰撞体——玩家跳/走上堆顶时，
+        /// 卡住自救（2026-10-19 实测补漏）：垃圾堆等可净化目标是 Default 层实体碰撞体，
+        /// 旧地面检测只认 <see cref="PlayerConfig.GroundLayer"/>，玩家跳/走上堆顶时
         /// <see cref="IsGrounded"/> 恒为 false，状态机卡在 PlayerAirState 无法移动。
+        /// （2026-10-20）<see cref="UpdateGrounded"/> 已支持识别草垛/台阶等实体支撑，
+        /// 正常站上去不再触发本自救；本机制保留为其他异常静止场景的兜底。
         /// 判定用"时间窗内总位移"而非逐帧速度/位移：物理求解器的接触抖动（逐帧亚像素起伏）
         /// 不会误触发，只有真正静止才累计。触发后 <see cref="TryUnstick"/> 临时接管水平输入，
-        /// 让玩家沿既有移动逻辑滑下堆顶回到真地面（不传送、无掉落风险）。
+        /// 让玩家沿既有移动逻辑滑下支撑物回到真地面（不传送、无掉落风险）。
         /// 脚下探测不到非地面实体时不动作（交由坠落/溺水/复活逻辑处理）。
         /// </summary>
         private void UpdateStuckEscape()
@@ -484,48 +613,6 @@ namespace StarEco.Player
 
         /// <summary>无敌期剩余时间（闪烁效果用）。</summary>
         public float InvincibleTimer => _invincibleTimer;
-
-        /// <summary>
-        /// 复活（M6 检查点恢复）：清死亡/输入锁、零化速度与击退、复位动画参数。
-        /// 刻意不直接改 HP —— HP 由 PlayerCombat.RestoreHP 负责。
-        /// </summary>
-        public void Revive()
-        {
-            IsDead = false;
-            InputLocked = false;
-            _pendingHurt = false;
-            _knockbackVelocity = Vector2.zero;
-            _dodgeCooldownTimer = 0f;
-            _airDodgesUsed = 0;
-
-            if (Body != null)
-            {
-                Body.isKinematic = false;
-                Body.bodyType = RigidbodyType2D.Dynamic;
-                Body.simulated = true;
-                Body.velocity = Vector2.zero;
-            }
-
-            var collider = GetComponent<Collider2D>();
-            if (collider != null)
-            {
-                collider.enabled = true;
-            }
-
-            // 复位 Animator 一次性触发器并切回 Idle（否则死亡状态触发器残留、状态机停在死亡态）
-            if (Anim != null)
-            {
-                var animator = Anim.GetComponent<Animator>();
-                if (animator != null)
-                {
-                    animator.ResetTrigger(PlayerAnimParams.Hurt);
-                    animator.ResetTrigger(PlayerAnimParams.Death);
-                    animator.SetBool(PlayerAnimParams.IsCrouching, false);
-                }
-            }
-
-            _machine?.SwitchState<PlayerIdleState>();
-        }
 
         /// <summary>
         /// 蓄力进度比例 [0,1]（M7 HUD 蓄力条数据源）：非蓄力状态返回 0。

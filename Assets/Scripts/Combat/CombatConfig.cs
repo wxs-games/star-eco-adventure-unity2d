@@ -10,12 +10,12 @@ namespace StarEco.Combat
     public class CombatConfig : ScriptableObject
     {
         [Header("生命")]
-        [Tooltip("玩家基础 HP（GDD 初值 5）")]
-        public int MaxHP = 5;
+        [Tooltip("玩家基础 HP（整数定点，单位半心点：2 点 = 1 颗心，10 点 = 5 颗心）")]
+        public int MaxHP = 10;
 
         [Header("攻击")]
-        [Tooltip("每段攻击伤害（GDD 初值 1）")]
-        public int AttackDamage = 1;
+        [Tooltip("每段攻击伤害（半心点：2 点 = 1 颗心）")]
+        public int AttackDamage = 2;
 
         [Tooltip("连段输入窗口：本段动画开始后可缓冲下一段输入的时长 (s)")]
         public float ComboWindowSeconds = 0.15f;

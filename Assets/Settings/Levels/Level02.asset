@@ -27,18 +27,18 @@ MonoBehaviour:
     Label: "\u51C0\u5316\u68EE\u6797\u6C61\u67D3\u6E90"
   - Type: 3
     Required: 4
-    Label: "\u51FB\u8D25 4 \u53EA\u53D8\u5F02\u6BD2\u690D\u7269"
+    Label: "\u51FB\u8D25 4 \u53EA\u53D8\u5F02\u602A\u7269"
   SpawnEntries:
   - Prefab: {fileID: 2027564446630586712, guid: a8f25c3ad6182e34e854453f96a46b13, type: 3}
     Anchors: []
-    MaxAlive: 2
-    BaseInterval: 6
+    MaxAlive: 1
+    BaseInterval: 12
     RequiredObjectiveIndex: -1
-  - Prefab: {fileID: 2027564446630586712, guid: a8f25c3ad6182e34e854453f96a46b13, type: 3}
+  - Prefab: {fileID: 743422200972414136, guid: 56d6108c5156f3f42a02d45835485656, type: 3}
     Anchors: []
-    MaxAlive: 3
-    BaseInterval: 5
-    RequiredObjectiveIndex: 1
+    MaxAlive: 2
+    BaseInterval: 8
+    RequiredObjectiveIndex: -1
   Star3Purity: 100
   Star2Purity: 60
   Star1Purity: 30

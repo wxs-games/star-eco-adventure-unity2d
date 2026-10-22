@@ -21,7 +21,7 @@ namespace StarEco.Player
 
         [Header("跳跃")]
         [Tooltip("起跳初速度 (u/s)")]
-        public float JumpVelocity = 12f;
+        public float JumpVelocity = 13f;
 
         [Tooltip("松开跳跃键时的速度衰减比例（可变跳高，0.5 = 短跳）")]
         [Range(0.1f, 1f)] public float JumpCutMultiplier = 0.5f;

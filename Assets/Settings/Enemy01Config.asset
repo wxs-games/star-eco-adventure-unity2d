@@ -15,10 +15,10 @@ MonoBehaviour:
   EnemyTypeId: Enemy01
   IsStatic: 0
   AttackKind: 0
-  MaxHP: 3
+  MaxHP: 6
   KnockbackResponse: 1
   MoveSpeed: 3
-  AttackDamage: 1
+  AttackDamage: 2
   AttackRange: 3.5
   AttackInterval: 1.2
   AttackKnockback: 0

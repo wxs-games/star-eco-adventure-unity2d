@@ -45,8 +45,6 @@ namespace StarEco.UI
         private int _lastTankCapacity = -1;
         private int _lastPurityPercent = -1;
 
-        private static readonly Color HeartFull = new Color(1f, 0.35f, 0.42f);
-        private static readonly Color HeartEmpty = new Color(0.30f, 0.30f, 0.34f, 0.85f);
         private static readonly Color TankFillColor = new Color(0.35f, 0.75f, 1f);
         private static readonly Color PurityFillColor = new Color(0.49f, 0.99f, 0.60f);
         private static readonly Color ChargeFillColor = new Color(1f, 0.85f, 0.35f);
@@ -163,13 +161,25 @@ namespace StarEco.UI
                 rt.anchorMin = new Vector2(0f, 0.5f);
                 rt.anchorMax = new Vector2(0f, 0.5f);
                 rt.pivot = new Vector2(0.5f, 0.5f);
-                rt.sizeDelta = new Vector2(44f, 44f);
-                rt.anchoredPosition = new Vector2(22f + i * 46f, 0f);
-                _hearts[i] = heartGo.AddComponent<Image>();
-                _hearts[i].color = Color.white;
-                _hearts[i].preserveAspect = true;
-                _hearts[i].sprite = _heartFullSprite;
                 rt.sizeDelta = new Vector2(38f, 34f);
+                rt.anchoredPosition = new Vector2(22f + i * 46f, 0f);
+
+                // 双层结构：底层空心常显，上层满心按 fillAmount 裁切（0/0.5/1 = 空/半/满）
+                var empty = UIUtility.CreateImage("Empty", heartGo.transform, Color.white);
+                UIUtility.Stretch(empty.GetComponent<RectTransform>());
+                empty.sprite = _heartEmptySprite;
+                empty.preserveAspect = true;
+
+                var full = UIUtility.CreateImage("Full", heartGo.transform, Color.white);
+                UIUtility.Stretch(full.GetComponent<RectTransform>());
+                full.sprite = _heartFullSprite;
+                full.preserveAspect = true;
+                full.type = Image.Type.Filled;
+                full.fillMethod = Image.FillMethod.Horizontal;
+                full.fillOrigin = (int)Image.OriginHorizontal.Left;
+                full.fillAmount = 1f;
+
+                _hearts[i] = full;
             }
 
             var tankBar = UIUtility.CreateBar("TankBar", statusGo.transform,
@@ -422,8 +432,11 @@ namespace StarEco.UI
 
         private void RefreshHearts()
         {
-            int hp = _player.Combat.CurrentHP;
-            int max = Mathf.Max(1, _player.Combat.MaxHP);
+            // HP 为整数定点「半心点」（2 点 = 1 颗心）；每颗心占 2 个半心位
+            int hpPoints = _player.Combat.CurrentHP;
+            int maxPoints = Mathf.Max(2, _player.Combat.MaxHP);
+            int maxHearts = Mathf.CeilToInt(maxPoints / 2f);
+            int halfUnits = Mathf.Clamp(hpPoints, 0, maxHearts * 2);
 
             for (int i = 0; i < _hearts.Length; i++)
             {
@@ -432,19 +445,14 @@ namespace StarEco.UI
                     continue;
                 }
 
-                bool full = i < hp;
-                _hearts[i].color = Color.white;
-                if (_heartFullSprite != null && _heartEmptySprite != null)
+                // 2→满心，1→半心，0→空心
+                _hearts[i].fillAmount = Mathf.Clamp01((halfUnits - i * 2) / 2f);
+                // HP 上限超过 5 时超出部分隐藏（M3 MaxHP=5）；连同底层空心一起隐藏
+                var heartRoot = _hearts[i].transform.parent;
+                if (heartRoot != null)
                 {
-                    _hearts[i].sprite = full ? _heartFullSprite : _heartEmptySprite;
+                    heartRoot.gameObject.SetActive(i < maxHearts);
                 }
-                else
-                {
-                    _hearts[i].color = full ? HeartFull : HeartEmpty;
-                }
-
-                // HP 上限超过 5 时超出部分隐藏，避免越界（M3 MaxHP=5）
-                _hearts[i].gameObject.SetActive(i < max);
             }
         }
 
