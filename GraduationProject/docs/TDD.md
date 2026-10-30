@@ -1,9 +1,9 @@
 # 技术设计文档（TDD）
 
 > 项目：基于Unity2D的"星际环保"动作冒险游戏设计与实现
-> 版本：v0.2（项目化校准） | 最后更新：2026-10-17
+> 版本：v0.7（系统总览抽离 + 目录结构全量重写） | 最后更新：2026-10-30
 > 参考模板：rikegames Unity TGDD + KelptheWriter/TechDesignDocument 结构
-> 关联文档：GDD.md（设计愿景）、specs/（逐功能规范三件套）
+> 关联文档：GDD.md（设计愿景）、**SystemOverview.md（系统总览，§2.1/§3.1 的完整版）**、LevelDesign.md（关卡落地）、AudioDesign.md（音频规格）、NarrativeDesign.md（叙事设定）、specs/（逐功能规范三件套）
 
 ---
 
@@ -19,28 +19,34 @@
 
 ## 2. 工程结构与规范
 
-### 2.1 目录结构（✅ 已落地 / ⏳ 规划中）
+### 2.1 目录结构（2026-10-30 实测，全部已落地）
+
+> 系统切分、依赖矩阵、事件拓扑的完整说明见 **`SystemOverview.md`**，本节只列路径。
+
 ```
 Assets/
-├─ Art/                    ✅ 已就位：Player(22动作)/Enemies(Enemy01~03)/Boss(Boss01)/Towers(Tower01)/FX(6)
-├─ Scenes/                 ⏳ 规划：Level01~03.unity / Boot.unity（当前仅 SampleScene.unity）
-├─ Prefabs/                ⏳ 规划：Enemies/ Boss/ Towers/ Props/ FX/ UI/（当前仅 Player/Player.prefab）
-├─ Settings/               ✅ PlayerConfig.asset（CombatConfig.asset 待建）
-├─ ScriptableObjects/      ⏳ 未创建（配置资产统一置于 Assets/Settings/）
-├─ Resources/              ⏳ 规划：（仅存档与对话 JSON）
-└─ Scripts/
-   ├─ Framework/           ✅ 单例、事件中心、对象池、存档、音频（五件套 + FrameworkSelfTest）
-   ├─ Player/              ✅ 控制器、状态机、动画驱动（净化喷雾 ⏳ M5）
-   ├─ Combat/              ✅ 伤害、判定框、HP、受击反馈
-   ├─ Editor/              ✅ 一键动画搭建工具 PlayerAnimationSetup + 验收脚本
-   ├─ EnemyAI/             ⏳ FSM 基类 + 三种敌人实现
-   ├─ Boss/                ⏳ Boss 阶段状态机
-   ├─ Eco/                 ⏳ 垃圾堆、污染源、净化值、污染度
-   ├─ Dialogue/            ⏳ 对话控制器、提示牌
-   ├─ Quest/               ⏳ 关卡目标、限时挑战
-   ├─ UI/                  ⏳ HUD、菜单、结算、图鉴
-   └─ LevelFlow/           ⏳ 关卡流程、检查点、门/通路控制
+├─ Art/           美术源（Player 22 动作 / Enemies / Boss / Towers / FX 6 套 / Environment）
+├─ Scenes/        Title / Level01 / Level02 / Level03（Build Settings 顺序即关卡顺序）
+├─ Prefabs/       Player、敌人、道具、FX/fx_purify
+├─ Settings/      PlayerConfig / CombatConfig / Levels/Level01~03 / Enemy Config×3 / Boss01 / EcoConfig
+├─ Resources/     Data/*.json（dialogues / knowledge_cards）、Audio/Bgm、Audio/GameAudioLibrary.asset
+├─ Animations/    Player.controller（20 参数/22 状态）、Boss01、Enemy01~03、Tower01
+├─ Audio/Sfx/     22 个 SfxId 命名 wav
+├─ Tests/         EditMode 测试
+└─ Scripts/       151 个 .cs / 25,855 行
+   ├─ Core/        3 文件 / 381 行   — CsvTable、DamageMath、NumericSafety（L0 无依赖）
+   ├─ Framework/   8 文件 / 908 行   — 单例、事件中心、对象池、存档、音频、自检（L1）
+   ├─ Player/      7 文件 / 2,446 行 — 控制器、状态机、14 状态、动画驱动、工具锚点（L2）
+   ├─ Combat/      11 文件 / 1,272 行— 伤害、判定框、连段、投掷物、打击感（L2）
+   ├─ EnemyAI/     8 文件 / 1,512 行 — FSM 基类、三种敌人、Tower01（L2）
+   ├─ Boss/        7 文件 / 1,826 行 — 三阶段状态机、封锁门、血条（L2）
+   ├─ Eco/         21 文件 / 2,077 行— 净化值、污染度、垃圾堆、喷雾、知识卡、掉落（L2）
+   ├─ Level/       20 文件 / 3,435 行— 目标链、关卡状态机、生成、机关、危害物、结算（L3）
+   ├─ UI/          17 文件 / 4,121 行— 面板栈、HUD、菜单、结算、图鉴、对话（L4）
+   └─ Editor/      49 文件 / 7,877 行— 场景生成、动画搭建、批量修复（L5，不进运行时）
 ```
+
+> ⚠️ 旧版本本节写着"Scenes 当前仅 SampleScene.unity / EnemyAI 规划中 / LevelFlow 待建"——那是 M1 时期的规划态，**与本版实际结构严重不符**，已于 v0.7 全量重写。
 
 ### 2.2 编码规范
 - 命名：类/方法 PascalCase，私有字段 `_camelCase`，常量 PascalCase；文件名=类名
@@ -50,28 +56,33 @@ Assets/
 
 ## 3. 核心架构（对应论文"系统设计"章）
 
-### 3.1 系统关系图（文字 UML）
+### 3.1 系统关系图
+
+> **完整版见 `SystemOverview.md`**（12 系统清单、依赖矩阵、20 个事件拓扑、启动时序）。此处只留一张压缩图。
+
 ```
-GameManager(Facade单例)
- ├─ EventCenter          ← 全系统解耦通信
- ├─ SceneManagerEx       ── Boot→菜单→关卡 流程
- ├─ SaveSystem           ── JSON 存档（进度/图鉴/设置）
- ├─ AudioManager         ── BGM/SFX 双通道
- ├─ ObjectPool           ── 弹体/FX/敌人复用
- └─ LevelFlowController  ── 每关目标链 + 检查点 + 结算
-       ↓ 引用
- PlayerController ── FSM：Ground(Idle/Run)/Air(Jump/Fall/Land)/Combat(Attack/Spray)/Hurt/Die
-       ↓ 输入伤害                ↑ 净化事件
- HealthSystem(共用于玩家/敌人/Boss)   EcoSystem(垃圾堆/污染源/净化值)
-       ↓ 死亡事件                        ↓ 污染度变化
- EnemyFSM(基类) ── Enemy01/02/03 子类   AtmosphereController(色调/刷怪)
- BossFSM(阶段机：P1→P2→P3)
+[L1 Framework]  EventCenter(静态) / MonoSingleton / PoolManager / AudioManager / SaveSystem
+        ↑ 全部系统只依赖这一层
+┌───────┴────────────────────────────────────────────────┐
+│ [L2 玩法域·互不引用，仅走事件与 IHittable]              │
+│  Player(14 状态)  Combat  EnemyAI  Boss  Eco            │
+└───────┬────────────────────────────────────────────────┘
+        ↑ 编排
+[L3 Level]  LevelManager(状态机·终态幂等) / LevelObjectiveTracker(有序目标链)
+            LevelSpawner / 机关(Crumble·Moving·Lever·Water) / 危害物 ×4
+        ↑ 表现
+[L4 UI]     UIManager(面板栈·输入阻塞仲裁) / HUD / 菜单 / 结算 / 图鉴 / 对话
 ```
+
+**三条架构约束**（`SystemOverview.md` §5 有完整矩阵）：
+1. L2 之间不互相 `using` —— `EnemyAI` 不知道 `Eco` 存在
+2. L3 是唯一允许"知道所有人"的层
+3. L0~L2 不得 `using StarEco.UI`
 
 ### 3.2 关键数据流
 - 净化：SprayController 命中 `IPurifiable` → EcoSystem.AddPurity() → EventCenter 广播 → HUD/Atmosphere/LevelFlow 三方响应
 - 敌人死亡：HealthSystem Die 事件 → ObjectPool 回收 → 掉落表(ScriptableObject) 生成补给
-- 存档：检查点触发 → SaveSystem 序列化 LevelState（净化值/已收集品/检查点 ID）
+- 存档：`SaveSystem` 当前落盘 4 个槽——`settings`（音量等设置，`AudioManager`/`SettingsPanel`）、`progress`（通关进度，`LevelSaveService`）、`codex`（图鉴解锁，`CodexService`）、`level01_result`（上一局结算数据，用于结算面板复现）。⚠️ 原文「检查点触发 → 序列化 LevelState（净化值/已收集品/检查点 ID）」为**规划未实现**——项目无检查点系统，`LevelState` 是运行时内存态、不落盘，死亡即整关重载
 
 ### 3.3 ScriptableObject 数据模型
 - `EnemyConfig`：HP/移速/攻击力/攻击间隔/掉落表/动画帧率
@@ -117,3 +128,5 @@ GameManager(Facade单例)
 | v0.3 | 2026-10-18 | M9：Level02（E 键解救/水流解谜/Enemy02）+ 全流程打通；修 `LevelObjectiveTracker.Evaluate` 链停滞（单次 if→while）；UI 三处索引对齐 |
 | v0.4 | 2026-10-18 | M10：音频铺量（Tools/audio-pipeline 合成 18 SFX+4 BGM、GameAudioLibrary、AudioManager 命名 API、13 处调用点接线）；校准 Enemy01/03 近战 AttackRange（10→3.5 / 9→3.0，修"范围远大于命中几何"导致空挥木桩）；Windows x64 构建通过（Builds/，1052MB，0 错误 0 警告） |
 | v0.5 | 2026-10-19 | 性能：GC=0 达成（Build 版口径）。消除 2 处每帧分配——`DialogueTrigger.Update` 每帧 `FindObjectOfType`（Level01，40 B/帧）、`BossHealthBar` 每帧字符串插值（Level03）；实测证实 Editor 下 ~375 次/帧为编辑器底噪、不可作为 GC 判定口径。详 `性能实测报告.md` |
+| v0.6 | 2026-10-30 | §3.2 存档数据流校正：实为 4 个槽（`settings`/`progress`/`codex`/`level01_result`），原文"检查点触发 → 序列化 LevelState"标为**规划未实现**（无检查点系统，死亡即整关重载）；头部版本号从 v0.2 补到实况；关联文档补 AudioDesign.md / NarrativeDesign.md | 头部版本与变更记录脱节 5 个版本；存档与检查点描述与实现不符（同 GDD v0.8 的检查点修正） |
+| v0.7 | 2026-10-30 | **§2.1 目录结构全量重写**：M1 规划态（"当前仅 SampleScene.unity"、"EnemyAI 规划中"、不存在的 `Dialogue/` `Quest/` `LevelFlow/` 三个目录）→ 实测的 10 目录 151 文件 25,855 行；**§3.1 系统关系图重绘**：删掉不存在的 `GameManager(Facade)` / `SceneManagerEx` / `HealthSystem`，改为真实的三层约束图；新增 `SystemOverview.md` 承接完整版 | TDD 是 M1 时写的，之后 22 次提交从未更新 §2.1/§3.1，导致"工程结构"和"系统关系"两节描述的是**开工前的设想**而非成品。答辩时若按 TDD 讲架构，会讲到三个不存在的类 |

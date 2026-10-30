@@ -122,7 +122,7 @@ FX 用法：材质推荐 **Additive**（剑光/火花/净化/爆炸会自然发�
 4. 朝左用 `SpriteRenderer.flipX`；位移由 Rigidbody2D 驱动（关 Root Motion）。
 5. Idle/Run/Move/Chase/Fall 等循环动作勾 Loop Time，其余不循环。
 6. Run 0.67s × moveSpeed = 单循环步长（moveSpeed=4 时约 2.67 单位），按此防打滑。
-7. Animator 参数：Speed(float)、IsGrounded(bool)、VVelocity(float)、Attack/Hurt/Dash(Trigger)、IsDead(bool)；打断优先级 Die>Hurt>Attack/Interact>Dash>Jump>Run/Idle。
+7. Animator 参数：**实测 20 个**（Speed/IsGrounded/VelocityY/Hurt/Death/Attack/Attack2/Attack3/AttackAir/HeavyAttack/Interact/Dash/Roll/Turn/WallJump/IsWallSliding/IsLedgeGrab/IsCrouching/IsLongIdle/Victory）。⚠️ 旧版本此处只列了 5 个，**完整参数表与打断优先级见 `docs/AnimationVFXSpec.md` §三/§四**。
 
 ## 五、已知 AI 素材瑕疵（可手修，不影响使用）
 

@@ -1,6 +1,6 @@
 # 技术方案：05-EcoSystem
 
-> 对应 `requirements.md` R1~R10（约 50 条 EARS） | 命名空间 `StarEco.Eco` | 代码落点 `Assets/Scripts/Eco/`
+> 版本：v2.0（2026-10-30 补 §3 数据流 4 条链路、§5 拆分取舍/风险、§6 偏差说明） | 对应 `requirements.md` R1~R10（约 50 条 EARS） | 命名空间 `StarEco.Eco` | 代码落点 `Assets/Scripts/Eco/`（26 个 .cs / 2,158 行）
 > 前置已就位：M1 `EventCenter`/`PoolManager`/`AudioManager`、M2 玩家 FSM 与 `PlayerAnimParams`、M3 `IHittable`/`DamageInfo`/`PlayerCombat`（`AttackPressedThisFrame` 驱动模式）、M4 敌人对接入口（`EnemyControllerBase.TakeDamage`、`Tower01Controller.RequestDisable`、`EnemyDeathEvent`/`TowerDisableEvent`）
 > 立项决策（已定稿，设计不再重议）：喷洒动作复用 `Player_Interact`、蓄力释放复用 `Player_HeavyAttack`（不新增美术，"喷壶是背包附件"设定）；喷壶对敌伤害**复用** `IHittable`/`DamageInfo`（不新增平行伤害通道）；Tower01 净化对接用**适配器组件** `TowerPurifiable`（零改 M4 源码）；蓄力净化波**同帧结算**（不走动画事件帧，无连段时序约束）；净化值采用**场景注册制**（`IPurifiable` 注册 → 统计总量）；氛围仅插值 `Camera.backgroundColor`（不引入后处理栈）；拾取自动（Trigger 碰撞，无按键交互）；垃圾堆/补给瓶美术缺失 → WhiteSquare 占位（美术后补仅换 Sprite）
 
@@ -136,9 +136,131 @@ SprayController（每 SprayTickSeconds）
 - `DropSpawner`（场景级）订阅 `EnemyDeathEvent`：`DropTable != null` 时逐条目 `Random.value <= 概率` → `PoolManager.Get(PurifyPickup)` → 摆放在死亡位置 ± 小随机偏移。
 - 拾取物无物理运动（静态 Trigger，落到死亡位置附近即可；穿地风险用生成时 y 微调规避，不做刚体模拟）。
 
-## 3. 数据
+## 3. 数据流
 
-### 3.1 EcoConfig 字段表（单一事实来源；GDD §8 落地）
+四条主链路。括号内为真实类型名，`:行号` 为代码锚点，答辩时可直接跳转。
+
+### 3.1 一次喷洒结算（按住 K，每 0.25s 一个 tick）
+
+```text
+① 输入
+   SprayController.Update → ReadInput()
+     SprayHeld   = inputAllowed && Input.GetKey(KeyCode.K)
+     ChargeHeld  = inputAllowed && Input.GetKey(KeyCode.L)
+     └ inputAllowed 已排除：玩家 InputLocked / ExternalInputLock / UIManager.IsBlocking
+
+② 进状态（由 M2 的 Idle/Run Tick 主动拉，SprayController 不反向驱动 FSM）
+   PlayerIdleState / PlayerRunState.Tick
+     if (_player.Spray.TryConsumeSprayStart()) → Machine.SwitchState<PlayerSprayState>()
+
+③ Enter
+   PlayerSprayState.Enter → Spray.BeginSpray()
+       · Animator 播 Player_Interact
+       · SprayHitbox 的 Collider2D 打开，按 flipX 摆 localPosition.x
+       · AudioManager.PlaySfx(SfxId.SprayStart)（喷淋底噪，见 AudioDesign §3）
+   期间每帧：MoveHorizontally(speedFactor: SpraySpeedFactor = 0.3)
+
+④ 周期结算
+   SprayController.UpdateSprayTicks（在 Update 内）
+     _tickTimer += dt; while (_tickTimer >= SprayTickSeconds) { _tickTimer -= tick; SettleSprayTick(tick); }
+
+⑤ 分流（同一帧同一目标只走其中一条）
+   SettleSprayTick：
+     foreach target in SprayHitbox.Targets（Enter 加 / Exit 减 / OnDisable 剔除，缓存组件引用）
+       ├ IPurifiable            → ReceivePurify(round(SprayDPS × tick), player)   ← 垃圾、堵塞点、塔适配器
+       └ IHittable 且 IsEnemyLayer → TakeDamage(DamageInfo{ Amount = SprayDPS×tick, IsPurify = true })
+   扣料：PurifyTank.Consume(TankConsumePerSecond × tick ×（本 tick 有敌方目标 ? EnemySprayCostMultiplier : 1)）
+
+⑥ 目标侧完成（GarbagePile.cs:69 起）
+   ReceivePurify → _progress += amount
+     if (_progress < PurifyRequired) { 颜色按进度插值；return; }
+     → CompletePurify()：
+         · SpriteRenderer.sprite = _cleanSprite（绿植）
+         · _blocksPath 时 collider.enabled = false（通路打开）
+         · fx_purify 经 PoolManager 取用，FxOneShot 播完自动归还
+         · Publish(GarbagePurifiedEvent{ TargetId, PurityValue, Position })   (GarbagePile.cs:122)
+
+⑦ 三个订阅方并行消费（互不依赖，这是本系统解耦的关键）
+   PuritySystem.OnGarbagePurified (PuritySystem.cs:63)
+       Current += evt.PurityValue → Broadcast() → Publish(PurityChangedEvent{ Current, Total, Percent, Pollution })
+       if (Current >= Total && !_completed) { _completed = true; Publish(LevelPurifiedEvent); }
+   AtmosphereController.OnPurityChanged
+       目标色 = Lerp(CleanColor, PollutedColor, Pollution)；每帧向目标色 Lerp(AtmosphereLerpSpeed × dt)
+       （只改 Camera.backgroundColor，不动渲染器）
+   LevelObjectiveTracker.OnGarbagePurified
+       按 TargetId 前缀分类计数：WaterBlock* → _waterCleared；Tower* → _purifiedTowers；其余 → _purifiedTargets
+       → Evaluate() 推进目标链（详见 06-Level01 §3.1）
+
+⑧ 收尾
+   LevelManager.OnLevelPurified（仅 100% 路径）→ FinishLevel(true, "净化值达到 100%")
+   目标链完成路径 → LevelObjectiveTracker.CompleteChain → 回调 → LevelManager.FinishLevel
+```
+
+**为什么 GarbagePurifiedEvent 要三个订阅方而不是一条链**：净化值（表现/进度）、目标链（流程）、关卡终止（终态）三者的失效方式不同——目标链可以夹取 Required，净化值不能夹；关卡终止要求幂等。串成一条链任一处抛错就全断。
+
+### 3.2 一次蓄力净化波（长按 L 蓄满后松开）
+
+```text
+① PlayerIdleState / PlayerRunState → tryConsumeChargeStart() → PlayerChargeState
+② PlayerChargeState：
+     · 站定（StopHorizontal），进度 0 → 1 用 HeavyChargeSeconds(0.8s)
+     · 期间忽略 K（喷洒与蓄力互斥，本状态不检查 SprayHeld）
+     · ChargeHeld 抬起：
+         未满 → 取消，直接回 Idle（不扣料）
+         蓄满 → Spray.ReleasePurifyWave()
+③ ReleasePurifyWave（SprayController.cs:247）：
+     PurifyTank.Consume(HeavyCost=25) 失败 → 直接 return（回 Idle，不播动画）
+     center/size 取自 SprayHitbox 当前世界包围盒
+     Physics2D.OverlapBoxNonAlloc(center, size, 0f, WaveOverlaps)   ← 静态数组 24，零 GC（R10）
+     foreach：
+       IPurifiable → ReceivePurify(HeavyPurifyAmount=40)
+       敌人 IHittable → TakeDamage(DamageInfo{ Amount = HeavyDamage=3, Knockback = HeavyKnockback=8, IsPurify = true })
+     AudioManager.PlaySfx(SfxId.HeavyRelease)
+     Animator 播 Player_HeavyAttack
+④ PlayerChargeState 用 HeavyRecoverSeconds(0.5s) 做硬直 → 回 Idle
+```
+
+**同帧结算的含义**：上面 ③ 的伤害在动画起播前就已打完。对比 M3 近战必须等 `HitOn` 动画事件帧开窗。差别原因：近战是"表现窗口=判定窗口"的手感契约，AOE 是一次性脉冲，若也等事件帧，动画被打断就丢判定。
+
+### 3.3 一次敌人死亡 → 掉落 → 拾取（当前三关为断链）
+
+```text
+① 敌人死亡
+   EnemyDieState → Animator DieEnd 事件 → EnemyControllerBase.OnDieEnd()
+     → BroadcastDeath() → Publish(EnemyDeathEvent{ EnemyTypeId, Position, DropTable })   (EnemyControllerBase.cs:437)
+     → Recycle()（池借出走 PoolManager.Release，场景实例走 SetActive(false)）
+
+② 掉落（DropSpawner，三关各挂 1 个）
+   OnEnemyDeath(evt)：
+     if (_dropTable == null) return;        ← 三关实测：Level01/02/03 的 _dropTable 全为 {fileID: 0}
+     foreach entry in _dropTable.Entries：
+        if (Random.value <= entry.Chance) → PoolManager.Get(entry.PickupPrefab) → 摆到 evt.Position ± 随机偏移
+
+③ 拾取
+   PurifyPickup.OnTriggerEnter2D(other)：
+     other 是玩家 → PurifyTank.Refill(PickupTankAmount=20) → Publish(PickupCollectedEvent) → 归还池
+
+④ 计数
+   LevelStats 订阅 PickupCollectedEvent → PickupCount++（进结算面板）
+```
+
+> **诚实登记**：`②` 的前置条件当前不成立。`_dropTable` 三关全空、`PurifyPickup.prefab` 场景内 0 引用（仅作为 Prefab 资产存在），故整条链路实际是**空转**：敌人死亡只广播事件，不产生任何掉落。`DropSpawner` 与 `DropTable` 的代码是正确的，缺的是资产配置——登记在 README §5 与 TestPlan 已知问题。
+
+### 3.4 一次净化剂耗尽
+
+```text
+PurifyTank.Current 降到 0
+  → SprayController.SettleSprayTick 的 Consume 返回 false
+  → 本 tick 不结算伤害/净化（并非半伤），但喷洒状态继续（不强制退出）
+  → HUD 能量条见底闪烁（HUDController 拉取 PurifyTank.Current/Capacity）
+  → 玩家只能靠拾取物回复；当前掉落链断 → 实际表现为"净化剂用完即死锁"
+```
+
+这条链是 `§3.3` 断链的**下游后果**，也是本轮把它列为 P0 缺口的原因：不是"少个掉落物"，是关卡可玩性有死锁风险（第一关 `InitialTank=50`、`TankConsumePerSecond=8` → 裸喷 6.25 秒见底）。
+
+## 4. 数据契约
+
+### 4.1 EcoConfig 字段表（单一事实来源；GDD §8 落地）
 
 | 字段 | 默认值 | 说明 |
 |---|---|---|
@@ -167,11 +289,11 @@ SprayController（每 SprayTickSeconds）
 | `AtmosphereLerpSpeed` | 2 | 背景色平滑速率（1/s） |
 | `GarbagePollutedTint` / `GarbageCleanTint` | 灰褐 / 淡绿 | 垃圾堆净化进度变色两端（完成时换 `garbage_pile_clean.png` 绿植） |
 
-### 3.2 事件表（全部 struct，经 EventCenter，零 GC）
+### 4.2 事件表（全部 struct，经 EventCenter，零 GC）
 
 | 事件 | 载荷 | 发布方 | 订阅方 |
 |---|---|---|---|
-| `PurifyTankChangedEvent` | Current/Capacity | `PurifyTank` | M7 HUD（M5 内部无消费） |
+| `PurifyTankChangedEvent` | Current/Capacity | `PurifyTank` | **（无）** —— HUD 改为每帧轮询 `PurifyTank.Current/Capacity`，该事件成孤儿（SystemOverview §6） |
 | `PurityChangedEvent` | Current/Total/Percent/污染度 | `PuritySystem` | `AtmosphereController`、M7 HUD |
 | `GarbagePurifiedEvent` | PurityValue/位置/标识 | `GarbagePile`/`TowerPurifiable` | `PuritySystem` |
 | `LevelPurifiedEvent` | — | `PuritySystem`（one-shot） | M6 关卡流程（M5 内部验证用） |
@@ -179,7 +301,7 @@ SprayController（每 SprayTickSeconds）
 | （订阅）`EnemyDeathEvent` | DropTable/位置 | M4 既有 | `DropSpawner` |
 | （订阅）`TowerDisableEvent` | 塔标识/位置 | M4 既有 | M6 检查点（M5 验证用） |
 
-### 3.3 键位与动画映射
+### 4.3 键位与动画映射
 
 | 输入 | 键 | 玩家状态 | 动画（复用） |
 |---|---|---|---|
@@ -189,15 +311,41 @@ SprayController（每 SprayTickSeconds）
 
 > `Player.controller` 已含 22 参数/22 状态（M3 提交记录），`Interact`/`HeavyAttack` 大概率已有参数与状态位；任务中"核对 + 缺则补"，参数名以 `PlayerAnimParams` 常量为准。
 
-## 4. 取舍与风险
+## 5. 设计取舍与风险
 
-| 取舍/风险 | 决策 | 理由 |
+### 5.1 设计取舍
+
+| 取舍项 | 选择 | 放弃的方案与理由 |
 |---|---|---|
-| 喷洒锁移动 vs 减速 | 减速（`SprayMoveSpeedFactor=0.3`） | 横版手感优先；站定喷在测试中易被敌人贴脸惩罚过重 |
-| 净化波走动画事件帧 vs 同帧 | 同帧结算 | 无连段时序；防止动画被打断丢判定（M4 事件帧模式适用于"表现窗口=判定窗口"的近战，不适合瞬发 AOE） |
-| 敌人可被净化"秒杀" vs 只受伤 | 只受伤（走 DamageInfo） | GDD 仅"持续伤害消耗加倍"；净化即死的例外留给 M6 削弱机制 |
-| 进度中断衰减 | 不衰减 | 手感宽容；防"差 0.1 秒清零重来"挫败 |
-| 垃圾美术缺失 / 净化视觉弱 | 真素材 + 进度颜色插值 + 完成换绿植贴图 | 视觉反馈明确；贴图缺失时回退颜色插值 |
-| `OnTriggerStay2D` vs Enter/Exit 列表 | Enter/Exit 维护列表 + Stay 兜底 | Stay 每帧回调成本高且顺序不定；列表缓存组件引用零每帧 GetComponent |
-| 池化目标中途 SetActive(false) | 目标方 `OnDisable` 时从列表剔除；喷洒结算前判 null | M4 经验：池化对象生命周期与外部列表不同步是 NRE 高发点 |
-| 背景色插值影响 | 仅 `Camera.backgroundColor` | 内置管线零成本；全场景 tint 需遍历渲染器，收益低成本高，留给 M10 评估 |
+| 喷洒时的移动 | 减速（`SprayMoveSpeedFactor=0.3`） | 放弃"锁移动"：横版手感优先；站定喷在测试中易被敌人贴脸，惩罚过重 |
+| 净化波的结算时机 | 同帧结算 | 放弃"走动画事件帧"：无连段时序；防动画被打断丢判定（M4 事件帧模式适用于"表现窗口=判定窗口"的近战，不适合瞬发 AOE） |
+| 敌人是否可被净化秒杀 | 只受伤（走 `DamageInfo`） | 放弃"净化即死"：GDD 仅承诺"持续伤害 + 消耗加倍"；秒杀会让战斗系统失去意义 |
+| 净化进度中断 | 不衰减 | 放弃"衰减/清零"：防"差 0.1 秒清零重来"的挫败；GDD "长按 2 秒"是时长上限不是计时器 |
+| 塔的净化方式 | 两条路径并存：攻击击毁（`Tower01Controller` HP 归零）或持续喷洒（`TowerPurifiable` → `RequestDisable()`），都汇到 `TowerDisableEvent` | 放弃"只能净化"：塔作为战斗单位要能被正常打死，否则玩家在只有塔的场景里无事可做 |
+| 喷洒判定盒的目标维护 | `OnTriggerEnter/Exit` 维护列表 + `OnTriggerStay` 兜底 | 放弃"纯 Stay 每帧查询"：Stay 每帧回调且顺序不定；列表缓存组件引用可做到零每帧 `GetComponent` |
+| 氛围表现 | 只插值 `Camera.backgroundColor` | 放弃"全场景 renderer tint"：需遍历渲染器，收益低成本高；内置管线零成本方案已足够表达"星球在恢复" |
+| 垃圾堆美术 | 真素材 + 进度颜色插值 + 完成换绿植贴图 | 放弃"仅颜色变化"：完成瞬间换贴图才有"净化成功"的明确反馈 |
+
+### 5.2 风险
+
+| # | 风险 | 概率 | 影响 | 现状与对策 |
+|---|---|---|---|---|
+| E1 | **掉落链断链 → 净化剂死锁** | 已发生 | 高（关卡可玩性） | 三关 `_dropTable` 全 null、`PurifyPickup` 场景 0 引用。短期：`InitialTank=50` 足够打完 L1（实测可行）；根治：给三关配 `DropTable` 资产（P0，登记于 TestPlan） |
+| E2 | 池化对象中途 `SetActive(false)` 导致喷洒列表持死引用 | 中 | 中（NRE） | 目标方 `OnDisable` 主动剔除 + 结算前判 null（已实现） |
+| E3 | `SprayHitbox` 镜像依赖每帧写 `localPosition.x` | 低 | 低 | 沿用 M4 FirePoint 教训；`flipX` 与判定盒同帧更新，实测无错位 |
+| E4 | 蓄力波 `OverlapBoxNonAlloc` 固定 24 容量，怪物密集时截断 | 低 | 低 | 第三关同屏敌人 ≤ 6（`LevelSpawner` 上限），24 有 4 倍余量；若后续加量需扩容 |
+| E5 | 净化值与目标链双计数口径不一致（一个按 `PurityValue` 加权、一个按个数） | 中 | 中（HUD 与面板数字不符） | 现状是可解释的：目标链数"清掉几个"，HUD 数"净化了百分之几"。已在 HUD 上用不同文案区分 |
+| E6 | `TowerPurifiable` 与攻击击毁双路径，可能重复计 `_purifiedTowers` | 低 | 低 | `RequestDisable()` 幂等（M4 保证），`TowerDisableEvent` 只广播一次；`GarbagePurifiedEvent` 的 `Tower*` 前缀分支与 `TowerDisableEvent` 分支可能都涨 1 —— 但三个关卡配置都没有 `PurifyTowers` 目标，故当前不触发 |
+
+## 6. 与 requirements 的偏差说明
+
+`requirements.md` 写于 M5 立项，以下是落地后与它不一致的地方。**以本节为准**，`requirements.md` 只在答辩追溯时作为历史记录。
+
+| 编号 | requirements 原文口径 | 实际实现 | 原因 |
+|---|---|---|---|
+| R1 | "净化目标统一接口 `IPurifiable`" | 实现为 `IPurifiable` + `IResettablePurifiable`（后者多一个 `ResetPurify()`） | 编辑器 Setup 工具与场景重载需要复位入口；接口拆分避免所有实现都背一个用不到的复位方法 |
+| R5 | 塔通过 `TowerPurifiable` 净化 | 攻击击毁与净化关闭**两条路径**，都汇到 `TowerDisableEvent`；`LevelObjectiveTracker` 同时认 `GarbagePurifiedEvent` 的 `Tower*` 前缀与 `TowerDisableEvent` | 塔先作为战斗单位加入（M4），玩家预期"能打死"；净化是补的环保表达 |
+| R6 | 净化值 100% 由 `LevelPurifiedEvent` 通知关卡 | 100% 与"目标链完成"**两个判据并存，先到者为准** | 第三关目标链不含 `ReachPurity`（打完 Boss 即通关），只留 100% 判据会卡关 |
+| R8 | 喷洒对敌人是"持续伤害" | 实现带 `IsPurify=true` 标记，Boss 侧按 `PurifyDamageMultiplier` 放大（见 08-Boss） | 让"喷"在 Boss 战有独立价值，否则第三关的喷雾键是废键 |
+| R9 | 掉落表与拾取物接入关卡 | **代码完整，资产未配**（`_dropTable` 全 null） | 排期未到；不谎报为"已接入" |
+| — | （requirements 未提） | 新增 `KnowledgeCardPickup` / `WaterBlockage` / `GrassZone` / `BreakableProp` / `BreakableDebris` | M9 第二/三关需求倒灌进 M5 目录（同属 `StarEco.Eco` 命名空间），见 09-Level02 §3 |

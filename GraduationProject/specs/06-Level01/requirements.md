@@ -9,7 +9,7 @@
 
 > **代码落点**：`Assets/Scripts/Level/LevelConfig.cs`
 
-- THE SYSTEM SHALL 以 ScriptableObject `LevelConfig` 描述一关的全部可配置内容：关卡序号、关卡名、目标链、刷怪表、检查点 ID 集合、结算星级阈值、限时（0 = 不限时）、开场提示语。
+- THE SYSTEM SHALL 以 ScriptableObject `LevelConfig` 描述一关的全部可配置内容：关卡序号、关卡名、目标链、刷怪表、出生点、结算星级阈值、限时（0 = 不限时）、开场提示语。
 - WHEN `LevelManager` 初始化关卡且未指定配置资产，THE SYSTEM SHALL 回退到 `Level01Config` 资源或代码默认值，且不抛异常。
 - THE SYSTEM SHALL 关卡目标以有序数组 `Objectives` 表达，每项目标含目标类型（`PurifyTargets` 净化 N 个污染源 / `PurifyTowers` 净化 N 座塔 / `ReachPurity` 净化值达标 / `DefeatEnemies` 击杀 N 个敌人）、所需数量、显示文本。
 - THE SYSTEM SHALL 刷怪以 `SpawnEntry` 数组表达，每项含敌人预制体、生成锚点、同时存在上限、基础间隔、仅在指定目标序号解锁后生成。
@@ -22,7 +22,7 @@
 - THE SYSTEM SHALL 关卡状态为四态枚举：`NotStarted`（未开始）、`Playing`（进行中）、`Completed`（已完成）、`Failed`（失败），且状态单向流转（`NotStarted → Playing → Completed/Failed`，终态不再回退，除显式 `RestartLevel`）。
 - WHEN 关卡进入 `Playing`，THE SYSTEM SHALL 记录开始时间、初始化目标链与刷怪器、拉取玩家/净化系统/氛围系统引用并开始计时。
 - WHEN 关卡进入 `Completed` 或 `Failed`，THE SYSTEM SHALL 停止计时、冻结玩家输入、广播对应的关卡终态事件，且只广播一次（幂等）。
-- IF 关卡进入 `Playing` 后玩家死亡，THE SYSTEM SHALL 从最近检查点恢复（见 R4）；仅当**没有任何已激活检查点**时才转入 `Failed` 并进入结算流程（R7 结算面板区分胜负）。
+- IF 关卡进入 `Playing` 后玩家死亡，THE SYSTEM SHALL **直接**转入 `Failed` 并进入结算流程（R7 结算面板提供「重新开始（重开本关）」与「返回主菜单」），不做原地复活。
 - WHEN 调用 `RestartLevel`，THE SYSTEM SHALL 重置关卡状态与统计并重新进入 `Playing`（同场景内重置，不重载场景）。
 - IF 关卡所需的玩家 / `PuritySystem` / `LevelConfig` 任一缺失，THE SYSTEM SHALL 输出明确错误日志并将关卡置为 `Failed`，不进入半工作状态。
 
@@ -37,24 +37,20 @@
 - THE SYSTEM SHALL 目标链完成不等同于关卡完成：关卡完成以 `LevelPurifiedEvent`（净化值 100%）或配置目标链全完成二者**先到者**为准，避免玩家达成全部目标却因配置总量大于 100% 而卡关。
 - THE SYSTEM SHALL 目标链进度只增不减，重放（重启关卡）时完全重置。
 
-## R4 检查点
+## R4 检查点（已移除）
 
-> **代码落点**：`Assets/Scripts/Level/Checkpoint.cs`、`Assets/Scripts/Level/LevelSnapshot.cs`
+> 原「检查点快照 / 死亡回检查点」需求已按验收反馈整体移除：玩家阵亡即结束本局，由结算面板的「重新开始」重载本关。
 
-- THE SYSTEM SHALL 关卡中存在若干检查点，每个检查点是一个场景组件（Trigger 区域），带唯一 `CheckpointId`。
-- WHEN 玩家首次进入某检查点触发区，THE SYSTEM SHALL 记录该检查点为"已激活"，并向 `LevelManager` 提交一份关卡快照（玩家位置、当前 HP、净化剂、净化值、击杀数、耗时）。
-- WHEN 玩家死亡，THE SYSTEM SHALL 从**最近一个已激活**的检查点恢复：玩家传送回该检查点位置、HP/净化剂/净化值恢复为快照值、计时沿用快照耗时（不回退）。
-- IF 玩家死亡且没有任何已激活的检查点，THE SYSTEM SHALL 使用关卡配置中的出生点恢复，并记录一次"无检查点恢复"（不报错）。
-- WHEN 检查点被激活，THE SYSTEM SHALL 广播检查点事件供 UI/音效消费（M7）。
-- THE SYSTEM SHALL 检查点快照只保留最近一份（单槽位），不做多槽位栈；实现上仍以 `LevelSnapshot` 结构承载，便于后续扩展多槽位。
-- THE SYSTEM SHALL 检查点**不回滚**已净化的污染源与已击杀的敌人（避免重复结算与状态回滚复杂度），只回滚玩家状态与位置；该取舍在 design §3 说明。
+- THE SYSTEM SHALL **不**提供检查点组件、关卡快照与死亡原地复活逻辑。
+- WHEN 玩家死亡，THE SYSTEM SHALL 进入 `Failed` 终态并弹出结算面板（见 R2 / R7）。
+- 已删除代码：`Level/Checkpoint.cs`、`Level/LevelSnapshot.cs`、`Level/Events/CheckpointActivatedEvent.cs`、`LevelManager.CommitCheckpoint/RespawnFromCheckpoint`、`LevelStats` 快照字段、`PlayerController.Revive`、`PlayerCombat.RestoreHP`。
 
 ## R5 污染度驱动的动态刷怪
 
 > **代码落点**：`Assets/Scripts/Level/LevelSpawner.cs`
 
 - WHEN 关卡进入 `Playing`，THE SYSTEM SHALL 按 `LevelConfig.SpawnEntries` 启动刷怪：每项在指定锚点附近、以同时存在上限为约束、按基础间隔生成敌人预制体。
-- WHILE 关卡进行中，THE SYSTEM SHALL 依据当前污染度（`PurityChangedEvent.Pollution`）动态调整刷怪间隔：污染度越高间隔越短（`间隔 = 基础间隔 × Mathf.Lerp(0.5f, 1.5f, Pollution)`）。
+- WHILE 关卡进行中，THE SYSTEM SHALL 依据当前污染度（`PurityChangedEvent.Pollution`）动态调整刷怪间隔：污染度越高间隔越短（`间隔 = 基础间隔 × Mathf.Lerp(1.5f, 0.5f, Pollution)`）。
 - WHEN 某 `SpawnEntry` 绑定了 `RequiredObjectiveIndex`，THE SYSTEM SHALL 仅在该目标已完成后才开始生成（目标链驱动刷怪）。
 - WHEN 生成的敌人死亡，THE SYSTEM SHALL 递增击杀计数并释放该 `SpawnEntry` 的同时存在名额。
 - THE SYSTEM SHALL 刷怪产出的敌人走 M1 `PoolManager` 对象池并调用 `MarkPooled`（保证归还路径统一）。
