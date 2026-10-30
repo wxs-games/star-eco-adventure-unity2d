@@ -5,11 +5,12 @@ using StarEco.Combat;
 using StarEco.Eco;
 using StarEco.Eco.Events;
 using StarEco.Level.Events;
+using StarEco.UI;
 
 namespace StarEco.Level
 {
     /// <summary>
-    /// 关卡管理器（M6 流程中枢，R2）：单例、状态机、检查点快照与恢复、终态结算与写档。
+    /// 关卡管理器（M6 流程中枢，R2）：单例、状态机、终态结算与写档。
     /// 对 M1~M5 零改动，只调用公开接口与订阅事件。
     /// 依赖（PuritySystem / LevelStats / LevelObjectiveTracker / LevelSpawner）用惰性查找，
     /// 因为场景各组件 Awake 顺序不确定。
@@ -18,21 +19,19 @@ namespace StarEco.Level
     {
         [SerializeField] private LevelConfig _config;
 
+        [Tooltip("通关落幕对白 Id（仅最后一关播放；置空 = 关闭落幕对白）")]
+        [SerializeField] private string _endingDialogueId = "ava_ending";
+
+        private bool _endingPlayed;   // 落幕对白只播一次，防止重复进终态时二次弹出
+
         /// <summary>当前关卡状态。</summary>
         public LevelState State { get; private set; } = LevelState.NotStarted;
 
         /// <summary>当前使用的关卡配置。</summary>
         public LevelConfig Config => _config;
 
-        /// <summary>最近一次提交的检查点快照（单槽位，R4）。</summary>
-        public LevelSnapshot CurrentSnapshot { get; private set; }
-
-        /// <summary>无检查点恢复的次数（诊断用）。</summary>
-        public int NoCheckpointRespawnCount { get; private set; }
-
         private PlayerController _player;
         private PuritySystem _purity;
-        private PurifyTank _tank;
         private LevelStats _stats;
         private LevelObjectiveTracker _tracker;
         private LevelSpawner _spawner;
@@ -88,14 +87,6 @@ namespace StarEco.Level
                 _purity = FindObjectOfType<PuritySystem>();
             }
 
-            if (_player != null)
-            {
-                if (_tank == null)
-                {
-                    _tank = _player.GetComponent<PurifyTank>();
-                }
-            }
-
             if (_stats == null)
             {
                 _stats = FindObjectOfType<LevelStats>();
@@ -137,8 +128,6 @@ namespace StarEco.Level
             }
 
             _finished = false;
-            NoCheckpointRespawnCount = 0;
-            CurrentSnapshot = null;
 
             _stats.Reset();
             _tracker.Initialize(_config, _purity, _stats, OnObjectiveChainCompleted);
@@ -146,7 +135,10 @@ namespace StarEco.Level
             if (_player != null)
             {
                 _player.InputLocked = false;
-                _player.transform.position = _config.SpawnPoint;
+                // 出生点以场景里 Player 的摆放位置为准（2026-10-30 从"强制瞬移到
+                // LevelConfig.SpawnPoint"改过来：编辑器里摆的位置才是唯一可见事实，
+                // 运行时再按配置瞬移会让玩家被传送到一个场景视图看不到的地方）。
+                // 想改出生点：直接在场景里拖动 Player，然后保存场景。
             }
 
             SetState(LevelState.Playing);
@@ -156,15 +148,14 @@ namespace StarEco.Level
 
             if (_spawner != null)
             {
-                _spawner.Begin(_config, _tracker, _player != null ? _player.transform : null);
+                _spawner.Begin(_config, _tracker);
             }
         }
 
         /// <summary>
-        /// 重开关卡（R7 面板"重新开始"）：重载当前场景。
-        /// 为什么重载而不是原地重置：塔（Tower01Controller.RequestDisable）是 M4 的单向开关，
-        /// 关掉后无法复活 —— 原地重置会让重开后的关卡少一个 10% 净化值目标（25/35 封顶），
-        /// 无法达成 100% 通关。重载场景让所有对象回到初始态，是唯一彻底的方案。
+        /// 重开关卡（结算面板"重新开始"）：重载当前场景。
+        /// 为什么重载而不是原地重置：已净化对象、熄火/永久关闭的敌人等运行时状态都是单向的，
+        /// 原地重置无法真正回到初始态；重载场景让所有对象重新初始化，是唯一彻底的方案。
         /// </summary>
         public void RestartLevel()
         {
@@ -187,16 +178,10 @@ namespace StarEco.Level
 
             if (_player != null && _player.IsDead)
             {
-                // 死亡处理：有检查点则从检查点恢复（横版动作游戏惯例，不打断关卡流程）；
-                // 无任何检查点才判失败（R2 与 R4 的交界，requirements 已同步）
-                if (CurrentSnapshot != null)
-                {
-                    RespawnFromCheckpoint();
-                }
-                else
-                {
-                    FinishLevel(false, "玩家死亡且无检查点可恢复");
-                }
+                // 死亡即结束本局：直接进入失败终态并弹出结算面板（重新开始 / 返回主菜单）。
+                // 重开本关由结算面板的"重新开始"重载场景完成，不做原地续命。
+                // 死因区分：坠落（掉出关卡地面）不能说成"被击败"，否则玩家会以为是被怪打死的。
+                FinishLevel(false, _player.DiedFromFall ? "跌落山崖（掉出了关卡地面）" : "玩家被击败");
             }
         }
 
@@ -229,6 +214,82 @@ namespace StarEco.Level
                 _player.InputLocked = true;
             }
 
+            // 通关落幕对白拦在结算之前：直接弹结算会冻结输入，玩家没有机会看到任何收尾文本。
+            if (success && TryPlayEndingDialogue())
+            {
+                StartCoroutine(CommitFinishAfterEnding(reason));
+                return;
+            }
+
+            CommitFinish(success, reason);
+        }
+
+        /// <summary>
+        /// 播放通关落幕对白（仅最后一关）。返回 true 表示已交给协程异步收尾，
+        /// 调用方不得再走同步结算路径。
+        /// </summary>
+        private bool TryPlayEndingDialogue()
+        {
+            if (_endingPlayed || string.IsNullOrEmpty(_endingDialogueId))
+            {
+                return false;
+            }
+
+            // 只给最后一关：这段台词讲的是三颗星球的数据互通，放在第一/二关语义不通
+            if (_config == null || _config.LevelIndex != 3)
+            {
+                return false;
+            }
+
+            // 已有对话在播就不抢（例如玩家正站在艾娃面前打完 Boss）
+            if (DialoguePanel.IsDialogueActive)
+            {
+                return false;
+            }
+
+            var data = DialogueRepository.Find(_endingDialogueId);
+            if (data == null)
+            {
+                Debug.LogWarning($"[LevelManager] 落幕对白缺失：{_endingDialogueId}，直接进入结算。");
+                return false;
+            }
+
+            UIManager.SafeOpen(DialoguePanel.PanelId);
+            var panel = FindObjectOfType<DialoguePanel>();
+            if (panel == null || !panel.IsOpen)
+            {
+                UIManager.SafeClose(DialoguePanel.PanelId);
+                Debug.LogWarning("[LevelManager] 对话面板不可用，跳过落幕对白。");
+                return false;
+            }
+
+            panel.Play(data);
+            _endingPlayed = true;
+            return true;
+        }
+
+        /// <summary>
+        /// 等落幕对白播完再结算。不直接把结算挂在对话回调上，是因为面板栈没有
+        /// "关闭回调"；轮询 IsDialogueActive 最省事且对 Esc 中断也成立。
+        /// </summary>
+        private System.Collections.IEnumerator CommitFinishAfterEnding(string reason)
+        {
+            yield return null;   // SafeOpen 当帧只入栈，等一帧让 OnOpen 生效
+
+            while (DialoguePanel.IsDialogueActive)
+            {
+                yield return null;
+            }
+
+            // 最后一句是玩家按 E 关掉的；不等这一帧，结算面板会被同一个 E 立刻按掉
+            yield return null;
+
+            CommitFinish(true, reason);
+        }
+
+        /// <summary>终态后半段：生成结算数据 → 写档 → 播提示音 → 切状态 → 广播（结算面板据此弹出）。</summary>
+        private void CommitFinish(bool success, string reason)
+        {
             var result = BuildResult(success);
             LevelSaveService.CommitResult(result);
 
@@ -285,98 +346,6 @@ namespace StarEco.Level
         private void OnRestartRequested(RestartLevelEvent evt)
         {
             RestartLevel();
-        }
-
-        // ===== 检查点 =====
-
-        /// <summary>提交检查点快照（R4，单槽位覆盖）。</summary>
-        public void CommitCheckpoint(Checkpoint checkpoint)
-        {
-            if (checkpoint == null)
-            {
-                return;
-            }
-
-            CurrentSnapshot = new LevelSnapshot
-            {
-                PlayerPosition = checkpoint.RespawnPosition,
-                PlayerHP = _player != null && _player.Combat != null ? _player.Combat.CurrentHP : 0,
-                PurifyTank = _tank != null ? _tank.Current : 0,
-                KillCount = _stats != null ? _stats.KillCount : 0,
-                PickupCount = _stats != null ? _stats.PickupCount : 0,
-                ElapsedSeconds = _stats != null ? _stats.ElapsedSeconds : 0f,
-                CheckpointId = checkpoint.CheckpointId
-            };
-
-            _stats?.CommitSnapshotElapsed();
-
-            Debug.Log($"[LevelManager] 检查点已记录：{checkpoint.CheckpointId}");
-        }
-
-        /// <summary>从最近检查点恢复（R4）。无快照时回退配置出生点。</summary>
-        public void RespawnFromCheckpoint()
-        {
-            if (_player == null)
-            {
-                return;
-            }
-
-            _player.Revive();
-
-            if (CurrentSnapshot == null)
-            {
-                NoCheckpointRespawnCount++;
-                _player.transform.position = _config != null ? (Vector3)_config.SpawnPoint : Vector3.zero;
-                SnapCameraToPlayer();
-
-                if (_player.Combat != null)
-                {
-                    _player.Combat.RestoreHP(_player.Combat.MaxHP);
-                }
-
-                Debug.LogWarning("[LevelManager] 没有任何检查点记录，已回退到关卡出生点。");
-                return;
-            }
-
-            _player.transform.position = CurrentSnapshot.PlayerPosition;
-            SnapCameraToPlayer();
-
-            if (_player.Combat != null)
-            {
-                _player.Combat.RestoreHP(CurrentSnapshot.PlayerHP);
-            }
-
-            if (_tank != null)
-            {
-                // M5 只提供 Consume/Restore，用"扣到底再补到目标值"实现精确恢复（零改动 M5）
-                _tank.Consume(_tank.Current);
-                _tank.Restore(CurrentSnapshot.PurifyTank);
-            }
-
-            _stats?.RestoreFromSnapshot(CurrentSnapshot.KillCount, CurrentSnapshot.PickupCount, CurrentSnapshot.ElapsedSeconds);
-
-            _player.InputLocked = false;
-            Debug.Log($"[LevelManager] 已从检查点 {CurrentSnapshot.CheckpointId} 恢复。");
-        }
-
-        /// <summary>
-        /// 复活传送后让相机直接定位到玩家，避免它用平滑插值从旧位置慢慢追过去。
-        /// 场景没有 CameraFollow2D（如 Boss 关固定机位）时静默跳过。
-        /// </summary>
-        private void SnapCameraToPlayer()
-        {
-            if (_player == null)
-            {
-                return;
-            }
-
-            var follow = Camera.main != null ? Camera.main.GetComponent<CameraFollow2D>() : null;
-            if (follow == null)
-            {
-                follow = FindObjectOfType<CameraFollow2D>();
-            }
-
-            follow?.SnapToTarget(_player.transform);
         }
     }
 }

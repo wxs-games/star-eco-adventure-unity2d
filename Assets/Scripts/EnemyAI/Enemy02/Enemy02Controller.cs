@@ -16,6 +16,7 @@ namespace StarEco.EnemyAI
         {
             Machine = new EnemyStateMachine();
             Machine.Register(new EnemyIdleState(this, Machine));
+            Machine.Register(new EnemyPatrolState(this, Machine));
             Machine.Register(new EnemyChaseState(this, Machine));
             Machine.Register(new EnemyRangedAttackState(this, Machine));
             Machine.Register(new EnemyHurtState(this, Machine));

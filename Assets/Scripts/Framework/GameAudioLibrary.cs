@@ -28,6 +28,10 @@ namespace StarEco.Framework
         Splash,
         LevelComplete,
         LevelFail,
+        BreakPlant,
+        BreakStone,
+        Footstep,
+        GrassRustle,
     }
 
     /// <summary>

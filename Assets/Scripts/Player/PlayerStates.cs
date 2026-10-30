@@ -26,6 +26,16 @@ namespace StarEco.Player
                 return;
             }
 
+            if (TryStartDash())
+            {
+                return;
+            }
+
+            if (TryStartCrouch())
+            {
+                return;
+            }
+
             if (Player.Combat != null && Player.Combat.ConsumeAttackPressed())
             {
                 Machine.SwitchState<PlayerAttackState>();
@@ -55,6 +65,7 @@ namespace StarEco.Player
                 return;
             }
 
+            TryPlayTurn();
             SwitchGroundLocomotion();
 
             // 地面静止但角色离地（走下平台）→ 空中
@@ -84,6 +95,16 @@ namespace StarEco.Player
             }
 
             if (TryStartDodge())
+            {
+                return;
+            }
+
+            if (TryStartDash())
+            {
+                return;
+            }
+
+            if (TryStartCrouch())
             {
                 return;
             }
@@ -151,6 +172,16 @@ namespace StarEco.Player
                 return;
             }
 
+            if (TryStartDash())
+            {
+                return;
+            }
+
+            if (TryStartCrouch())
+            {
+                return;
+            }
+
             if (Player.Combat != null && Player.Combat.ConsumeAttackPressed())
             {
                 Machine.SwitchState<PlayerAttackState>();
@@ -160,6 +191,12 @@ namespace StarEco.Player
             // 空中不再有二段跳：TryConsumeJump 在离地后恒为 false，
             // 保留这次调用只是让“落地前预输入”继续由 Land 状态接力缓冲。
             if (Player.HasJumpBuffer && Player.TryConsumeJump())
+            {
+                return;
+            }
+
+            // 贴墙下滑 / 扒边（自动触发，放在攻击/冲刺之后：主动输入优先）
+            if (TryStartWallOrLedge())
             {
                 return;
             }
@@ -210,6 +247,11 @@ namespace StarEco.Player
                 return;
             }
 
+            if (TryStartDash())
+            {
+                return;
+            }
+
             _lockTimer -= Time.deltaTime;
 
             // 落地瞬间恰好有跳跃缓冲 → 立即再跳（连贯跳跃手感）
@@ -244,7 +286,7 @@ namespace StarEco.Player
             // 击退：水平反向 + 小幅上抛
             var knockback = Player.TakeKnockback();
             Player.SetKnockback(knockback);
-            Player.TryFireAnim(PlayerAnimParams.Hurt);
+            Player.PlayOneShot("Hurt");
             AudioManager.Instance?.PlaySfx(SfxId.Hurt);   // M10
             // 硬直时长来自 CombatConfig（T5：GDD 初值 0.6s）
             _recoverTimer = Player.Combat != null && Player.Combat.Config != null
@@ -302,7 +344,7 @@ namespace StarEco.Player
         public override void Enter()
         {
             Player.StopHorizontal();
-            Player.TryFireAnim(PlayerAnimParams.Death);
+            Player.PlayOneShot("Death");
             AudioManager.Instance?.PlaySfx(SfxId.Death);   // M10
 
             var collider = Player.GetComponent<Collider2D>();
@@ -341,7 +383,7 @@ namespace StarEco.Player
                 : (Player.Sprite.flipX ? -1f : 1f);
 
             Player.BeginDodge(_dir);                        // 起冷却 / 开无敌窗 / 记空中次数
-            Player.TryFireAnim(PlayerAnimParams.Roll);      // 触发已有 Roll 动画状态
+            Player.PlayOneShot("Roll");
             Player.InputLocked = true;                      // 翻滚期间锁输入（R5）
             Player.SetDodgePassThrough(true);               // 翻滚期间穿过怪物（不与怪物层发生碰撞）
         }
@@ -377,6 +419,272 @@ namespace StarEco.Player
             }
             else
             {
+                Machine.SwitchState<PlayerAirState>();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 冲刺（Dash）：时长内以配置速度直线位移，无无敌帧（无敌是 Roll 的职责）。
+    /// 与翻滚的区别：可空中使用（每段一次）、不受重力、方向锁定、无穿透。
+    /// </summary>
+    public class PlayerDashState : PlayerStateBase
+    {
+        private float _timer;
+        private float _dir;
+
+        public PlayerDashState(PlayerController player, PlayerStateMachine machine)
+            : base(player, machine) { }
+
+        public override void Enter()
+        {
+            _dir = Mathf.Abs(Player.HorizontalInput) > 0.01f
+                ? Mathf.Sign(Player.HorizontalInput)
+                : Player.FacingDir;
+            _timer = Player.Config.DashDuration;
+
+            Player.BeginDash(_dir);
+            Player.PlayOneShot("Dash");
+            Player.InputLocked = true;      // 冲刺期间方向锁定，不接受中途反向
+            Player.Body.gravityScale = 0f;  // 水平位移不受重力影响
+        }
+
+        public override void Exit()
+        {
+            Player.InputLocked = false;
+            Player.Body.gravityScale = Player.Config.GravityScale;
+        }
+
+        public override void FixedTick()
+        {
+            Player.Body.gravityScale = 0f;
+            Player.Body.velocity = new Vector2(_dir * Player.Config.DashSpeed, 0f);
+        }
+
+        public override void Tick()
+        {
+            if (TryHandleDieTransition())
+            {
+                return;
+            }
+
+            _timer -= Time.deltaTime;
+            if (_timer > 0f)
+            {
+                return;
+            }
+
+            if (Player.IsGrounded)
+            {
+                SwitchGroundLocomotion();
+            }
+            else
+            {
+                Machine.SwitchState<PlayerAirState>();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 蹲伏（Crouch）：碰撞体压缩 + 减速移动。
+    /// 起身条件：松开下方向且头顶有空间（低矮通道里保持蹲着，避免碰撞体弹进天花板）。
+    /// </summary>
+    public class PlayerCrouchState : PlayerStateBase
+    {
+        public PlayerCrouchState(PlayerController player, PlayerStateMachine machine)
+            : base(player, machine) { }
+
+        public override void Enter()
+        {
+            Player.SetCrouch(true);
+        }
+
+        public override void Exit()
+        {
+            Player.SetCrouch(false);
+        }
+
+        public override void FixedTick()
+        {
+            if (Mathf.Abs(Player.HorizontalInput) > 0.01f)
+            {
+                Player.MoveHorizontally(false, Player.Config.CrouchSpeedFactor);
+            }
+            else
+            {
+                Player.StopHorizontal();
+            }
+        }
+
+        public override void Tick()
+        {
+            if (TryHandleCombatTransitions())
+            {
+                return;
+            }
+
+            // 走下平台 → 空中（蹲伏状态不复位碰撞体，Exit 会还原，落地后重新判定）
+            if (!Player.IsGrounded)
+            {
+                Machine.SwitchState<PlayerAirState>();
+                return;
+            }
+
+            // 蹲着按跳：先确认能起身再起跳，否则会把碰撞体弹进天花板
+            if (Player.HasJumpBuffer && Player.CanStandUp() && Player.TryConsumeJump())
+            {
+                Machine.SwitchState<PlayerAirState>();
+                return;
+            }
+
+            if (TryStartDash())
+            {
+                return;
+            }
+
+            if (Player.Combat != null && Player.Combat.ConsumeAttackPressed())
+            {
+                Machine.SwitchState<PlayerAttackState>();
+                return;
+            }
+
+            // 松开下方向且头顶有空间 → 起身回地面移动
+            if (!Player.DownHeld && Player.CanStandUp())
+            {
+                SwitchGroundLocomotion();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 贴墙下滑（WallSlide）：下落速度被夹到配置值，贴墙期间可蹬墙跳。
+    /// 离开墙面 / 反向输入 / 蹬墙跳锁定期内 → 回空中状态。
+    /// </summary>
+    public class PlayerWallSlideState : PlayerStateBase
+    {
+        private int _side;
+
+        public PlayerWallSlideState(PlayerController player, PlayerStateMachine machine)
+            : base(player, machine) { }
+
+        public override void Enter()
+        {
+            _side = Mathf.Abs(Player.HorizontalInput) > 0.01f
+                ? (int)Mathf.Sign(Player.HorizontalInput)
+                : Player.FacingDir;
+
+            Player.SetWallSliding(true);
+            Player.Sprite.flipX = _side < 0;   // 面向墙
+        }
+
+        public override void Exit()
+        {
+            Player.SetWallSliding(false);
+        }
+
+        public override void FixedTick()
+        {
+            float vy = Player.Body.velocity.y;
+            if (vy < -Player.Config.WallSlideSpeed)
+            {
+                Player.Body.velocity = new Vector2(Player.Body.velocity.x, -Player.Config.WallSlideSpeed);
+            }
+
+            // 贴住墙面：保留一点朝墙的推力，避免摩擦抖动把角色挤离墙面
+            Player.Body.velocity = new Vector2(_side * 1f, Player.Body.velocity.y);
+        }
+
+        public override void Tick()
+        {
+            if (TryHandleCombatTransitions())
+            {
+                return;
+            }
+
+            // 蹬墙跳
+            if (Player.TryConsumeWallJump(_side))
+            {
+                Machine.SwitchState<PlayerAirState>();
+                return;
+            }
+
+            if (Player.IsGrounded)
+            {
+                Machine.SwitchState<PlayerLandState>();
+                return;
+            }
+
+            // 离开墙面 / 松开朝墙输入 → 回空中
+            bool pushingIntoWall = Player.HorizontalInput * _side > 0.01f;
+            if (Player.IsWallJumpLocked || !pushingIntoWall || !Player.IsTouchingWall(_side))
+            {
+                Machine.SwitchState<PlayerAirState>();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 扒边悬挂（LedgeGrab）：冻结刚体挂在边缘；上/跳 → 爬上去，下 → 松手。
+    /// 落点由 PlayerController.TryFindLedge 在进入前算好并注入。
+    /// </summary>
+    public class PlayerLedgeState : PlayerStateBase
+    {
+        private Vector2 _standPos;
+        private float _hangTimer;
+
+        public PlayerLedgeState(PlayerController player, PlayerStateMachine machine)
+            : base(player, machine) { }
+
+        /// <summary>由空中状态在转移前写入"爬上去之后站哪"。</summary>
+        public void SetStandPos(Vector2 pos)
+        {
+            _standPos = pos;
+        }
+
+        public override void Enter()
+        {
+            _hangTimer = 0f;
+            Player.SetLedgeHanging(true);
+        }
+
+        public override void Exit()
+        {
+            Player.SetLedgeHanging(false);
+        }
+
+        public override void FixedTick()
+        {
+            Player.Body.velocity = Vector2.zero;
+        }
+
+        public override void Tick()
+        {
+            if (TryHandleDieTransition())
+            {
+                return;
+            }
+
+            if (Player.ConsumePendingHurt())
+            {
+                Machine.SwitchState<PlayerHurtState>();
+                return;
+            }
+
+            _hangTimer += Time.deltaTime;
+
+            // 爬上去：跳跃键或上方向（起手 0.05s 内忽略，避免抓取瞬间误触）
+            if (_hangTimer > 0.05f && (Player.HasJumpBuffer || Player.UpHeld))
+            {
+                Player.ConsumeJumpBuffer();
+                Player.ClimbLedge(_standPos);
+                Machine.SwitchState<PlayerIdleState>();
+                return;
+            }
+
+            // 松手：按住下方向
+            if (_hangTimer > 0.05f && Player.DownHeld)
+            {
+                Player.ReleaseLedge();
                 Machine.SwitchState<PlayerAirState>();
             }
         }

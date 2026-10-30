@@ -41,6 +41,18 @@ namespace StarEco.EnemyAI
 
         private static readonly Collider2D[] _senseBuffer = new Collider2D[8];
 
+        /// <summary>巡逻原点（出生/复用时的位置），巡逻左右端点以它为圆心。</summary>
+        private Vector2 _homePosition;
+
+        /// <summary>放弃目标的截止时间：追击被墙体阻断时短暂不重新锁定，避免来回抖动。</summary>
+        private float _ignoreTargetUntil;
+
+        /// <summary>巡逻是否可用（配置开启 + 非固定单位 + 有刚体）。</summary>
+        public bool CanPatrol => _config != null && _config.PatrolEnabled && !_config.IsStatic && Body != null;
+
+        public float PatrolLeftX => _homePosition.x - _config.PatrolRadius;
+        public float PatrolRightX => _homePosition.x + _config.PatrolRadius;
+
         /// <summary>初始状态类型（子类重写，如 Enemy03 重写为 Spawn）。</summary>
         protected virtual System.Type InitialStateType => typeof(EnemyIdleState);
 
@@ -55,6 +67,7 @@ namespace StarEco.EnemyAI
                 _config = EnemyConfig.CreateDefault();
             }
             CurrentHP = _config.MaxHP;
+            _homePosition = transform.position;
             BuildStateMachine();
             _awaken = true;
         }
@@ -129,7 +142,7 @@ namespace StarEco.EnemyAI
 
         protected virtual void SenseTarget()
         {
-            if (IsDead || IsSpawnImmune)
+            if (IsDead || IsSpawnImmune || IsIgnoringTarget)
             {
                 return;
             }
@@ -172,6 +185,25 @@ namespace StarEco.EnemyAI
 
         public void SetTarget(Transform t) { Target = t; }
         public void ClearTarget() { Target = null; _loseTargetTimer = 0f; }
+
+        /// <summary>放弃目标期间是否不重新锁定（见 EnemyChaseState 的受阻回退）。</summary>
+        public bool IsIgnoringTarget => Time.time < _ignoreTargetUntil;
+
+        /// <summary>丢目标并在一段时间内不再重新锁定（追击被墙体阻断时调用）。</summary>
+        public void IgnoreTargetFor(float seconds)
+        {
+            ClearTarget();
+            if (seconds > 0f)
+            {
+                _ignoreTargetUntil = Time.time + seconds;
+            }
+        }
+
+        /// <summary>把巡逻原点重绑到当前站位（池取出后被摆到出生点时由 Spawner 调用）。</summary>
+        public void BindHomeToCurrentPosition()
+        {
+            _homePosition = transform.position;
+        }
 
         // ===== 朝向 =====
 
@@ -219,10 +251,69 @@ namespace StarEco.EnemyAI
             }
         }
 
+        /// <summary>沿地面水平移动到指定 x（巡逻用，不依赖目标）。用速度而非 MovePosition，交给物理处理碰撞。</summary>
+        public virtual void MoveTowardsX(float worldX)
+        {
+            if (Body == null || _config.IsStatic)
+            {
+                return;
+            }
+            float dx = worldX - Body.position.x;
+            if (Mathf.Abs(dx) < 0.01f)
+            {
+                Body.velocity = new Vector2(0f, Body.velocity.y);
+                return;
+            }
+            Body.velocity = new Vector2(Mathf.Sign(dx) * _config.MoveSpeed, Body.velocity.y);
+        }
+
+        /// <summary>按方向设置朝向（巡逻用，不依赖目标）。</summary>
+        public void FaceDirection(int dir)
+        {
+            if (Sprite == null || dir == 0)
+            {
+                return;
+            }
+            bool onLeft = dir < 0;
+            Sprite.flipX = SpriteFacesLeftByDefault ? !onLeft : onLeft;
+        }
+
+        /// <summary>
+        /// 前方是否有地面（巡逻防掉崖）：从身体斜前方投一条向下的射线探地面层。
+        /// 跳过自身碰撞体（贴图/受击盒会挡住自己的射线）与触发体。
+        /// </summary>
+        public bool HasGroundAhead(int dir)
+        {
+            if (Body == null)
+            {
+                return false;
+            }
+            Vector3 origin = transform.position + new Vector3(dir * 0.5f, 0.2f, 0f);
+            int mask = _config.GroundLayer.value;
+            var hits = Physics2D.RaycastAll(origin, Vector2.down, 2.5f, mask);
+            for (int i = 0; i < hits.Length; i++)
+            {
+                var c = hits[i].collider;
+                if (c == null || c.isTrigger)
+                {
+                    continue;
+                }
+                if (c.transform == transform || c.transform.IsChildOf(transform))
+                {
+                    continue;
+                }
+                return true;
+            }
+            return false;
+        }
+
         // ===== 受击 (IHittable) =====
 
         /// <summary>受击音效标识（M10）：Boss 覆写为 BossHit，小怪统一 EnemyHit。</summary>
         protected virtual SfxId HitSfxId => SfxId.EnemyHit;
+
+        /// <summary>受击是否产生硬直中断：Boss 在技能前摇/命中阶段覆写为 false（霸体）。</summary>
+        protected virtual bool CanBeHurtInterrupted => true;
 
         public virtual void TakeDamage(DamageInfo info)
         {
@@ -232,8 +323,11 @@ namespace StarEco.EnemyAI
             }
             CurrentHP = Mathf.Max(0, CurrentHP - info.Amount);
             LastHitDirection = info.SourceDirection;
-            _pendingHurt = true;
-            _hurtStunTimer = _config.HurtStunSeconds;
+
+            // 霸体期间只吃伤害，不进受击态、不产生硬直
+            bool interrupted = CanBeHurtInterrupted;
+            _pendingHurt = interrupted;
+            _hurtStunTimer = interrupted ? _config.HurtStunSeconds : 0f;
             AudioManager.Instance?.PlaySfx(HitSfxId, 0.05f);   // M10：受击音效（Boss 覆写为 BossHit）
 
             if (_config.KnockbackResponse > 0f && info.KnockbackPower > 0f && Body != null)
@@ -327,8 +421,8 @@ namespace StarEco.EnemyAI
             _attackHitbox?.OnAttackWindowClose();
         }
 
-        /// <summary>Animation Event: DieEnd — 死亡回收 + 事件广播。</summary>
-        public void OnDieEnd()
+        /// <summary>Animation Event: DieEnd — 死亡回收 + 事件广播（Boss 覆写以插入击败演出）。</summary>
+        public virtual void OnDieEnd()
         {
             BroadcastDeath();
             Recycle();
@@ -386,7 +480,9 @@ namespace StarEco.EnemyAI
             AttackCooldownTimer = 0f;
             _loseTargetTimer = 0f;
             _recycleGuard = false;
+            _ignoreTargetUntil = 0f;
             Target = null;
+            _homePosition = transform.position;   // 池复用对象可能被摆到别处，巡逻原点随之更新
 
             if (Body != null)
             {

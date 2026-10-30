@@ -391,14 +391,24 @@ namespace StarEco.EditorTools
             int projLayer = UnityEngine.LayerMask.NameToLayer("Projectile");
             if (projLayer >= 0) go.layer = projLayer;
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Settings/WhiteSquare.png");
-            sr.color = new Color(0.6f, 0.8f, 0.4f, 0.8f);
+            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/Art/FX/Projectiles/proj_toxin_sting.png");
+            sr.color = Color.white;
+            sr.sortingOrder = 20; // 高于草垛(10)/装饰树与堵塞物(15)，弹道不被前景遮住
             var rb = go.AddComponent<Rigidbody2D>();
             rb.bodyType = RigidbodyType2D.Kinematic;
             rb.gravityScale = 0f;
             var col = go.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
-            col.radius = 0.3f;
+            col.radius = 0.22f; // 判定略小于精灵，留出擦弹空间
+            var trail = go.AddComponent<TrailRenderer>();
+            trail.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(
+                "Assets/Prefabs/Projectiles/ProjectileTrail.mat");
+            trail.time = 0.22f;
+            trail.startWidth = 0.24f;
+            trail.endWidth = 0f;
+            trail.minVertexDistance = 0.05f;
+            trail.textureMode = LineTextureMode.Stretch;
+            trail.sortingOrder = 19;
             go.AddComponent<StarEco.EnemyAI.EnemyProjectile>();
             PrefabUtility.SaveAsPrefabAsset(go, "Assets/Prefabs/Projectiles/EnemyProjectile.prefab");
             Object.DestroyImmediate(go);

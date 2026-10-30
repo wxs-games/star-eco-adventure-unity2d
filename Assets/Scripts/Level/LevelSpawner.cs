@@ -22,7 +22,6 @@ namespace StarEco.Level
         [SerializeField] private int _respawnsPerEnemy = 1;
 
         private LevelObjectiveTracker _tracker;
-        private Transform _player;
         private EnemyControllerBase[] _prefabComponents;
         private Transform[][] _anchors;
         private float[] _timers;
@@ -45,11 +44,10 @@ namespace StarEco.Level
         }
 
         /// <summary>启动刷怪（LevelManager 进入 Playing 时调用）。</summary>
-        public void Begin(LevelConfig config, LevelObjectiveTracker tracker, Transform player)
+        public void Begin(LevelConfig config, LevelObjectiveTracker tracker)
         {
             _config = config;
             _tracker = tracker;
-            _player = player;
             _pollution = 1f;
 
             int count = Entries?.Length ?? 0;
@@ -180,11 +178,10 @@ namespace StarEco.Level
 
             instance.transform.position = anchor.position;
 
-            if (_player != null)
-            {
-                instance.SetTarget(_player);
-            }
+            // 巡逻原点必须跟着出生点走：池复用对象在 OnEnable 时记录的原点还在池里的位置。
+            instance.BindHomeToCurrentPosition();
 
+            // 不给出生即锁定玩家：目标交给敌人自己的感知，否则永远停在追击态、从不巡逻。
             return true;
         }
 

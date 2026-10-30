@@ -11,6 +11,9 @@ namespace StarEco.Boss
         /// <summary>技能 A · 近战横扫（clip Boss01_AttackA）。</summary>
         public static readonly int AttackA = Animator.StringToHash("Attack");
 
+        /// <summary>发射前蓄力（clip Charge：核心能量／绿雾反复鼓胀，技能 B 与特殊招共用的长前摇）。</summary>
+        public static readonly int Charge = Animator.StringToHash("Charge");
+
         /// <summary>技能 B · 远程弹幕（clip Boss01_AttackB）。</summary>
         public static readonly int AttackB = Animator.StringToHash("AttackB");
 

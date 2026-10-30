@@ -78,34 +78,37 @@ namespace StarEco.UI
             var bg = UIUtility.CreateImage("Background", root, UIUtility.Overlay);
             UIUtility.Stretch(bg.GetComponent<RectTransform>());
 
-            var title = UIUtility.CreateText("Title", root, "环保图鉴", 48,
+            var panel = MenuArt.CreatePanel(root, "Panel", new Vector2(1240f, 920f), Vector2.zero);
+
+            var title = UIUtility.CreateText("Title", panel, "环保图鉴", 48,
                 TextAnchor.MiddleCenter, UIUtility.TextMain);
             var titleRt = title.GetComponent<RectTransform>();
             titleRt.anchorMin = new Vector2(0.5f, 1f);
             titleRt.anchorMax = new Vector2(0.5f, 1f);
             titleRt.pivot = new Vector2(0.5f, 1f);
-            titleRt.sizeDelta = new Vector2(0f, 90f);
-            titleRt.anchoredPosition = new Vector2(0f, -30f);
+            titleRt.sizeDelta = new Vector2(800f, 96f);
+            titleRt.anchoredPosition = new Vector2(0f, -28f);
 
-            _progressText = UIUtility.CreateText("Progress", root, "已收集 0/8", 26,
+            _progressText = UIUtility.CreateText("Progress", panel, "已收集 0/8", 26,
                 TextAnchor.MiddleCenter, UIUtility.AccentGreen);
             var progressRt = _progressText.GetComponent<RectTransform>();
             progressRt.anchorMin = new Vector2(0.5f, 1f);
             progressRt.anchorMax = new Vector2(0.5f, 1f);
             progressRt.pivot = new Vector2(0.5f, 1f);
-            progressRt.sizeDelta = new Vector2(0f, 40f);
-            progressRt.anchoredPosition = new Vector2(0f, -120f);
+            progressRt.sizeDelta = new Vector2(500f, 44f);
+            progressRt.anchoredPosition = new Vector2(0f, -118f);
 
             // 滚动视图
-            var scrollGo = UIUtility.CreateObject("Scroll", root);
+            var scrollGo = UIUtility.CreateObject("Scroll", panel);
             var scrollRt = scrollGo.GetComponent<RectTransform>();
             scrollRt.anchorMin = new Vector2(0.5f, 0.5f);
             scrollRt.anchorMax = new Vector2(0.5f, 0.5f);
             scrollRt.pivot = new Vector2(0.5f, 0.5f);
-            scrollRt.sizeDelta = new Vector2(1000f, 640f);
-            scrollRt.anchoredPosition = new Vector2(0f, -40f);
+            scrollRt.sizeDelta = new Vector2(1080f, 580f);
+            scrollRt.anchoredPosition = new Vector2(0f, -35f);
 
-            var scrollBg = UIUtility.CreateImage("Background", scrollGo.transform, UIUtility.PanelBg);
+            var scrollBg = UIUtility.CreateImage("Background", scrollGo.transform,
+                new Color(0f, 0f, 0f, 0.38f));
             UIUtility.Stretch(scrollBg.GetComponent<RectTransform>());
 
             var viewport = UIUtility.CreateObject("Viewport", scrollGo.transform);
@@ -144,13 +147,15 @@ namespace StarEco.UI
             scrollRect.movementType = ScrollRect.MovementType.Clamped;
             scrollRect.scrollSensitivity = 30f;
 
-            var backButton = UIUtility.CreateButton("BackButton", root, "返回",
-                new Vector2(240f, 70f), new Vector2(0f, -880f));
+            var backButton = UIUtility.CreateButton("BackButton", panel, "返回",
+                new Vector2(240f, 70f), new Vector2(0f, -375f));
             backButton.onClick.AddListener(() =>
             {
                 UIUtility.PlayClickSfx();
                 UIManager.SafeClose(PanelId);
             });
+
+            MenuArt.CreateCloseButton(panel, () => UIManager.SafeClose(PanelId));
         }
 
         private void CreateCardRow(Transform parent, int index, KnowledgeCardData card)
@@ -177,7 +182,7 @@ namespace StarEco.UI
             titleRt.anchorMin = new Vector2(0f, 1f);
             titleRt.anchorMax = new Vector2(1f, 1f);
             titleRt.pivot = new Vector2(0f, 1f);
-            titleRt.sizeDelta = new Vector2(-150f, 40f);
+            titleRt.sizeDelta = new Vector2(-150f, 44f);
             titleRt.anchoredPosition = new Vector2(130f, -6f);
 
             var bodyText = UIUtility.CreateText("Body", row.transform, card.Body, 20,

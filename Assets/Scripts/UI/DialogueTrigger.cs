@@ -7,6 +7,7 @@ namespace StarEco.UI
     /// <summary>
     /// NPC 对话触发器（M7 R9）：玩家进入范围显示"按 E 交谈"气泡，按 E 打开对话面板。
     /// 与 DialoguePanel 的生命周期：触发器只负责"发起"，播放/推进全在面板内。
+    /// _autoTalkOnFirstApproach=false 时纯被动：首次靠近也只显示气泡，等玩家主动按 E。
     /// </summary>
     [RequireComponent(typeof(Collider2D))]
     public class DialogueTrigger : MonoBehaviour
@@ -23,6 +24,9 @@ namespace StarEco.UI
         [Tooltip("触发区半径（单位 u）")]
         [SerializeField] private float _radius = 2.5f;
 
+        [Tooltip("首次靠近是否自动开启对话：true=靠近即自动说（老 NPC 行为）；false=只显示气泡，玩家按 E 才说（纯被动 NPC）")]
+        [SerializeField] private bool _autoTalkOnFirstApproach = true;
+
         [Tooltip("气泡相对触发器高度")]
         [SerializeField] private float _bubbleHeight = 1.8f;
 
@@ -33,9 +37,17 @@ namespace StarEco.UI
         private bool _playing;
         private bool _hasTalkedOnce;
         private DialoguePanel _panel;   // 缓存面板引用，避免每帧 FindObjectOfType 内部数组分配（GC 优化）
+        private SpriteRenderer _sprite; // NPC 统一朝右作画，对话时靠 flipX 转向玩家
+        private bool _defaultFlipX;
 
         private void OnEnable()
         {
+            _sprite = GetComponent<SpriteRenderer>();
+            if (_sprite != null)
+            {
+                _defaultFlipX = _sprite.flipX;
+            }
+
             BuildBubble();
         }
 
@@ -77,6 +89,16 @@ namespace StarEco.UI
                 return;
             }
 
+            // 首次靠近：默认不要求玩家按 E，直接自动开启对话（NPC 第一次见面就要发任务/交代背景）。
+            // 若 _autoTalkOnFirstApproach=false（纯被动 NPC），首次靠近也只显示气泡，等玩家按 E 才说话。
+            // 之后再靠近才回到"按 E 交谈"的自主触发，避免每次路过都被强制打断。
+            // 其它对话正在播放时不抢，等对方播完（玩家仍在范围内）再自动开始。
+            if (_autoTalkOnFirstApproach && !_hasTalkedOnce && !_playing && !DialoguePanel.IsDialogueActive)
+            {
+                BeginDialogue();
+                return;
+            }
+
             // 对话播放中不重复触发（面板自己处理推进）。
             // 关键：最后一句也是用 E 关闭面板，如果这里仅靠 panelOpen 判断，
             // 同一帧里面板刚关闭时会再次被 GetKeyDown(E) 立即重开，形成“无限循环”。
@@ -101,6 +123,7 @@ namespace StarEco.UI
                 }
 
                 _playing = false;
+                RestoreFacing();
                 if (_bubble != null)
                 {
                     _bubble.SetActive(_playerInRange);
@@ -109,23 +132,50 @@ namespace StarEco.UI
 
             if (!_playing && Input.GetKeyDown(_interactKey))
             {
-                var data = ResolveDialogue();
-                if (data == null)
-                {
-                    Debug.LogError($"[DialogueTrigger] 未找到对话：{_dialogueId}");
-                    return;
-                }
+                BeginDialogue();
+            }
+        }
 
-                if (_bubble != null)
-                {
-                    _bubble.SetActive(false);
-                }
+        /// <summary>发起一段对话（首次自动靠近与后续按 E 共用同一条入口）。</summary>
+        private void BeginDialogue()
+        {
+            var data = ResolveDialogue();
+            if (data == null)
+            {
+                Debug.LogError($"[DialogueTrigger] 未找到对话：{_dialogueId}");
+                return;
+            }
 
-                UIManager.SafeOpen(DialoguePanel.PanelId);
-                _panel = FindObjectOfType<DialoguePanel>();
-                _panel?.Play(data);
-                _playing = true;
-                _hasTalkedOnce = true;
+            if (_bubble != null)
+            {
+                _bubble.SetActive(false);
+            }
+
+            UIManager.SafeOpen(DialoguePanel.PanelId);
+            _panel = FindObjectOfType<DialoguePanel>();
+            _panel?.Play(data);
+            _playing = true;
+            _hasTalkedOnce = true;
+            FacePlayer();
+        }
+
+        /// <summary>对话时转向玩家：素材统一朝右，玩家站到左侧就水平翻转，站右侧保持原朝向。</summary>
+        private void FacePlayer()
+        {
+            if (_sprite == null || _player == null)
+            {
+                return;
+            }
+
+            _sprite.flipX = _player.position.x < transform.position.x;
+        }
+
+        /// <summary>对话结束恢复默认朝向（不把"面向玩家"的临时状态留在场景里）。</summary>
+        private void RestoreFacing()
+        {
+            if (_sprite != null)
+            {
+                _sprite.flipX = _defaultFlipX;
             }
         }
 

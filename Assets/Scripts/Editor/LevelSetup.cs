@@ -9,7 +9,7 @@ namespace StarEco.EditorTools
     /// <summary>
     /// 第一关一键搭建（T17）：
     /// 1. Level01.asset（目标链 / 刷怪表 / 星级阈值）
-    /// 2. Assets/Scenes/Level01.unity 灰盒（地面/玩家/污染源/塔/刷怪锚点/检查点/各系统）
+    /// 2. Assets/Scenes/Level01.unity 灰盒（地面/玩家/污染源/塔/刷怪锚点/坠落区/各系统）
     /// 菜单：StarEco → Setup → Level01（幂等：场景已存在则跳过创建，可重复运行）
     /// </summary>
     public static class LevelSetup
@@ -128,6 +128,29 @@ namespace StarEco.EditorTools
             ground.layer = LayerMask.NameToLayer("Ground");
             log.AppendLine("已创建 Ground（40x1u，顶面 y=0，layer=Ground）");
 
+            // —— 坠落死亡区 ——
+            // 地面只有 40u 宽，玩家从两侧走出后会无限下坠；在下方铺一层触发区兜底。
+            var killZone = new GameObject("KillZone");
+            killZone.transform.position = new Vector3(0f, -6f, 0f);
+            var killCol = killZone.AddComponent<BoxCollider2D>();
+            killCol.isTrigger = true;
+            killCol.size = new Vector2(60f, 4f);
+            killZone.AddComponent<StarEco.Level.FallHazard>();
+            log.AppendLine("已创建 KillZone（y=-6，60x4 触发区，坠落即死）");
+
+            // —— 跳跃平台（与第二关同款单向木板，左右各两级）——
+            // 地面顶面 y=0，跳跃上限约 2.45u；L1 可站立顶面 1.40 从地面可稳定跳上，
+            // L2 顶面 2.60 相对 L1 再升 1.2u，可连跳。同一侧两级横向错开 2.8u，
+            // 避免上下叠在同一条竖线上（角色高 1.98u，同 x 叠放会让站在下层的人头部穿进上层）。
+            // 放在两侧空地（x=±12.8 / ±15.6），避开中段 -7~11 的污染源 / 牌板 / 知识卡 / NPC。
+            int groundLayer = LayerMask.NameToLayer("Ground");
+            // L1 是碎裂机关：踩上约 0.5s 后碎掉，犹豫就掉下去；L2/R1/R2 保持普通单向木板
+            MakePlatform("PlatformL1", new Vector3(-12.8f, 1.40f, 0f), 2f, groundLayer, crumble: true);
+            MakePlatform("PlatformL2", new Vector3(-15.6f, 2.60f, 0f), 2f, groundLayer);
+            MakePlatform("PlatformR1", new Vector3(12.8f, 1.40f, 0f), 2f, groundLayer);
+            MakePlatform("PlatformR2", new Vector3(15.6f, 2.60f, 0f), 2f, groundLayer);
+            log.AppendLine("已放置 4 个跳跃平台（左右各两级，单向平台；L1 为碎裂平台）");
+
             // —— 相机 ——
             var camGo = new GameObject("Main Camera");
             camGo.tag = "MainCamera";
@@ -174,7 +197,9 @@ namespace StarEco.EditorTools
             if (playerPrefab != null)
             {
                 player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);
-                player.transform.position = new Vector3(-8f, 1.5f, 0f);
+                // 出生点唯一事实来源是 LevelConfig.SpawnPoint（LevelManager 运行时也按它放置玩家），
+                // 编辑器建场景时直接复用，避免两处硬编码各写一个值后逐渐漂移。
+                player.transform.position = new Vector3(config.SpawnPoint.x, config.SpawnPoint.y, 0f);
                 player.name = "Player";
                 log.AppendLine("已放置 Player（含 M2/M3/M5 组件）");
             }
@@ -211,10 +236,6 @@ namespace StarEco.EditorTools
             var anchorA = MakeAnchor("SpawnAnchorA", new Vector3(-3f, 0.2f, 0f));
             var anchorB = MakeAnchor("SpawnAnchorB", new Vector3(8f, 0.2f, 0f));
             log.AppendLine("已创建 SpawnAnchorA/B");
-
-            // —— 检查点 ——
-            MakeCheckpoint("Checkpoint1", "CP_1", new Vector3(-6f, 0.5f, 0f), log);
-            MakeCheckpoint("Checkpoint2", "CP_2", new Vector3(4.5f, 0.5f, 0f), log);
 
             // —— 环保系统 ——
             var eco = new GameObject("EcoSystems");
@@ -321,6 +342,59 @@ namespace StarEco.EditorTools
             return go;
         }
 
+        // platform_flat.png：1200×245、PPU 400 → 原生 3.00×0.6125u，Pivot=Center。
+        // 木面水平线（真正可站立的顶面）在精灵局部坐标 y=+0.1735，其上还有约 0.09u 的草叶。
+        private const string PlatformSpritePath = "Assets/Art/Art/Environment/Props/platform_flat.png";
+        private const float PlatformWoodLineY = 0.1735f;
+
+        /// <param name="pos">pos.y 传「可站立的木面顶面高度」，不是物件中心。</param>
+        /// <param name="crumble">
+        /// 是否挂「一踩就碎」的机关（目前只有 PlatformL1 用）。
+        /// 放在生成函数里而不是事后手动添加，否则重跑本菜单重建场景时组件会丢。
+        /// </param>
+        private static void MakePlatform(string name, Vector3 pos, float width, int groundLayer, bool crumble = false)
+        {
+            var white = AssetDatabase.LoadAssetAtPath<Sprite>(WhiteSquarePath);
+            var go = MakeWorldBox(name, white, width, 0.5f, pos,
+                new Color(0.38f, 0.46f, 0.34f, 1f), -4);
+            go.layer = groundLayer;
+
+            var spr = AssetDatabase.LoadAssetAtPath<Sprite>(PlatformSpritePath);
+            if (spr == null)
+            {
+                Debug.LogWarning($"[LevelSetup] 找不到平台素材 {PlatformSpritePath}，{name} 保留灰盒");
+                return;
+            }
+
+            var sr = go.GetComponent<SpriteRenderer>();
+            sr.sprite = spr;
+            sr.color = Color.white;
+            sr.drawMode = SpriteDrawMode.Simple;
+            sr.sortingOrder = 5;
+
+            float s = width / 3f;                       // 精灵原生宽 3.0u，按目标宽度等比缩放
+            go.transform.localScale = new Vector3(s, s, 1f);
+
+            // 碰撞体世界厚度固定 0.56u（薄平台要留厚度防高速下落穿透），顶面对齐木面水平线
+            var col = go.GetComponent<BoxCollider2D>();
+            col.size = new Vector2(3f, 0.56f / s);
+            col.offset = new Vector2(0f, PlatformWoodLineY - col.size.y / 2f);
+
+            // 单向平台：从下方/侧面可穿过，只从上方落下时踩住（与第二关同参数）
+            var eff = go.AddComponent<PlatformEffector2D>();
+            eff.useOneWay = true;
+            eff.surfaceArc = 150f;
+            col.usedByEffector = true;
+
+            // 碎裂机关：踩上约 0.5s 后碎掉，没跳走就跟着掉下去，3s 后原地长回来
+            if (crumble)
+            {
+                go.AddComponent<StarEco.Level.CrumblePlatform>();
+            }
+
+            go.transform.position = new Vector3(pos.x, pos.y - PlatformWoodLineY * s, pos.z);
+        }
+
         private static Transform MakeAnchor(string name, Vector3 pos)
         {
             var white = AssetDatabase.LoadAssetAtPath<Sprite>(WhiteSquarePath);
@@ -336,50 +410,6 @@ namespace StarEco.EditorTools
             }
 
             return go.transform;
-        }
-
-        private static void MakeCheckpoint(string name, string id, Vector3 pos, StringBuilder log)
-        {
-            const float cpWorldSize = 1.6f;
-
-            // 优先真素材（checkpoint.png, 1.55u 高），缺失才退回灰盒
-            var prop = AssetDatabase.LoadAssetAtPath<Sprite>(
-                "Assets/Art/Art/Environment/Props/checkpoint.png");
-
-            GameObject go;
-            if (prop != null)
-            {
-                go = new GameObject(name);
-                var sr = go.AddComponent<SpriteRenderer>();
-                sr.sprite = prop;
-                sr.color = Color.white;
-                sr.drawMode = SpriteDrawMode.Simple;
-                sr.size = prop.bounds.size;
-                sr.sortingOrder = 6;
-                go.transform.localScale = Vector3.one;
-                // pivot 为Center：底边贴地（地面顶面 y=0）
-                go.transform.position = new Vector3(pos.x, prop.bounds.size.y * 0.5f, pos.z);
-                log.AppendLine($"  {name}: 真素材 checkpoint.png ({prop.bounds.size.y:F2}u)");
-            }
-            else
-            {
-                var white = AssetDatabase.LoadAssetAtPath<Sprite>(WhiteSquarePath);
-                go = MakeWorldBox(name, white, cpWorldSize, cpWorldSize, pos,
-                    new Color(0.4f, 0.8f, 1f, 0.35f), 6);
-                log.AppendLine($"  {name}: 灰盒（checkpoint.png 未就位）");
-            }
-
-            var col = go.GetComponent<BoxCollider2D>();
-            col.isTrigger = true;
-            // scale 已归一, 触发区直接写世界单位
-            col.size = new Vector2(1.2f, 1.2f);
-            col.offset = Vector2.zero;
-
-            var cp = go.AddComponent<StarEco.Level.Checkpoint>();
-            var so = new SerializedObject(cp);
-            so.FindProperty("_checkpointId").stringValue = id;
-            so.FindProperty("_respawnOffset").vector2Value = new Vector2(0f, 1.2f);
-            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void EnsureFolder(string path)

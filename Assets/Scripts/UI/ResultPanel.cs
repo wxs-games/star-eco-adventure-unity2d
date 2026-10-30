@@ -114,9 +114,20 @@ namespace StarEco.UI
                     "净化行动未能完成，再试一次吧。";
             }
 
+            // 失败局面：只保留「重新开始（重开本关）」与「返回主菜单」两个出口
+            if (_restartButton != null)
+            {
+                _restartButton.gameObject.SetActive(true);
+            }
+
             if (_nextButton != null)
             {
                 _nextButton.gameObject.SetActive(false);
+            }
+
+            if (_titleButton != null)
+            {
+                _titleButton.gameObject.SetActive(true);
             }
 
             UIManager.SafeOpen(PanelId);

@@ -59,6 +59,16 @@ namespace StarEco.EnemyAI
         [Tooltip("同层判定垂直容差 (u)，超过则视为不同地面层")]
         public float SameGroundToleranceY = 1.0f;
 
+        [Header("巡逻")]
+        [Tooltip("是否在待机时沿地面来回巡逻（Boss/塔不受影响）")]
+        public bool PatrolEnabled = true;
+
+        [Tooltip("巡逻半径 (u)：以出生点为圆心左右各走这么远")]
+        public float PatrolRadius = 3f;
+
+        [Tooltip("到达巡逻端点后的停顿时长 (s)")]
+        public float PatrolPauseSeconds = 1f;
+
         [Header("受击")]
         [Tooltip("受击硬直时长 (s)")]
         public float HurtStunSeconds = 0.3f;

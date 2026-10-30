@@ -17,8 +17,12 @@ namespace StarEco.Framework
         /// <summary>音频库资产 Resources 路径（M10）。</summary>
         private const string LibraryResourcePath = "Audio/GameAudioLibrary";
 
+        // SFX 用多音源轮转：连击/命中叠在一起时不互相打断，且每条可独立微调音高。
+        private const int SfxVoiceCount = 4;
+
         private AudioSource _bgmSource;
-        private AudioSource _sfxSource;
+        private AudioSource[] _sfxSources;
+        private int _sfxCursor;
         private AudioClip _currentBgm;
         private Coroutine _fadeCoroutine;
 
@@ -35,9 +39,15 @@ namespace StarEco.Framework
             _bgmSource.loop = true;
             _bgmSource.playOnAwake = false;
 
-            _sfxSource = gameObject.AddComponent<AudioSource>();
-            _sfxSource.loop = false;
-            _sfxSource.playOnAwake = false;
+            _sfxSources = new AudioSource[SfxVoiceCount];
+            for (int i = 0; i < SfxVoiceCount; i++)
+            {
+                var source = gameObject.AddComponent<AudioSource>();
+                source.loop = false;
+                source.playOnAwake = false;
+                source.volume = 1f;
+                _sfxSources[i] = source;
+            }
 
             LoadSettings();
         }
@@ -108,12 +118,26 @@ namespace StarEco.Framework
         /// <summary>播放一次性音效，可叠加不打断。</summary>
         public void PlaySfx(AudioClip clip)
         {
-            if (clip == null)
+            PlaySfx(clip, 0f);
+        }
+
+        /// <summary>
+        /// 播放一次性音效，<paramref name="pitchVariation"/> 为音高随机幅度（0.05 = ±5%）。
+        /// 连击/连续碎裂时轻微变化音高与音色，避免听感机械重复。
+        /// </summary>
+        public void PlaySfx(AudioClip clip, float pitchVariation)
+        {
+            if (clip == null || _sfxSources == null || _sfxSources.Length == 0)
             {
                 return;
             }
 
-            _sfxSource.PlayOneShot(clip, SfxVolume);
+            var source = _sfxSources[_sfxCursor];
+            _sfxCursor = (_sfxCursor + 1) % _sfxSources.Length;
+            source.pitch = pitchVariation > 0f
+                ? 1f + UnityEngine.Random.Range(-pitchVariation, pitchVariation)
+                : 1f;
+            source.PlayOneShot(clip, SfxVolume);
         }
 
         #endregion
@@ -139,7 +163,7 @@ namespace StarEco.Framework
         }
 
         /// <summary>播放命名音效（M10）：库缺失或条目为空时静默跳过。</summary>
-        public void PlaySfx(SfxId id)
+        public void PlaySfx(SfxId id, float pitchVariation = 0f)
         {
             var lib = Library;
             if (lib == null)
@@ -147,7 +171,7 @@ namespace StarEco.Framework
                 return;
             }
 
-            PlaySfx(lib.GetSfx(id));
+            PlaySfx(lib.GetSfx(id), pitchVariation);
         }
 
         /// <summary>播放标题页 BGM（M10）。</summary>
@@ -201,7 +225,6 @@ namespace StarEco.Framework
             BgmVolume = Mathf.Clamp01(data.bgmVolume);
             SfxVolume = Mathf.Clamp01(data.sfxVolume);
             _bgmSource.volume = BgmVolume;
-            _sfxSource.volume = SfxVolume;
         }
 
         private void PersistSettings()

@@ -80,27 +80,31 @@ namespace StarEco.UI
             var bg = UIUtility.CreateImage("Background", root, UIUtility.Overlay);
             UIUtility.Stretch(bg.GetComponent<RectTransform>());
 
-            var title = UIUtility.CreateText("Title", root, "选择关卡", 48,
+            var panel = MenuArt.CreatePanel(root, "Panel", new Vector2(1240f, 860f), Vector2.zero);
+
+            var title = UIUtility.CreateText("Title", panel, "选择关卡", 48,
                 TextAnchor.MiddleCenter, UIUtility.TextMain);
             var titleRt = title.GetComponent<RectTransform>();
             titleRt.anchorMin = new Vector2(0.5f, 1f);
             titleRt.anchorMax = new Vector2(0.5f, 1f);
             titleRt.pivot = new Vector2(0.5f, 1f);
-            titleRt.sizeDelta = new Vector2(0f, 90f);
-            titleRt.anchoredPosition = new Vector2(0f, -40f);
+            titleRt.sizeDelta = new Vector2(800f, 96f);
+            titleRt.anchoredPosition = new Vector2(0f, -30f);
 
             for (int i = 0; i < Levels.Length; i++)
             {
-                CreateCard(root, i, Levels[i]);
+                CreateCard(panel, i, Levels[i]);
             }
 
-            var backButton = UIUtility.CreateButton("BackButton", root, "返回",
-                new Vector2(240f, 70f), new Vector2(0f, -880f));
+            var backButton = UIUtility.CreateButton("BackButton", panel, "返回",
+                new Vector2(240f, 70f), new Vector2(0f, -330f));
             backButton.onClick.AddListener(() =>
             {
                 UIUtility.PlayClickSfx();
                 UIManager.SafeClose(PanelId);
             });
+
+            MenuArt.CreateCloseButton(panel, () => UIManager.SafeClose(PanelId));
         }
 
         private void CreateCard(Transform parent, int index, LevelCardInfo info)
@@ -117,7 +121,7 @@ namespace StarEco.UI
             nameRt.anchorMin = new Vector2(0f, 1f);
             nameRt.anchorMax = new Vector2(1f, 1f);
             nameRt.pivot = new Vector2(0f, 1f);
-            nameRt.sizeDelta = new Vector2(-40f, 44f);
+            nameRt.sizeDelta = new Vector2(-40f, 48f);
             nameRt.anchoredPosition = new Vector2(20f, -10f);
 
             var briefText = UIUtility.CreateText("Brief", card.transform, info.Brief, 24,

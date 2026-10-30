@@ -170,7 +170,7 @@ namespace StarEco.UI
             }
 
             _versionText = UIUtility.CreateText("Version", root,
-                "Unity 2021.3 · M7 原型", 22, TextAnchor.LowerRight,
+                "Unity 2022.3 · 毕业设计", 22, TextAnchor.LowerRight,
                 new Color(1f, 1f, 1f, 0.35f));
             var versionRt = _versionText.GetComponent<RectTransform>();
             versionRt.anchorMin = new Vector2(1f, 0f);
@@ -268,6 +268,8 @@ namespace StarEco.UI
         private static Sprite _background;
         private static Sprite _titlePlate;
         private static Sprite _button;
+        private static Sprite _panelFrame;
+        private static Sprite _closeButton;
         private static bool _loaded;
 
         /// <summary>主菜单全屏背景插画。</summary>
@@ -288,6 +290,18 @@ namespace StarEco.UI
             get { EnsureLoaded(); return _button; }
         }
 
+        /// <summary>弹窗面板九宫格底板（内腔已烘焙玻璃底色）。</summary>
+        public static Sprite PanelFrame
+        {
+            get { EnsureLoaded(); return _panelFrame; }
+        }
+
+        /// <summary>右上角圆形 X 关闭按钮图标。</summary>
+        public static Sprite CloseIcon
+        {
+            get { EnsureLoaded(); return _closeButton; }
+        }
+
         private static void EnsureLoaded()
         {
             if (_loaded)
@@ -299,6 +313,8 @@ namespace StarEco.UI
             _background = Resources.Load<Sprite>(Root + "menu_bg");
             _titlePlate = Resources.Load<Sprite>(Root + "menu_title_plate");
             _button = Resources.Load<Sprite>(Root + "menu_button");
+            _panelFrame = Resources.Load<Sprite>(Root + "menu_panel");
+            _closeButton = Resources.Load<Sprite>(Root + "menu_close");
         }
 
         /// <summary>
@@ -337,6 +353,84 @@ namespace StarEco.UI
             colors.pressedColor = new Color(0.72f, 0.72f, 0.72f, 1f);
             colors.disabledColor = new Color(0.42f, 0.42f, 0.45f, 1f);
             button.colors = colors;
+        }
+
+        /// <summary>
+        /// 创建一块带边框皮肤的弹窗面板，返回的 RectTransform 直接作为内容父节点。
+        /// 底板贴图已烘焙玻璃内腔，调用方不必再叠纯色背景；素材缺失时回退 PanelBg。
+        /// </summary>
+        public static RectTransform CreatePanel(Transform parent, string name, Vector2 size, Vector2 position)
+        {
+            var panel = UIUtility.CreateObject(name, parent);
+            UIUtility.CenterAnchor(panel, size, position);
+
+            var skin = UIUtility.CreateImage("Skin", panel.transform, Color.white);
+            UIUtility.Stretch(skin.GetComponent<RectTransform>());
+
+            var sprite = PanelFrame;
+            if (sprite != null)
+            {
+                skin.sprite = sprite;
+                skin.type = Image.Type.Sliced;
+            }
+            else
+            {
+                skin.color = UIUtility.PanelBg;
+            }
+
+            return panel.GetComponent<RectTransform>();
+        }
+
+        /// <summary>
+        /// 在面板右上角挂一个圆形 X 关闭按钮。点击先播 UI 音效，再执行回调。
+        /// 素材缺失时回退为纯色圆角块 + 「×」文字，保证始终可关闭。
+        /// </summary>
+        public static Button CreateCloseButton(RectTransform panel, UnityEngine.Events.UnityAction onClose)
+        {
+            var go = UIUtility.CreateObject("CloseButton", panel);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(1f, 1f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(56f, 56f);
+            rt.anchoredPosition = new Vector2(-64f, -64f);
+
+            var image = go.AddComponent<Image>();
+            image.raycastTarget = true;
+
+            var sprite = CloseIcon;
+            if (sprite != null)
+            {
+                image.sprite = sprite;
+                image.color = Color.white;
+                image.preserveAspect = true;
+            }
+            else
+            {
+                image.color = UIUtility.ButtonNormal;
+                var fallback = UIUtility.CreateText("Fallback", rt, "×", 34,
+                    TextAnchor.MiddleCenter, UIUtility.TextMain);
+                UIUtility.Stretch(fallback.GetComponent<RectTransform>());
+            }
+
+            // 运行时 AddComponent<Button> 不会自动填 targetGraphic，必须手动指定，
+            // 否则悬停/按下的颜色渐变不生效。
+            var button = go.AddComponent<Button>();
+            button.targetGraphic = image;
+            var colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1.20f, 1.20f, 1.20f, 1f);
+            colors.pressedColor = new Color(0.70f, 0.70f, 0.70f, 1f);
+            colors.disabledColor = new Color(0.45f, 0.45f, 0.45f, 1f);
+            button.colors = colors;
+
+            button.onClick.AddListener(() =>
+            {
+                UIUtility.PlayClickSfx();
+                onClose?.Invoke();
+            });
+
+            return button;
         }
     }
 }

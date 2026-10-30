@@ -3,7 +3,7 @@ using UnityEngine;
 namespace StarEco.EnemyAI
 {
     /// <summary>
-    /// Enemy03 巡逻机器人：高速追击 + 出场。注册 Spawn/Idle/Chase/Attack/Hurt/Die，初始态 Spawn。
+    /// Enemy03 巡逻机器人：高速追击 + 出场。注册 Spawn/Idle/Patrol/Chase/Attack/Hurt/Die，初始态 Spawn。
     /// </summary>
     public class Enemy03Controller : EnemyControllerBase
     {
@@ -14,6 +14,7 @@ namespace StarEco.EnemyAI
             Machine = new EnemyStateMachine();
             Machine.Register(new Enemy03SpawnState(this, Machine));
             Machine.Register(new EnemyIdleState(this, Machine));
+            Machine.Register(new EnemyPatrolState(this, Machine));
             Machine.Register(new EnemyChaseState(this, Machine));
             Machine.Register(new EnemyMeleeAttackState(this, Machine));
             Machine.Register(new EnemyHurtState(this, Machine));

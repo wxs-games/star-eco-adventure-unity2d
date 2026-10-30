@@ -21,6 +21,7 @@ namespace StarEco.EditorTools
 
         private const string PlayerPrefab = "Assets/Prefabs/Player/Player.prefab";
         private const string GarbagePilePrefab = "Assets/Prefabs/Eco/GarbagePile.prefab";
+        private const string Enemy01Prefab = "Assets/Prefabs/Enemies/Enemy01.prefab";
         private const string Enemy02Prefab = "Assets/Prefabs/Enemies/Enemy02.prefab";
         private const string WhiteSquarePath = "Assets/Settings/WhiteSquare.png";
 
@@ -94,32 +95,32 @@ namespace StarEco.EditorTools
                 new LevelConfig.LevelObjective(
                     LevelObjectiveType.PurifyTargets, 3, "净化森林污染源"),
                 new LevelConfig.LevelObjective(
-                    LevelObjectiveType.DefeatEnemies, 4, "击败 4 只变异毒植物")
+                    LevelObjectiveType.DefeatEnemies, 4, "击败 4 只变异怪物")
             };
 
-            // 刷怪表：Enemy02 两条（初始温和 + 解谜后加压）
+            // 刷怪表：远程毒植物只保留 1 只；另加近战怪 Enemy01（无远程攻击）
             config.SpawnEntries = new[]
             {
                 new LevelConfig.SpawnEntry
                 {
                     Prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Enemy02Prefab),
                     Anchors = new Transform[0],
-                    MaxAlive = 2,
-                    BaseInterval = 6f,
+                    MaxAlive = 1,
+                    BaseInterval = 12f,
                     RequiredObjectiveIndex = -1
                 },
                 new LevelConfig.SpawnEntry
                 {
-                    Prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Enemy02Prefab),
+                    Prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Enemy01Prefab),
                     Anchors = new Transform[0],
-                    MaxAlive = 3,
-                    BaseInterval = 5f,
-                    RequiredObjectiveIndex = 1
+                    MaxAlive = 2,
+                    BaseInterval = 8f,
+                    RequiredObjectiveIndex = -1
                 }
             };
 
             AssetDatabase.CreateAsset(config, ConfigPath);
-            log.AppendLine("已创建 Level02.asset（四段目标链 + Enemy02 刷怪表 2 条）");
+            log.AppendLine("已创建 Level02.asset（四段目标链：1 只远程毒植物 + 2 只近战怪）");
             return config;
         }
 
@@ -163,6 +164,16 @@ namespace StarEco.EditorTools
             kill.AddComponent<DrownHazard>();
             log.AppendLine("已创建 KillZone（掉入河道即溺水，DrownHazard 走既有伤害流水线）");
 
+            // —— 坠落死亡区（全关宽）——
+            // 溺水区只覆盖河道（x ∈ ±7.15）；玩家从 GroundL/R 两端（x = ±28）走出去仍会无限下坠。
+            // 在 y=-8 铺一层全宽触发区兜底：掉出地板边界即摔死，而不是卡在关卡外。
+            var fall = MakeWorldBox("KillZone_Fall", white, (LevelRight - LevelLeft) + 8f, 4f,
+                new Vector3(0f, -8f, 0f), new Color(0.9f, 0.3f, 0.3f, 0.12f), -3);
+            var fallCol = fall.GetComponent<BoxCollider2D>();
+            fallCol.isTrigger = true;
+            fall.AddComponent<StarEco.Level.FallHazard>();
+            log.AppendLine("已创建 KillZone_Fall（y=-8，全关宽触发区，掉出地板即摔死）");
+
             // —— 水域与木筏通路（WaterRoot 为水位面参考，木筏为其子物体随水位升降）——
             var waterRoot = new GameObject("WaterRoot");
             waterRoot.transform.position = new Vector3(0f, WaterLowY, 0f);
@@ -196,7 +207,9 @@ namespace StarEco.EditorTools
             // 右岸地面顶面 y=0；草垛精灵 1.60×0.72u（半高 0.36），底部为向下收窄的碎屑锥形，
             // 故在半高基础上再下移 0.09u 补偿，避免视觉悬空：y=0.36-0.09=0.27。
             PlacePrefab(GarbagePilePrefab, "Garbage1", new Vector3(12f, 0.27f, 0f));
-            PlacePrefab(GarbagePilePrefab, "Garbage2", new Vector3(17f, 0.27f, 0f));
+            // Garbage2 由 17 右移到 18.3：给刷怪锚点 B 腾出完整身位（精灵不透明体 1.60u 宽，
+            // 压到锚点上时排序 10 > 敌人 0，会让毒植物出生就被草垛遮掉半截）。
+            PlacePrefab(GarbagePilePrefab, "Garbage2", new Vector3(18.3f, 0.27f, 0f));
             PlacePrefab(GarbagePilePrefab, "Garbage3", new Vector3(22f, 0.27f, 0f));
             log.AppendLine("已放置 Garbage1~3（右岸污染源）");
 
@@ -208,23 +221,30 @@ namespace StarEco.EditorTools
             MakeTree(white, new Vector3(9f, 1.7f, 0f), 1.5f);
             MakeTree(white, new Vector3(14.5f, 1.5f, 0f), 1.3f);
             MakeTree(white, new Vector3(20.5f, 1.8f, 0f), 1.7f);
-            MakeTree(white, new Vector3(26f, 1.6f, 0f), 1.4f);
+            // 由 26 左移到 24：让出右端刷怪锚点所需的空地，避免出生时被树遮挡
+            MakeTree(white, new Vector3(24f, 1.6f, 0f), 1.4f);
 
             // —— 跳跃平台（点缀）——
-            MakePlatform(white, "PlatformL1", new Vector3(-24.5f, 2.8f, 0f), 3f, groundLayer);
-            MakePlatform(white, "PlatformL2", new Vector3(-20.5f, 4.2f, 0f), 2.5f, groundLayer);
-            MakePlatform(white, "PlatformR1", new Vector3(20.5f, 2.8f, 0f), 3f, groundLayer);
-            MakePlatform(white, "PlatformR2", new Vector3(24.5f, 4.2f, 0f), 2.5f, groundLayer);
+            // 左岸两级台阶（地面顶面 y=0，跳跃上限约 2.45u；素材为侧视平顶木板，厚 0.41u）：
+            // L1 可站立顶面 1.40，从地面可稳定跳上；L2 顶面 2.60，相对 L1 升高 1.2u，可连跳。
+            // L1 是碎裂机关：踩上约 0.5s 后碎掉，犹豫就掉下去；L2/R1/R2 保持普通单向木板
+            MakePlatform(white, "PlatformL1", new Vector3(-24f, 1.40f, 0f), 2f, groundLayer, crumble: true);
+            MakePlatform(white, "PlatformL2", new Vector3(-20.3f, 2.60f, 0f), 2f, groundLayer);
+            // 右岸镜像两级台阶（朝河道方向上升）：R1 顶面 1.40，R2 顶面 2.60，与左岸同规格。
+            MakePlatform(white, "PlatformR1", new Vector3(22f, 1.40f, 0f), 2f, groundLayer);
+            MakePlatform(white, "PlatformR2", new Vector3(18.3f, 2.60f, 0f), 2f, groundLayer);
             log.AppendLine("已放置 8 棵树 + 4 个跳跃平台");
 
             // —— 刷怪锚点 ——
-            MakeAnchor(white, "SpawnAnchorA", new Vector3(-10f, 0.2f, 0f));
-            MakeAnchor(white, "SpawnAnchorB", new Vector3(16f, 0.2f, 0f));
+            // 两个锚点都必须落在空地：Enemy02 不透明体约 2.34u 宽（待机帧），而草垛/树（排序 15、10）
+            // 都画在敌人（排序 0）前面，锚点压到道具上会让毒植物出生时半截身体被遮住。
+            // A 放在 14.5 号树（右缘 14.50）与 Garbage2（左缘 17.50）之间的空档，取 16.0，左右各留 0.33u；
+            // B 放在右端 24 号树（右缘 24.86）右侧的岸边空档，取 26.43，距关卡右边界 28 留 0.40u。
+            // 左岸水面堵塞物贯通 -16.25~-8.75 且同样排序 15，不设锚点。
+            MakeAnchor(white, "SpawnAnchorA", new Vector3(16f, 0.2f, 0f));
+            MakeAnchor(white, "SpawnAnchorB", new Vector3(26.43f, 0.2f, 0f));
 
-            // —— 检查点 ——
-            MakeCheckpoint(white, "Checkpoint1", "CP_1", new Vector3(-25f, 0.5f, 0f));
-            MakeCheckpoint(white, "Checkpoint2", "CP_2", new Vector3(25f, 0.5f, 0f));
-            log.AppendLine("已放置 SpawnAnchorA/B + CP_1/CP_2");
+            log.AppendLine("已放置 SpawnAnchorA/B");
 
             // —— 相机（跟随，横向 56u 必须跟随）——
             var camGo = new GameObject("Main Camera");
@@ -250,7 +270,8 @@ namespace StarEco.EditorTools
             if (playerPrefab != null)
             {
                 var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);
-                player.transform.position = new Vector3(-26f, 1.5f, 0f);
+                // 出生点唯一事实来源是 LevelConfig.SpawnPoint，避免编辑器摆放与运行时复位两处漂移。
+                player.transform.position = new Vector3(config.SpawnPoint.x, config.SpawnPoint.y, 0f);
                 player.name = "Player";
                 log.AppendLine("已放置 Player");
             }
@@ -327,7 +348,7 @@ namespace StarEco.EditorTools
         /// 2) Tiled 模式下 sr.size 是**世界单位**，必须显式给原灰盒的世界尺寸，
         ///    否则会退回贴图原生尺寸；
         /// 3) 高度必须沿用原灰盒值（本关 4 / 2），改了会让顶面偏离 GroundTop，
-        ///    树和检查点就会悬空或入地。
+        ///    树等装饰物就会悬空或入地。
         /// 素材缺失时静默退回白盒（保留灰盒可用性）。
         /// </summary>
         private static bool ApplyTile(GameObject go, string tileFile)
@@ -418,9 +439,27 @@ namespace StarEco.EditorTools
             List<StarEco.Eco.WaterBlockage> output)
         {
             var go = MakeWorldBox(targetId, white, 1.6f, 1.6f, pos,
-                new Color(0.45f, 0.38f, 0.32f, 1f), 0);
-            // 堵塞物用污染水面贴图（与河道同一套素材，语义上是"漂在水面上的污物"）
-            ApplyTile(go, "water_river.png");
+                new Color(0.62f, 0.60f, 0.58f, 1f), 0);
+            // 堵塞物用垃圾墙素材（garbage_wall.png：一堆积压的纸箱/瓶子/轮胎）。
+            // 之前误用 water_river.png（一条水面横条）+ 整体染色 → 渲染成一大片黑色矩形，
+            // 把树和背景全盖住，看着像"坏掉的贴图"。
+            // 尺寸约束（2026-10-29）：原先把堵塞物放大到约 3.2u 高、排序 15，
+            // 与 8 棵装饰树同层叠成一整排"草墙"，看着像凭空多出很多墙。
+            // 现固定为世界尺寸约 1.38×0.88u，排序降到 5（低于树/草垛的 15），
+            // 贴水面呈现"半沉在水里的废弃物"，仍是可净化的堵塞点。
+            var sr = go.GetComponent<SpriteRenderer>();
+            ApplyPropScaled(sr, go.transform, "garbage_wall.png", pos, 0.88f, 0f);
+            go.transform.localScale = new Vector3(0.55f, 0.55f, 1f);
+            go.transform.position = new Vector3(pos.x, 0f, pos.z);
+            sr.sortingOrder = 5;
+
+            var col = go.GetComponent<UnityEngine.BoxCollider2D>();
+            if (col != null)
+            {
+                col.size = new Vector2(2.4f, 1.6f);
+                col.offset = new Vector2(0f, 0.02f);
+            }
+
             var blockage = go.AddComponent<StarEco.Eco.WaterBlockage>();
 
             var so = new SerializedObject(blockage);
@@ -458,6 +497,10 @@ namespace StarEco.EditorTools
 
             var col = cage.AddComponent<BoxCollider2D>();
             col.size = new Vector2(1.3f, 1.3f);
+            // 必须设为触发器：RescueTarget 用的是距离检测（Vector2.Distance <= _radius），
+            // 不依赖碰撞体。设成实体碰撞体会让笼子变成一堵墙，玩家走到笼前就被挡住，
+            // 导致关卡推进不了。
+            col.isTrigger = true;
 
             var rescue = cage.AddComponent<RescueTarget>();
             var so = new SerializedObject(rescue);
@@ -487,24 +530,55 @@ namespace StarEco.EditorTools
             }
         }
 
-        private static void MakePlatform(Sprite white, string name, Vector3 pos, float width, int groundLayer)
+        // platform_flat.png：1200×245、PPU 400 → 原生 3.00×0.6125u，Pivot=Center。
+        // 木面水平线（真正可站立的顶面）在精灵局部坐标 y=+0.1735，其上还有约 0.09u 的草叶。
+        private const float PlatformWoodLineY = 0.1735f;
+
+        /// <param name="pos">pos.y 传「可站立的木面顶面高度」，不是物件中心。</param>
+        /// <param name="crumble">
+        /// 是否挂「一踩就碎」的机关（目前只有 PlatformL1 用）。
+        /// 放在生成函数里而不是事后手动添加，否则重跑本菜单重建场景时组件会丢。
+        /// </param>
+        private static void MakePlatform(Sprite white, string name, Vector3 pos, float width, int groundLayer, bool crumble = false)
         {
             var go = MakeWorldBox(name, white, width, 0.5f, pos,
                 new Color(0.38f, 0.46f, 0.34f, 1f), -4);
             go.layer = groundLayer;
 
-            // 真素材 platform_log.png 原始高 1.49，压到 0.55 贴合平台厚度；
-            // 碰撞体不动（原 0.5 高），保持关卡手感。
-            var log = AssetDatabase.LoadAssetAtPath<Sprite>(PropsDir + "platform_log.png");
-            if (log != null)
+            var spr = AssetDatabase.LoadAssetAtPath<Sprite>(PropsDir + "platform_flat.png");
+            if (spr == null)
+                return;
+
+            var sr = go.GetComponent<SpriteRenderer>();
+            sr.sprite = spr;
+            sr.color = Color.white;
+            sr.drawMode = SpriteDrawMode.Simple;
+            sr.sortingOrder = 5;
+
+            float s = width / 3f;                       // 精灵原生宽 3.0u，按目标宽度等比缩放
+            go.transform.localScale = new Vector3(s, s, 1f);
+
+            // 碰撞体世界厚度固定 0.56u（薄平台要留厚度防高速下落穿透），顶面对齐木面水平线
+            var col = go.GetComponent<BoxCollider2D>();
+            col.size = new Vector2(3f, 0.56f / s);
+            col.offset = new Vector2(0f, PlatformWoodLineY - col.size.y / 2f);
+
+            // 单向平台（2D 横版社区主流做法）：从下方/侧面可穿过，只从上方落下时踩住。
+            // 浮空平台若做实体，在水平通道上必然二选一——顶面 ≤2.45 才跳得上，底面 ≥2.0 才走得过去，互相矛盾。
+            // surfaceArc 必须小于 180：默认 180 把左右侧面也算成可碰撞面，走路横向撞上去仍会被挡住。
+            // 150（±75°）只保留顶面，实测可正常从下方穿过、从上方落稳。
+            var eff = go.AddComponent<PlatformEffector2D>();
+            eff.useOneWay = true;
+            eff.surfaceArc = 150f;
+            col.usedByEffector = true;
+
+            // 碎裂机关：踩上约 0.5s 后碎掉，没跳走就跟着掉下去，3s 后原地长回来
+            if (crumble)
             {
-                var sr = go.GetComponent<SpriteRenderer>();
-                sr.sprite = log;
-                sr.color = Color.white;
-                sr.drawMode = SpriteDrawMode.Simple;
-                sr.size = new Vector2(width, 0.55f);
-                go.transform.localScale = Vector3.one;
+                go.AddComponent<CrumblePlatform>();
             }
+
+            go.transform.position = new Vector3(pos.x, pos.y - PlatformWoodLineY * s, pos.z);
         }
 
         private static Transform MakeAnchor(Sprite white, string name, Vector3 pos)
@@ -514,37 +588,6 @@ namespace StarEco.EditorTools
             // 锚点是纯逻辑标记（刷怪点），无需可视 -> 关闭渲染器（同 Level01 MakeAnchor）
             go.GetComponent<SpriteRenderer>().enabled = false;
             return go.transform;
-        }
-
-        private static void MakeCheckpoint(Sprite white, string name, string id, Vector3 pos)
-        {
-            var go = MakeWorldBox(name, white, 1.6f, 1.6f, pos,
-                new Color(0.4f, 0.8f, 1f, 0.35f), 6);
-            var col = go.GetComponent<BoxCollider2D>();
-            col.isTrigger = true;
-
-            // 真素材 checkpoint.png（与 Level01 同一张）。scale 必须归1，
-            // 否则灰盒时代的 40 倍缩放会把 0.04 局部单位的碰撞体放大到不可用。
-            var flag = AssetDatabase.LoadAssetAtPath<Sprite>(PropsDir + "checkpoint.png");
-            if (flag != null)
-            {
-                var sr = go.GetComponent<SpriteRenderer>();
-                sr.sprite = flag;
-                sr.color = Color.white;
-                sr.drawMode = SpriteDrawMode.Simple;
-                sr.size = flag.bounds.size;
-                go.transform.localScale = Vector3.one;
-                go.transform.position = new Vector3(pos.x, GroundTop + flag.bounds.size.y * 0.5f, pos.z);
-                // 触发盒对齐旗面中部1.2×1.2 世界单位
-                col.offset = new Vector2(0f, -flag.bounds.size.y * 0.5f);
-                col.size = new Vector2(1.2f, 1.2f);
-            }
-
-            var cp = go.AddComponent<Checkpoint>();
-            var so = new SerializedObject(cp);
-            so.FindProperty("_checkpointId").stringValue = id;
-            so.FindProperty("_respawnOffset").vector2Value = new Vector2(0f, 1.2f);
-            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         /// <summary>
@@ -567,6 +610,31 @@ namespace StarEco.EditorTools
             sr.size = prop.bounds.size;
             tf.localScale = Vector3.one;
             tf.position = new Vector3(pos.x, groundY + prop.bounds.size.y * 0.5f + yOffset, pos.z);
+            return true;
+        }
+
+        /// <summary>
+        /// ApplyProp 的可控高度版本：按目标世界高度等比缩放贴图，再贴到 groundY。
+        /// ApplyProp 用贴图原生尺寸（garbage_wall 原生高约 3.1u），直接用会过大且压不住场景比例。
+        /// </summary>
+        private static bool ApplyPropScaled(SpriteRenderer sr, Transform tf, string propFile,
+            Vector3 pos, float targetHeight, float yOffset)
+        {
+            var prop = AssetDatabase.LoadAssetAtPath<Sprite>(PropsDir + propFile);
+            if (prop == null)
+            {
+                return false;
+            }
+
+            sr.sprite = prop;
+            sr.color = new Color(0.62f, 0.60f, 0.58f, 1f);
+            sr.drawMode = SpriteDrawMode.Simple;
+            sr.size = prop.bounds.size;
+
+            float nativeH = prop.bounds.size.y;
+            float s = nativeH > 0.0001f ? targetHeight / nativeH : 1f;
+            tf.localScale = new Vector3(s, s, 1f);
+            tf.position = new Vector3(pos.x, targetHeight * 0.5f + yOffset, pos.z);
             return true;
         }
 

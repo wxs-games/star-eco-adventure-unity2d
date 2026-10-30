@@ -59,6 +59,19 @@ namespace StarEco.Combat
         /// <summary>开窗：HitOn 事件帧调用。</summary>
         public void OnAttackWindowOpen()
         {
+            // 第三段是投掷：近身判定整段不开窗，伤害全部由飞出去的钳子（ToolProjectile）结算。
+            // 动画事件在进入第三段时仍会照常触发，这里按段号拦掉。
+            if (CurrentSegment == 3)
+            {
+                _windowOpen = false;
+                _hitThisWindow.Clear();
+                if (_hitbox != null)
+                {
+                    _hitbox.enabled = false;
+                }
+                return;
+            }
+
             _hitThisWindow.Clear();
             _windowOpen = true;
             if (_hitbox != null)

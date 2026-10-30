@@ -69,22 +69,19 @@ namespace StarEco.UI
             var bg = UIUtility.CreateImage("Background", root, UIUtility.Overlay);
             UIUtility.Stretch(bg.GetComponent<RectTransform>());
 
-            var panel = UIUtility.CreateObject("Panel", root);
-            UIUtility.CenterAnchor(panel, new Vector2(640f, 520f), Vector2.zero);
-            var panelBg = UIUtility.CreateImage("Background", panel.transform, UIUtility.PanelBg);
-            UIUtility.Stretch(panelBg.GetComponent<RectTransform>());
+            var panel = MenuArt.CreatePanel(root, "Panel", new Vector2(720f, 600f), Vector2.zero);
 
-            var title = UIUtility.CreateText("Title", panel.transform, "设置", 44,
+            var title = UIUtility.CreateText("Title", panel, "设置", 44,
                 TextAnchor.MiddleCenter, UIUtility.TextMain);
             var titleRt = title.GetComponent<RectTransform>();
             titleRt.anchorMin = new Vector2(0.5f, 1f);
             titleRt.anchorMax = new Vector2(0.5f, 1f);
             titleRt.pivot = new Vector2(0.5f, 1f);
-            titleRt.sizeDelta = new Vector2(0f, 80f);
-            titleRt.anchoredPosition = new Vector2(0f, -20f);
+            titleRt.sizeDelta = new Vector2(600f, 84f);
+            titleRt.anchoredPosition = new Vector2(0f, -18f);
 
             // BGM 音量
-            CreateSliderRow(panel.transform, "BgmRow", "音乐音量", -80f, out _bgmSlider, value =>
+            CreateSliderRow(panel, "BgmRow", "音乐音量", 140f, out _bgmSlider, value =>
             {
                 if (AudioManager.HasInstance)
                 {
@@ -93,7 +90,7 @@ namespace StarEco.UI
             });
 
             // SFX 音量
-            CreateSliderRow(panel.transform, "SfxRow", "音效音量", -180f, out _sfxSlider, value =>
+            CreateSliderRow(panel, "SfxRow", "音效音量", 45f, out _sfxSlider, value =>
             {
                 if (AudioManager.HasInstance)
                 {
@@ -102,13 +99,13 @@ namespace StarEco.UI
             });
 
             // 画质
-            var qualityRow = UIUtility.CreateObject("QualityRow", panel.transform);
+            var qualityRow = UIUtility.CreateObject("QualityRow", panel);
             var qualityRt = qualityRow.GetComponent<RectTransform>();
             qualityRt.anchorMin = new Vector2(0.5f, 0.5f);
             qualityRt.anchorMax = new Vector2(0.5f, 0.5f);
             qualityRt.pivot = new Vector2(0.5f, 0.5f);
             qualityRt.sizeDelta = new Vector2(560f, 70f);
-            qualityRt.anchoredPosition = new Vector2(0f, -300f);
+            qualityRt.anchoredPosition = new Vector2(0f, -50f);
 
             var qualityLabel = UIUtility.CreateText("Label", qualityRow.transform, "画质", 28,
                 TextAnchor.MiddleLeft, UIUtility.TextBody);
@@ -129,11 +126,21 @@ namespace StarEco.UI
             });
 
             // 返回
-            var backButton = UIUtility.CreateButton("BackButton", panel.transform, "返回",
-                new Vector2(240f, 70f), new Vector2(0f, -400f));
+            var backButton = UIUtility.CreateButton("BackButton", panel, "返回",
+                new Vector2(240f, 70f), new Vector2(0f, -195f));
             backButton.onClick.AddListener(() =>
             {
                 UIUtility.PlayClickSfx();
+                UIManager.SafeClose(PanelId);
+
+                if (_returnToPause)
+                {
+                    UIManager.SafeOpen(PausePanel.PanelId);
+                }
+            });
+
+            MenuArt.CreateCloseButton(panel, () =>
+            {
                 UIManager.SafeClose(PanelId);
 
                 if (_returnToPause)

@@ -211,7 +211,11 @@ namespace StarEco.UI
                 return;
             }
 
+            // 阻断型面板（对话 / 暂停 / 设置 / 结算等）同时写外部强制锁：
+            // 只写 InputLocked 会被翻滚、冲刺、受击这些状态的 Exit 清成 false，
+            // 表现为"对话中按一下 Shift 就又能走了"。
             player.InputLocked = IsBlocking;
+            player.ExternalInputLock = IsBlocking;
         }
     }
 }

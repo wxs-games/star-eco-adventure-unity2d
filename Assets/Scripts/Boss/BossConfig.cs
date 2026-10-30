@@ -47,6 +47,41 @@ namespace StarEco.Boss
         [Tooltip("特殊招张角（度）")]
         public float SpecialSpreadDegrees = 140f;
 
+        [Header("技能节奏（前摇 / 命中 / 后摇，秒）")]
+        [Tooltip("技能 A 前摇：起手到命中判定；期间霸体、不移动")]
+        public float AttackAWindupSeconds = 0.20f;
+
+        [Tooltip("技能 A 命中阶段：覆盖攻击动画剩余帧（动画 0.83s）")]
+        public float AttackAActiveSeconds = 0.62f;
+
+        [Tooltip("技能 A 后摇：动画结束后的站定，可被打断")]
+        public float AttackARecoverSeconds = 0.30f;
+
+        [Tooltip("技能 B 前摇：播放蓄力动作（Charge，核心能量反复鼓胀）到弹幕发射；期间霸体、不移动。需与 Charge 动画时长 1.1s 对齐")]
+        public float AttackBWindupSeconds = 1.10f;
+
+        [Tooltip("技能 B 命中阶段：覆盖攻击动画剩余帧（动画 1.00s）")]
+        public float AttackBActiveSeconds = 0.60f;
+
+        [Tooltip("技能 B 后摇：动画结束后的站定，可被打断")]
+        public float AttackBRecoverSeconds = 0.30f;
+
+        [Tooltip("特殊招前摇：播放蓄力动作（Charge）到弹幕发射；期间霸体、不移动。比技能 B 略长以示更重的招")]
+        public float SpecialWindupSeconds = 1.40f;
+
+        [Tooltip("特殊招命中阶段：覆盖攻击动画剩余帧（动画 1.17s）")]
+        public float SpecialActiveSeconds = 0.62f;
+
+        [Tooltip("特殊招后摇：动画结束后的站定，可被打断")]
+        public float SpecialRecoverSeconds = 0.35f;
+
+        [Header("追击节奏")]
+        [Tooltip("远程技能收尾后的站定观望时长（秒）：先远程打，观望结束才逼近；实际时长再乘阶段系数")]
+        public float PursueDelaySeconds = 1.4f;
+
+        [Tooltip("一次逼近持续的最短时长（秒）：走满这一段才允许停下来放远程，形成走走停停的节奏")]
+        public float ChaseBurstSeconds = 1.1f;
+
         [Header("狂暴成长")]
         [Tooltip("P2/P3 移速倍率")]
         public float EnrageSpeedMultiplier = 1.3f;

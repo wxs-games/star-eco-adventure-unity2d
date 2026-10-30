@@ -71,6 +71,21 @@ namespace StarEco.EnemyAI
             Current.Enter();
         }
 
+        /// <summary>该状态是否已注册（不同敌人注册的状态集不同，切换前先查，避免 KeyNotFound）。</summary>
+        public bool HasState<T>() where T : class, IEnemyState
+        {
+            return _states.ContainsKey(typeof(T));
+        }
+
+        /// <summary>仅在已注册时切换；未注册则什么都不做（供可选状态使用，如巡逻）。</summary>
+        public void SwitchStateIfRegistered<T>() where T : class, IEnemyState
+        {
+            if (HasState<T>())
+            {
+                SwitchState<T>();
+            }
+        }
+
         public void Tick()
         {
             Current?.Tick();

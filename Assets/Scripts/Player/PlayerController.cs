@@ -28,6 +28,11 @@ namespace StarEco.Player
         public StarEco.Combat.PlayerCombat Combat { get; private set; }
         public StarEco.Eco.SprayController Spray { get; private set; }
 
+        /// <summary>
+        /// 钳子投掷（第三段连击的收尾）。缺失时 Awake 自动补挂，避免每个场景/预制体都要手工加组件。
+        /// </summary>
+        public StarEco.Combat.PlayerToolThrow ToolThrow { get; private set; }
+
         // ===== 运行时事实（供状态机读取） =====
         public float HorizontalInput { get; private set; }
         public bool JumpPressedThisFrame { get; private set; }
@@ -36,7 +41,59 @@ namespace StarEco.Player
         public bool IsGrounded { get; private set; }
         public float VerticalVelocity => Body.velocity.y;
         public bool IsDead { get; private set; }
+
+        /// <summary>死因是否为坠落（跌落山崖）。仅用于失败面板文案，不影响任何玩法逻辑。</summary>
+        public bool DiedFromFall { get; private set; }
+
+        /// <summary>
+        /// 环境推力（传送带 / 气流管道）。ConveyorZone 在物理步内写入，
+        /// MoveHorizontally 每次算完目标速度后清零，所以离开区域后自动失效。
+        /// </summary>
+        private float _externalSpeed;
+
+        /// <summary>由环境区域写入一份水平推力（世界单位/秒），下一次水平移动结算时叠加并清零。</summary>
+        public void SetExternalSpeed(float speed)
+        {
+            _externalSpeed = speed;
+        }
+
+        /// <summary>由伤害入口在 HP 归零时写入死因。</summary>
+        public void MarkDeathCause(bool fromFall)
+        {
+            DiedFromFall = fromFall;
+        }
+        /// <summary>
+        /// 状态机内部锁（翻滚/冲刺/受击等临时接管）。注意：这些状态的 Exit 会把它清成 false，
+        /// 所以外部系统（UI 面板、对话、演出）**不能只依赖它**，否则恰好在这类状态结束时会被解除。
+        /// </summary>
         public bool InputLocked { get; set; }
+
+        /// <summary>
+        /// 外部系统的强制锁（阻断型 UI 面板 / 对话）。状态机不会写这个字段，
+        /// 因此对话、暂停等期间即使某个状态 Exit 把 InputLocked 清掉，玩家依然动不了。
+        /// </summary>
+        public bool ExternalInputLock { get; set; }
+
+        /// <summary>是否应屏蔽玩家输入（内部锁 ∪ 外部强制锁 ∪ 已阵亡）。所有输入门控统一读这个。</summary>
+        public bool InputBlocked => InputLocked || ExternalInputLock || IsDead;
+
+        // ===== 冲刺 / 蹲伏 / 墙面 / 扒边（2026-10-28 补齐 6 个死状态的驱动） =====
+        /// <summary>本帧是否按下冲刺键（左 Ctrl）。</summary>
+        public bool DashPressedThisFrame { get; private set; }
+        /// <summary>上方向是否按住（W / ↑），扒边爬上用。</summary>
+        public bool UpHeld { get; private set; }
+        /// <summary>下方向是否按住（S / ↓），蹲伏进入、扒边放手用。</summary>
+        public bool DownHeld { get; private set; }
+        /// <summary>当前朝向：1 右 / -1 左。</summary>
+        public int FacingDir => Sprite != null && Sprite.flipX ? -1 : 1;
+        /// <summary>是否处于蹲伏（碰撞体已压缩）。</summary>
+        public bool IsCrouching { get; private set; }
+        /// <summary>是否处于贴墙下滑（写 Animator 的 IsWallSliding）。</summary>
+        public bool IsWallSliding { get; private set; }
+        /// <summary>是否处于扒边悬挂（写 Animator 的 IsLedgeGrab）。</summary>
+        public bool IsLedgeGrabbing { get; private set; }
+        /// <summary>蹬墙跳后是否还在强制推离墙面的锁定期。</summary>
+        public bool IsWallJumpLocked => _wallJumpLockTimer > 0f;
 
         private PlayerStateMachine _machine;
 
@@ -49,6 +106,25 @@ namespace StarEco.Player
         // 闪避（翻滚）
         private float _dodgeCooldownTimer;
         private int _airDodgesUsed;
+
+        // 冲刺：冷却 + 空中次数
+        private float _dashCooldownTimer;
+        private int _airDashesUsed;
+
+        // 墙面：蹬墙跳后的推离锁定期
+        private float _wallJumpLockTimer;
+        private float _wallJumpLockDir;
+
+        // 扒边：松手后的再次抓取冷却
+        private float _ledgeCooldownTimer;
+
+        // 蹲伏：站立尺寸快照（蹲下压缩、起身还原）
+        private Vector2 _baseColliderSize;
+        private Vector2 _baseColliderOffset;
+        private bool _colliderSizeCaptured;
+
+        // 扒边悬挂期间的刚体约束快照
+        private RigidbodyConstraints2D _baseConstraints;
 
         // 翻滚穿透：本体碰撞体在翻滚期间排除怪物层
         private Collider2D _bodyCollider;
@@ -75,13 +151,28 @@ namespace StarEco.Player
             Anim = GetComponent<PlayerAnimatorDriver>();
             Combat = GetComponent<StarEco.Combat.PlayerCombat>();
             Spray = GetComponent<StarEco.Eco.SprayController>();
+
+            // 投掷组件：场景/预制体上已挂则复用，没有就运行时补一个（幂等，不写资产）
+            ToolThrow = GetComponent<StarEco.Combat.PlayerToolThrow>();
+            if (ToolThrow == null)
+            {
+                ToolThrow = gameObject.AddComponent<StarEco.Combat.PlayerToolThrow>();
+            }
+
             Body.freezeRotation = true;
+
+            // 玩家刚体不进入休眠：休眠的刚体既不会被静态触发器（传送带/喷口）回调唤醒，
+            // 也不会响应控制器每帧写入的 velocity，表现为「站在传送带上但完全不动」。
+            Body.sleepMode = RigidbodySleepMode2D.NeverSleep;
 
             _bodyCollider = GetComponent<Collider2D>();
             if (_bodyCollider != null)
             {
                 _baseExcludeLayers = _bodyCollider.excludeLayers.value;
             }
+
+            _baseConstraints = Body.constraints;
+            CaptureColliderSize();
 
             if (_config == null)
             {
@@ -100,6 +191,10 @@ namespace StarEco.Player
             _machine.Register(new PlayerAirState(this, _machine));
             _machine.Register(new PlayerLandState(this, _machine));
             _machine.Register(new PlayerDodgeState(this, _machine));
+            _machine.Register(new PlayerDashState(this, _machine));
+            _machine.Register(new PlayerCrouchState(this, _machine));
+            _machine.Register(new PlayerWallSlideState(this, _machine));
+            _machine.Register(new PlayerLedgeState(this, _machine));
             _machine.Register(new PlayerAttackState(this, _machine));
             _machine.Register(new PlayerSprayState(this, _machine));
             _machine.Register(new PlayerChargeState(this, _machine));
@@ -146,12 +241,15 @@ namespace StarEco.Player
 
         private void ReadInput()
         {
-            if (InputLocked || IsDead)
+            if (InputBlocked)
             {
                 HorizontalInput = 0f;
                 JumpPressedThisFrame = false;
                 JumpReleasedThisFrame = false;
                 DodgePressedThisFrame = false;
+                DashPressedThisFrame = false;
+                UpHeld = false;
+                DownHeld = false;
                 return;
             }
 
@@ -190,6 +288,13 @@ namespace StarEco.Player
 
             // 闪避（翻滚）：左 Shift
             DodgePressedThisFrame = Input.GetKeyDown(KeyCode.LeftShift);
+
+            // 冲刺：左 Ctrl（与翻滚区分：冲刺无无敌、可空中一次）
+            DashPressedThisFrame = Input.GetKeyDown(KeyCode.LeftControl);
+
+            // 上下方向：W/S 与 ↑/↓（Unity 默认 Vertical 轴同键位，这里取按住状态）
+            UpHeld = Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow);
+            DownHeld = Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow);
         }
 
         private void UpdateTimers()
@@ -200,6 +305,8 @@ namespace StarEco.Player
                 _coyoteCounter = _config.CoyoteTime;
                 _canJump = true;
                 _airDodgesUsed = 0;   // 落地重置空中闪避次数（R1）
+                _airDashesUsed = 0;   // 落地重置空中冲刺次数
+                _ledgeCooldownTimer = 0f;
             }
             else
             {
@@ -216,6 +323,22 @@ namespace StarEco.Player
             if (_dodgeCooldownTimer > 0f)
             {
                 _dodgeCooldownTimer -= Time.deltaTime;
+            }
+
+            // 冲刺冷却 / 蹬墙推离锁 / 扒边冷却
+            if (_dashCooldownTimer > 0f)
+            {
+                _dashCooldownTimer -= Time.deltaTime;
+            }
+
+            if (_wallJumpLockTimer > 0f)
+            {
+                _wallJumpLockTimer -= Time.deltaTime;
+            }
+
+            if (_ledgeCooldownTimer > 0f)
+            {
+                _ledgeCooldownTimer -= Time.deltaTime;
             }
         }
 
@@ -252,6 +375,13 @@ namespace StarEco.Player
 
         /// <summary>跳跃缓冲是否有效（触地瞬间自动起跳用）。</summary>
         public bool HasJumpBuffer => _jumpBufferCounter > 0f;
+
+        /// <summary>清空跳跃缓冲（扒边"爬上去"会消费掉这次跳跃输入）。</summary>
+        public void ConsumeJumpBuffer()
+        {
+            _jumpBufferCounter = 0f;
+            _jumpCutPending = false;
+        }
 
         // ===== 闪避（翻滚）=====
 
@@ -304,19 +434,346 @@ namespace StarEco.Player
         /// <summary>水平移动（状态机在 FixedTick 调用；air 参数控制空中控制力；speedFactor 为移速因子，喷洒减速用）。</summary>
         public void MoveHorizontally(bool inAir, float speedFactor = 1f)
         {
-            float targetSpeed = HorizontalInput * _config.MoveSpeed * (inAir ? _config.AirControlRatio : 1f) * speedFactor;
+            // 蹬墙跳后的锁定期：无论玩家怎么按，都朝背离墙面方向推，避免立刻贴回同一面墙
+            float input = _wallJumpLockTimer > 0f ? _wallJumpLockDir : HorizontalInput;
+
+            float targetSpeed = input * _config.MoveSpeed * (inAir ? _config.AirControlRatio : 1f) * speedFactor + _externalSpeed;
+            _externalSpeed = 0f;   // 环境推力只生效一步，离开传送带后自然衰减
             float newSpeed = Mathf.MoveTowards(Body.velocity.x, targetSpeed, _config.Acceleration * Time.fixedDeltaTime);
             Body.velocity = new Vector2(newSpeed, Body.velocity.y);
 
-            if (Mathf.Abs(HorizontalInput) > 0.01f)
+            if (Mathf.Abs(input) > 0.01f)
             {
-                Sprite.flipX = HorizontalInput < 0f;
+                Sprite.flipX = input < 0f;
             }
         }
 
         public void StopHorizontal()
         {
-            Body.velocity = new Vector2(0f, Body.velocity.y);
+            // 停步时水平速度清零；但环境推力（传送带 / 气流）要保留 —— 待机状态不走
+            // MoveHorizontally，若这里直接抹成 0，玩家站在传送带上按住不动就永远不会被带走。
+            Body.velocity = new Vector2(_externalSpeed, Body.velocity.y);
+            _externalSpeed = 0f;
+        }
+
+        // ===== 冲刺 =====
+
+        /// <summary>当前是否可以起冲刺：冷却结束、非蹲伏，且（在地面，或空中次数未用尽）。</summary>
+        public bool CanStartDash =>
+            _config != null && _dashCooldownTimer <= 0f && !IsCrouching
+            && (IsGrounded || _airDashesUsed < _config.AirDashCount);
+
+        /// <summary>状态机消费冲刺输入：仅当前帧有效，消费即清。</summary>
+        public bool ConsumeDashInput()
+        {
+            if (!DashPressedThisFrame)
+            {
+                return false;
+            }
+
+            DashPressedThisFrame = false;
+            return true;
+        }
+
+        /// <summary>进入冲刺：起冷却、空中计数 +1、朝向对齐冲刺方向。</summary>
+        public void BeginDash(float dir)
+        {
+            if (_config == null)
+            {
+                return;
+            }
+
+            _dashCooldownTimer = _config.DashCooldown;
+            _wallJumpLockTimer = 0f;
+            if (!IsGrounded)
+            {
+                _airDashesUsed++;
+            }
+
+            Sprite.flipX = dir < 0f;
+        }
+
+        // ===== 蹲伏 =====
+
+        /// <summary>
+        /// 切换蹲伏：压缩碰撞体高度时保持脚底不动（offset 同步下移一半），
+        /// 这样蹲下/起身不会把角色顶进地面或悬空。
+        /// </summary>
+        public void SetCrouch(bool on)
+        {
+            if (IsCrouching == on)
+            {
+                return;
+            }
+
+            if (_bodyCollider is BoxCollider2D box && _colliderSizeCaptured)
+            {
+                if (on)
+                {
+                    float ratio = _config != null ? Mathf.Clamp(_config.CrouchHeightRatio, 0.3f, 1f) : 0.62f;
+                    float newHeight = _baseColliderSize.y * ratio;
+                    float delta = _baseColliderSize.y - newHeight;
+                    box.size = new Vector2(_baseColliderSize.x, newHeight);
+                    box.offset = new Vector2(_baseColliderOffset.x, _baseColliderOffset.y - delta * 0.5f);
+                }
+                else
+                {
+                    box.size = _baseColliderSize;
+                    box.offset = _baseColliderOffset;
+                }
+            }
+
+            IsCrouching = on;
+        }
+
+        /// <summary>头顶是否有空间站起来（蹲在低矮通道里时不许弹出碰撞体，避免卡进天花板）。</summary>
+        public bool CanStandUp()
+        {
+            if (!IsCrouching)
+            {
+                return true;
+            }
+
+            if (!(_bodyCollider is BoxCollider2D box) || !_colliderSizeCaptured)
+            {
+                return true;
+            }
+
+            float r = box.edgeRadius;
+            Bounds b = box.bounds;
+            float footY = b.min.y - r;                     // 蹲伏时脚底与站立一致
+            float standHeight = _baseColliderSize.y + r * 2f;
+            Vector2 center = new Vector2(b.center.x, footY + standHeight * 0.5f);
+            Vector2 size = new Vector2(
+                Mathf.Max(0.05f, _baseColliderSize.x - 0.04f),
+                Mathf.Max(0.05f, _baseColliderSize.y - 0.04f));
+
+            int mask = Physics2D.AllLayers & ~(1 << gameObject.layer);
+            int count = Physics2D.OverlapBoxNonAlloc(center, size, 0f, _standHits, mask);
+            for (int i = 0; i < count; i++)
+            {
+                if (IsSolidObstacle(_standHits[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private void CaptureColliderSize()
+        {
+            if (_bodyCollider is BoxCollider2D box)
+            {
+                _baseColliderSize = box.size;
+                _baseColliderOffset = box.offset;
+                _colliderSizeCaptured = true;
+            }
+        }
+
+        // ===== 墙面（WallSlide / WallJump）=====
+
+        /// <summary>探测指定侧是否有可依附的墙面（实体、非触发器、非动态刚体）。</summary>
+        public bool IsTouchingWall(int dir)
+        {
+            if (_bodyCollider == null || dir == 0)
+            {
+                return false;
+            }
+
+            Bounds b = _bodyCollider.bounds;
+            float r = _bodyCollider is BoxCollider2D box ? box.edgeRadius : 0f;
+            float skin = _config != null ? Mathf.Max(0.02f, _config.WallCheckDistance) : 0.1f;
+
+            float edgeX = dir > 0 ? b.max.x + r : b.min.x - r;
+            // 取身体上段探测：避开脚底，避免把地面当成墙
+            Vector2 center = new Vector2(edgeX + dir * skin * 0.5f, b.center.y + b.extents.y * 0.2f);
+            Vector2 size = new Vector2(skin, Mathf.Max(0.1f, b.size.y * 0.5f));
+
+            int mask = Physics2D.AllLayers & ~(1 << gameObject.layer);
+            int count = Physics2D.OverlapBoxNonAlloc(center, size, 0f, _wallHits, mask);
+            for (int i = 0; i < count; i++)
+            {
+                if (IsSolidObstacle(_wallHits[i]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>消费跳跃缓冲并执行蹬墙跳（空中不经过土狼时间窗口，故单独一条路径）。</summary>
+        public bool TryConsumeWallJump(int wallDir)
+        {
+            if (!HasJumpBuffer || _config == null || wallDir == 0)
+            {
+                return false;
+            }
+
+            int outDir = -wallDir;
+            _jumpBufferCounter = 0f;
+            _coyoteCounter = 0f;
+            Body.velocity = new Vector2(outDir * _config.WallJumpPushSpeed, _config.WallJumpVelocity);
+            _wallJumpLockTimer = _config.WallJumpLockTime;
+            _wallJumpLockDir = outDir;
+            Sprite.flipX = outDir < 0;
+
+            PlayOneShot("WallJump");
+            AudioManager.Instance?.PlaySfx(SfxId.Jump);
+            return true;
+        }
+
+        // ===== 扒边（LedgeGrab）=====
+
+        /// <summary>
+        /// 探测前方可抓边缘，成功时给出"爬上之后"的站立落点。
+        /// 判定链：墙面前方有实体 → 从头顶上方往下取墙面顶面 → 高度落在抓取区间 → 落点站得下。
+        /// </summary>
+        public bool TryFindLedge(int dir, out Vector2 standPos)
+        {
+            standPos = Vector2.zero;
+            if (_bodyCollider == null || _config == null || dir == 0 || _ledgeCooldownTimer > 0f)
+            {
+                return false;
+            }
+
+            Bounds b = _bodyCollider.bounds;
+            float r = _bodyCollider is BoxCollider2D box ? box.edgeRadius : 0f;
+            float footY = b.min.y - r;
+            float topY = b.max.y + r;
+
+            float probeX = dir > 0 ? b.max.x + r + 0.06f : b.min.x - r - 0.06f;
+            float fromY = topY + 1f;
+            float maxDist = Mathf.Max(0.2f, fromY - (footY - 0.5f));
+
+            int mask = Physics2D.AllLayers & ~(1 << gameObject.layer);
+            int count = Physics2D.RaycastNonAlloc(new Vector2(probeX, fromY), Vector2.down, _rayHits, maxDist, mask);
+
+            float ledgeY = float.NaN;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit2D hit = _rayHits[i];
+                if (hit.collider == null || !IsSolidObstacle(hit.collider))
+                {
+                    continue;
+                }
+
+                if (float.IsNaN(ledgeY) || hit.point.y > ledgeY)
+                {
+                    ledgeY = hit.point.y;   // 取最高的实体面作为边缘顶面
+                }
+            }
+
+            if (float.IsNaN(ledgeY))
+            {
+                return false;
+            }
+
+            float height = ledgeY - footY;
+            if (height < _config.LedgeMinHeight || height > _config.LedgeMaxHeight)
+            {
+                return false;
+            }
+
+            // 落点：脚踩到边缘顶面上方 3cm，水平方向向平台内侧收，收多少按实际余量试
+            float halfW = b.extents.x + r;
+            float centerY = ledgeY + 0.03f + b.extents.y + r;
+            float[] insets = { Mathf.Min(halfW * 0.55f, 0.55f), Mathf.Min(halfW * 0.35f, 0.35f), 0.2f };
+
+            for (int i = 0; i < insets.Length; i++)
+            {
+                Vector2 candidate = new Vector2(probeX + dir * insets[i], centerY);
+                if (IsSpaceFree(candidate, b.size))
+                {
+                    standPos = candidate;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>指定位置是否放得下玩家碰撞体（忽略自身、触发器、动态刚体）。</summary>
+        private bool IsSpaceFree(Vector2 center, Vector2 size)
+        {
+            Vector2 probe = new Vector2(Mathf.Max(0.05f, size.x - 0.06f), Mathf.Max(0.05f, size.y - 0.06f));
+            int mask = Physics2D.AllLayers & ~(1 << gameObject.layer);
+            int count = Physics2D.OverlapBoxNonAlloc(center, probe, 0f, _standHits, mask);
+            for (int i = 0; i < count; i++)
+            {
+                if (IsSolidObstacle(_standHits[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>切换贴墙下滑标志（由墙面状态在 Enter/Exit 调用，供 Animator 读）。</summary>
+        public void SetWallSliding(bool on)
+        {
+            IsWallSliding = on;
+        }
+
+        /// <summary>进入/退出扒边悬挂：悬挂期间冻结刚体，避免重力把角色从边缘拉下去。</summary>
+        public void SetLedgeHanging(bool on)
+        {
+            if (IsLedgeGrabbing == on)
+            {
+                return;
+            }
+
+            if (on)
+            {
+                _baseConstraints = Body.constraints;
+                Body.constraints = RigidbodyConstraints2D.FreezeAll;
+                Body.velocity = Vector2.zero;
+            }
+            else
+            {
+                Body.constraints = _baseConstraints;
+            }
+
+            IsLedgeGrabbing = on;
+        }
+
+        /// <summary>爬上边缘：连人到脚底一并置位，并起一段再抓冷却。</summary>
+        public void ClimbLedge(Vector2 standPos)
+        {
+            Body.velocity = Vector2.zero;
+            Body.position = standPos;
+            transform.position = new Vector3(standPos.x, standPos.y, transform.position.z);
+            _ledgeCooldownTimer = _config != null ? _config.LedgeCooldown : 0.4f;
+        }
+
+        /// <summary>松开边缘：恢复重力，并起一段再抓冷却（否则松手瞬间会立刻抓回同一边）。</summary>
+        public void ReleaseLedge()
+        {
+            _ledgeCooldownTimer = _config != null ? _config.LedgeCooldown : 0.4f;
+        }
+
+        /// <summary>实体障碍判定：排除自身/子物体、触发器、动态刚体（敌人、弹体不是墙）。</summary>
+        private bool IsSolidObstacle(Collider2D collider)
+        {
+            if (collider == null || collider == _bodyCollider || !collider.enabled || collider.isTrigger)
+            {
+                return false;
+            }
+
+            if (collider.transform.IsChildOf(transform))
+            {
+                return false;
+            }
+
+            var attached = collider.attachedRigidbody;
+            if (attached != null && attached.bodyType == RigidbodyType2D.Dynamic)
+            {
+                return false;
+            }
+
+            return true;
         }
 
         // ===== 脚步 / 草丛音效 =====
@@ -435,6 +892,11 @@ namespace StarEco.Player
 
         // 脚底支撑探测复用缓冲，避免每帧产生托管分配
         private static readonly Collider2D[] _supportHits = new Collider2D[8];
+
+        // 墙面 / 起身 / 扒边落点的复用缓冲（同上，避免每帧分配）
+        private static readonly Collider2D[] _wallHits = new Collider2D[8];
+        private static readonly Collider2D[] _standHits = new Collider2D[8];
+        private static readonly RaycastHit2D[] _rayHits = new RaycastHit2D[8];
 
         /// <summary>
         /// 脚底探测盒是否压着“非触发器实体支撑”（真地面、草垛、台阶等）。
@@ -578,7 +1040,14 @@ namespace StarEco.Player
 
         public void ApplyHit(Vector2 fromDirection, int currentHp, int maxHp)
         {
-            if (_invincibleTimer > 0f || IsDead)
+            if (IsDead)
+            {
+                return;
+            }
+
+            // 无敌期忽略受击（R5）——但致命伤害除外：无敌不能免除摔死/坠入虚空，
+            // 否则玩家会带着无敌穿过坠落区后一路下坠，永远等不到下一次伤害。
+            if (_invincibleTimer > 0f && currentHp > 0)
             {
                 return;
             }
@@ -614,6 +1083,17 @@ namespace StarEco.Player
         /// <summary>无敌期剩余时间（闪烁效果用）。</summary>
         public float InvincibleTimer => _invincibleTimer;
 
+        /// <summary>临时延长无敌（Boss 击败演出期间用：输入已锁，避免残余小怪打断演出）。</summary>
+        public void GrantInvincibility(float seconds)
+        {
+            if (seconds <= 0f)
+            {
+                return;
+            }
+
+            _invincibleTimer = Mathf.Max(_invincibleTimer, seconds);
+        }
+
         /// <summary>
         /// 蓄力进度比例 [0,1]（M7 HUD 蓄力条数据源）：非蓄力状态返回 0。
         /// 唯一改动点是本只读属性（M7 design §2.7 论证的必要最小增量）。
@@ -627,6 +1107,15 @@ namespace StarEco.Player
         public void TryFireAnim(int triggerHash)
         {
             Anim?.FireOneShot(triggerHash);
+        }
+
+        /// <summary>
+        /// 直接播放一次性动画状态（绕过 AnyState trigger 转移）。
+        /// trigger + AnyState 在 m_InterruptionSource=0 时不被评估，Play() 是社区标准做法。
+        /// </summary>
+        public void PlayOneShot(string stateName)
+        {
+            Anim?.PlayOneShot(stateName);
         }
 
         /// <summary>

@@ -42,13 +42,17 @@ namespace StarEco.Boss
                 return;
             }
 
-            // 对话期间不发动技能（移动/追击照常）
-            if (!DialogueActive && TryBeginSkill()) return;
-
-            if (!Boss.InMeleeRange)
+            // 观望期（刚收完远程技能）站定不动：玩家躲开也不会被立刻追上来。
+            // 观望结束后若已决定逼近，追击优先于远程技能，避免"冷却一到就原地开火"变成炮台。
+            if (!Boss.InMeleeRange && !Boss.IsPursueDelayed
+                && (Boss.PreferMelee || !Boss.IsAttackBReady))
             {
                 Machine.SwitchState<BossChaseState>();
+                return;
             }
+
+            // 对话期间不发动技能（移动/追击照常）
+            if (!DialogueActive && TryBeginSkill()) return;
         }
 
         /// <summary>技能优先级：Special（P3）→ A（近身）→ B（远程）。返回是否已起手。</summary>
@@ -66,8 +70,9 @@ namespace StarEco.Boss
                 return true;
             }
 
-            // 技能 B：P1 起可用，仅在超出近战范围时用来拉扯
-            if (Boss.IsAttackBReady && !Boss.InMeleeRange)
+            // 技能 B：P1 起可用，仅在超出近战范围时用来拉扯。
+            // 观望期内不放：远程冷却一好就再打一轮，Boss 会退化成原地炮台，永远没机会逼近。
+            if (Boss.IsAttackBReady && !Boss.InMeleeRange && !Boss.IsPursueDelayed)
             {
                 Machine.SwitchState<BossAttackBState>();
                 return true;
@@ -77,13 +82,21 @@ namespace StarEco.Boss
         }
     }
 
-    /// <summary>追击：横向移动靠近目标（移速受狂暴倍率影响）。</summary>
+    /// <summary>
+    /// 追击：横向移动靠近目标（移速受狂暴倍率影响），但逼近是"分段"的：
+    /// 每次进入追击至少走满 ChaseBurstSeconds，走完若还没贴身就停下来放一轮远程 / 站定喘息，
+    /// 而不是一路贴脸推着玩家走。这样 Boss 的节奏是 走一段 → 停 → 出招 → 再走。
+    /// </summary>
     public class BossChaseState : BossStateBase
     {
+        /// <summary>本次追击已经走了多久（秒）。</summary>
+        private float _chaseTimer;
+
         public BossChaseState(BossController boss, EnemyStateMachine machine) : base(boss, machine) { }
 
         public override void Enter()
         {
+            _chaseTimer = 0f;
             Boss.Anim?.SetBool(BossAnimParams.IsMove, true);
         }
 
@@ -112,16 +125,37 @@ namespace StarEco.Boss
                 return;
             }
 
-            if (Boss.InMeleeRange && Boss.AttackCooldownTimer <= 0f)
+            if (Boss.InMeleeRange)
             {
-                Machine.SwitchState<BossAttackAState>();
+                if (Boss.AttackCooldownTimer <= 0f)
+                {
+                    Machine.SwitchState<BossAttackAState>();
+                    return;
+                }
+
+                // 已经贴身但近战还在冷却：站定不推，别把玩家一路顶到墙角
+                Machine.SwitchState<BossIdleState>();
                 return;
             }
 
+            // 逼近要走完一段才允许停：否则一进追击就原地开火，看起来像不会移动的炮台
+            float burst = Config != null ? Mathf.Max(0.1f, Config.ChaseBurstSeconds) : 1.1f;
+            if (_chaseTimer < burst)
+            {
+                return;
+            }
+
+            // 走满一段仍没贴身：放一轮弹幕收尾，然后回 Idle 观望（形成走走停停）
             if (Boss.IsAttackBReady)
             {
                 Machine.SwitchState<BossAttackBState>();
+                return;
             }
+
+            // 远程还在冷却：停下喘息，观望结束再继续逼近，避免每帧 Idle↔追击 来回切换
+            Boss.PreferMelee = true;
+            Boss.BeginPursueDelay();
+            Machine.SwitchState<BossIdleState>();
         }
 
         public override void FixedTick()
@@ -132,6 +166,7 @@ namespace StarEco.Boss
                 return;
             }
 
+            _chaseTimer += Time.fixedDeltaTime;
             MoveTowards();
         }
 
@@ -145,8 +180,17 @@ namespace StarEco.Boss
             }
 
             Boss.FaceTarget();
-            float dirX = Mathf.Sign(Boss.Target.position.x - Boss.transform.position.x);
-            if (Mathf.Abs(Boss.Target.position.x - Boss.transform.position.x) < 0.05f)
+            float dx = Boss.Target.position.x - Boss.transform.position.x;
+            float dirX = Mathf.Sign(dx);
+
+            // Boss 体型极宽（世界约 4.4 单位），贴到近战距离再往前走就会把玩家顶飞；
+            // 这里提前一点收脚：落点要落在近战判定（AttackARange）之内、又和玩家留出一道缝。
+            if (Mathf.Abs(dx) <= Mathf.Max(0.1f, Config.AttackARange - 0.2f))
+            {
+                return;
+            }
+
+            if (Mathf.Abs(dx) < 0.05f)
             {
                 return;
             }
@@ -159,56 +203,200 @@ namespace StarEco.Boss
         }
     }
 
-    /// <summary>技能 A · 近战横扫：事件帧开窗判定（沿用 M4"事件帧为权威"）。</summary>
-    public class BossAttackAState : BossStateBase
+    /// <summary>
+    /// 攻击状态公共骨架（前摇 → 命中 → 后摇）：
+    /// 前摇从动画第一帧开始播，到点才结算伤害；前摇/命中阶段霸体且站定，
+    /// 后摇阶段站定但恢复正常受击，玩家可在此期间反击。
+    /// </summary>
+    public abstract class BossAttackStateBase : BossStateBase
     {
-        public BossAttackAState(BossController boss, EnemyStateMachine machine) : base(boss, machine) { }
+        private enum AttackPhase { Windup, Active, Recovery }
+
+        private AttackPhase _phase;
+        private float _timer;
+        private float _activeSeconds;
+        private float _recoverSeconds;
+
+        protected BossAttackStateBase(BossController boss, EnemyStateMachine machine) : base(boss, machine) { }
+
+        /// <summary>前摇时长（秒）。</summary>
+        protected abstract float WindupSeconds { get; }
+
+        /// <summary>命中阶段时长（秒），覆盖攻击动画剩余帧。</summary>
+        protected abstract float ActiveSeconds { get; }
+
+        /// <summary>后摇时长（秒）。</summary>
+        protected abstract float RecoverSeconds { get; }
+
+        /// <summary>攻击动画 Trigger。</summary>
+        protected abstract int AnimTrigger { get; }
+
+        /// <summary>
+        /// 起手动画 Trigger：默认直接播攻击动作（近战 A）；
+        /// 远程技能覆写为蓄力动作，前摇期间先播可见的蓄力，到点再切攻击动作。
+        /// </summary>
+        protected virtual int EnterTrigger => AnimTrigger;
+
+        /// <summary>进入状态时重置本次技能冷却（各技能分开计时）。</summary>
+        protected virtual void ResetCooldown() { }
+
+        /// <summary>前摇结束时的结算入口（近战 A 由动画事件开命中窗，保持空实现）。</summary>
+        protected virtual void OnWindupEnd() { }
+
+        /// <summary>
+        /// 收尾后是否转为"优先逼近"：远程技能（B / Special）为 true —— 打一轮远程就压上去；
+        /// 近战 A 覆写为 false —— 打完近战又回到"远程拉扯"的节奏，形成 远程 ↔ 近战 循环。
+        /// </summary>
+        protected virtual bool PreferMeleeAfter => true;
 
         public override void Enter()
         {
-            Boss.ResetAttackACooldown();
+            Boss.ConsumePendingHurt();
+            ResetCooldown();
             Boss.StopMoving();
             Boss.FaceTarget();
-            Boss.TryFireAnim(BossAnimParams.AttackA);
+            Boss.IsArmored = true;
+
+            _activeSeconds = Mathf.Max(0f, ActiveSeconds);
+            _recoverSeconds = Mathf.Max(0f, RecoverSeconds);
+            _phase = AttackPhase.Windup;
+            _timer = Mathf.Max(0f, WindupSeconds);
+
+            // 有前摇就播起手动作（远程技能 = 蓄力），无前摇则直接播攻击动作。
+            // 攻击动作在 OnWindupEnd 时才切，玩家能清晰看到"蓄力 → 喷出"两段。
+            Boss.TryFireAnim(_timer > 0f ? EnterTrigger : AnimTrigger);
+
+            if (_timer <= 0f)
+            {
+                EnterActive();
+            }
+        }
+
+        public override void Exit()
+        {
+            Boss.IsArmored = false;
         }
 
         public override void Tick()
         {
-            if (TryHandleCombatTransitions()) return;
-
-            // 攻击动画时长用冷却近似（与 M4 做法一致）：冷却走完即回落
-            if (Boss.AttackCooldownTimer <= 0f)
+            // 死亡永远优先
+            if (TryHandleDieTransition())
             {
-                Machine.SwitchState(Boss.HasTarget ? typeof(BossChaseState) : typeof(BossIdleState));
+                return;
+            }
+
+            if (InTransition)
+            {
+                Boss.StopMoving();
+                return;
+            }
+
+            // 后摇可被打断；前摇 / 命中阶段霸体，不响应受击
+            if (_phase == AttackPhase.Recovery && TryHandleHurtTransition())
+            {
+                return;
+            }
+
+            _timer -= Time.deltaTime;
+            if (_timer > 0f)
+            {
+                return;
+            }
+
+            switch (_phase)
+            {
+                case AttackPhase.Windup:
+                    EnterActive();
+                    break;
+                case AttackPhase.Active:
+                    EnterRecovery();
+                    break;
+                default:
+                    FinishAttack();
+                    break;
+            }
+        }
+
+        private void EnterActive()
+        {
+            _phase = AttackPhase.Active;
+            _timer = _activeSeconds;
+            OnWindupEnd();
+
+            if (_timer <= 0f)
+            {
+                EnterRecovery();
+            }
+        }
+
+        private void EnterRecovery()
+        {
+            _phase = AttackPhase.Recovery;
+            Boss.IsArmored = false;
+            _timer = _recoverSeconds;
+
+            if (_timer <= 0f)
+            {
+                FinishAttack();
+            }
+        }
+
+        /// <summary>
+        /// 技能收尾：回待机站定观望，而不是立刻扑上去。
+        /// 主流 Boss 的节奏是"远程先打 → 玩家躲开也不马上追 → 观望结束再逼近"，
+        /// 所以这里统一回 Idle 并挂一段追击延迟，由 Idle 决定何时进入追击。
+        /// </summary>
+        private void FinishAttack()
+        {
+            Boss.PreferMelee = PreferMeleeAfter;
+            Machine.SwitchState<BossIdleState>();
+
+            if (Boss.HasTarget)
+            {
+                Boss.BeginPursueDelay();
             }
         }
     }
 
-    /// <summary>技能 B · 远程弹幕：扇形发射，复用 M4 EnemyProjectile + 对象池。</summary>
-    public class BossAttackBState : BossStateBase
+    /// <summary>技能 A · 近战横扫：前摇 0.20s 后由动画事件开命中窗，后摇 0.30s。</summary>
+    public class BossAttackAState : BossAttackStateBase
+    {
+        public BossAttackAState(BossController boss, EnemyStateMachine machine) : base(boss, machine) { }
+
+        protected override float WindupSeconds => Config != null ? Config.AttackAWindupSeconds : 0.20f;
+        protected override float ActiveSeconds => Config != null ? Config.AttackAActiveSeconds : 0.62f;
+        protected override float RecoverSeconds => Config != null ? Config.AttackARecoverSeconds : 0.30f;
+        protected override int AnimTrigger => BossAnimParams.AttackA;
+
+        /// <summary>打完近战回到远程为主的节奏（否则会一直贴着玩家打）。</summary>
+        protected override bool PreferMeleeAfter => false;
+
+        protected override void ResetCooldown() => Boss.ResetAttackACooldown();
+    }
+
+    /// <summary>技能 B · 远程弹幕：1.10s 蓄力前摇（可见动作）→ 切攻击动作并扇形发射，后摇 0.30s。</summary>
+    public class BossAttackBState : BossAttackStateBase
     {
         public BossAttackBState(BossController boss, EnemyStateMachine machine) : base(boss, machine) { }
 
-        public override void Enter()
+        protected override float WindupSeconds => Config != null ? Config.AttackBWindupSeconds : 1.10f;
+        protected override float ActiveSeconds => Config != null ? Config.AttackBActiveSeconds : 0.60f;
+        protected override float RecoverSeconds => Config != null ? Config.AttackBRecoverSeconds : 0.30f;
+        protected override int AnimTrigger => BossAnimParams.AttackB;
+
+        /// <summary>前摇播蓄力动作，而不是直接播喷吐动作。</summary>
+        protected override int EnterTrigger => BossAnimParams.Charge;
+
+        protected override void ResetCooldown() => Boss.ResetAttackBCooldown();
+
+        protected override void OnWindupEnd()
         {
-            Boss.ResetAttackBCooldown();
-            Boss.StopMoving();
-            Boss.FaceTarget();
-            Boss.TryFireAnim(BossAnimParams.AttackB);
+            // 蓄力到位 → 切到攻击动作（绿雾喷出），同时结算弹幕
+            Boss.TryFireAnim(AnimTrigger);
             DoFire();
         }
 
-        public override void Tick()
-        {
-            if (TryHandleCombatTransitions()) return;
-
-            if (Boss.AttackCooldownTimer <= 0f || Boss.IsAttackBReady)
-            {
-                Machine.SwitchState(Boss.HasTarget ? typeof(BossChaseState) : typeof(BossIdleState));
-            }
-        }
-
-        /// <summary>实际弹幕内容（Special 覆写它，起手与冷却由各自 Enter 决定）。</summary>
+        /// <summary>实际弹幕内容（Special 覆写它，前摇与冷却由各自 Enter 决定）。</summary>
         protected virtual void DoFire()
         {
             if (Config == null || Boss.ProjectilePrefab == null)
@@ -256,19 +444,16 @@ namespace StarEco.Boss
         }
     }
 
-    /// <summary>特殊招 · 环绕扇形弹幕（仅 P3）：弹数更多、张角更大、施法前先面朝一次。</summary>
+    /// <summary>特殊招 · 环绕扇形弹幕（仅 P3）：1.40s 蓄力前摇后发射，后摇 0.35s。</summary>
     public class BossSpecialState : BossAttackBState
     {
         public BossSpecialState(BossController boss, EnemyStateMachine machine) : base(boss, machine) { }
 
-        public override void Enter()
-        {
-            Boss.ResetSpecialCooldown();
-            Boss.StopMoving();
-            Boss.FaceTarget();
-            Boss.TryFireAnim(BossAnimParams.Special);
-            DoFire();
-        }
+        protected override float WindupSeconds => Config != null ? Config.SpecialWindupSeconds : 1.40f;
+        protected override float ActiveSeconds => Config != null ? Config.SpecialActiveSeconds : 0.62f;
+        protected override float RecoverSeconds => Config != null ? Config.SpecialRecoverSeconds : 0.35f;
+        protected override int AnimTrigger => BossAnimParams.Special;
+        protected override void ResetCooldown() => Boss.ResetSpecialCooldown();
 
         protected override void DoFire()
         {

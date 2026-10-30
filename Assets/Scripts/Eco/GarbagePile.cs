@@ -33,6 +33,7 @@ namespace StarEco.Eco
         private SpriteRenderer _sprite;
         private Sprite _originalSprite;
         private Collider2D _collider;
+        private Vector3 _baseLocalPosition;
         private int _progress;
         private bool _purified;
 
@@ -46,6 +47,9 @@ namespace StarEco.Eco
         {
             _sprite = GetComponent<SpriteRenderer>();
             _collider = GetComponent<Collider2D>();
+
+            // 记住初始局部位置：换净化贴图时要按底边对齐做竖直补偿，重置时还原（见 CompletePurify）
+            _baseLocalPosition = transform.localPosition;
 
             if (_config == null)
             {
@@ -97,6 +101,15 @@ namespace StarEco.Eco
                     // 净化完成：换成绿油油的草地/灌木贴图（与污染垃圾形成强对比）
                     _sprite.sprite = _cleanSprite;
                     _sprite.color = Color.white;
+
+                    // 底边对齐补偿：污染墙高 1.66、草地只有 0.72，两个 pivot 都在中心，
+                    // 直接换图草地会悬空约 0.47 单位。按各自的 sprite.bounds.min.y 差值下移，
+                    // 让净化后的草地底边落在原墙底边（也就是地面上）。
+                    if (_originalSprite != null)
+                    {
+                        float dy = _originalSprite.bounds.min.y - _cleanSprite.bounds.min.y;
+                        transform.localPosition = _baseLocalPosition + Vector3.up * dy;
+                    }
                 }
                 else
                 {
@@ -118,14 +131,6 @@ namespace StarEco.Eco
             {
                 _collider.enabled = false;
             }
-
-            // 挡路型额外视觉变淡，提示通路已打开
-            if (_blocksPath && _sprite != null)
-            {
-                var c = _sprite.color;
-                c.a = 0.3f;
-                _sprite.color = c;
-            }
         }
 
         /// <summary>恢复未净化初始态（M6 关卡重开）。</summary>
@@ -133,6 +138,9 @@ namespace StarEco.Eco
         {
             _progress = 0;
             _purified = false;
+
+            // 还原换图时的底边对齐补偿
+            transform.localPosition = _baseLocalPosition;
 
             if (_collider != null)
             {

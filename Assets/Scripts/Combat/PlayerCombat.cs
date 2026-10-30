@@ -38,8 +38,8 @@ namespace StarEco.Combat
 
         private void Update()
         {
-            // 每帧刷新：死亡/锁定输入时不接收
-            AttackPressedThisFrame = _player != null && !_player.IsDead && !_player.InputLocked
+            // 每帧刷新：死亡/锁定输入时不接收（InputBlocked 同时涵盖对话等外部强制锁）
+            AttackPressedThisFrame = _player != null && !_player.InputBlocked
                 && (Input.GetButtonDown("Fire1") || Input.GetKeyDown(KeyCode.J));
         }
 
@@ -71,13 +71,20 @@ namespace StarEco.Combat
                 return;
             }
 
-            if (_player.InvincibleTimer > 0f)
+            // 无敌期忽略伤害（R5）——但致命伤害除外。
+            // 曾被"无敌"吃掉过：玩家带受击/翻滚无敌从边缘掉落，坠落区 999 点伤害被这里
+            // 直接 return 丢掉，人穿过 4 单位高的判定区后一路下坠再没有伤害来源，表现为
+            // "掉出关卡却不死"。无敌只应豁免非致命伤害，摔死不受无敌保护。
+            if (_player.InvincibleTimer > 0f && info.Amount < CurrentHP)
             {
-                return;   // 无敌期忽略（R5）
+                return;
             }
 
             int newHp = Mathf.Max(0, CurrentHP - info.Amount);
             CurrentHP = newHp;
+
+            // 记录死因（坠落死亡区会置 IsFall），供结算面板把「玩家被击败」换成「跌落山崖」
+            _player.MarkDeathCause(info.IsFall);
 
             // 击退方向：无来源方向时按垂直上抛兜底
             Vector2 from = info.SourceDirection.sqrMagnitude > 0.0001f ? info.SourceDirection : Vector2.up;

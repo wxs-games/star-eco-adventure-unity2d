@@ -115,12 +115,12 @@ namespace StarEco.Level
                 EventCenter.Publish(new RestartLevelEvent());
             });
 
-            _titleButton = CreateButton("TitleButton", canvasGo.transform, "返回标题", font,
+            _titleButton = CreateButton("TitleButton", canvasGo.transform, "返回主菜单", font,
                 new Vector2(160f, -260f));
             _titleButton.onClick.AddListener(() =>
             {
-                Debug.Log("[LevelResultUI] 收到返回标题请求（切标题场景由 M7 实现）。");
-                EventCenter.Publish(new ReturnToTitleEvent());
+                Time.timeScale = 1f;
+                UnityEngine.SceneManagement.SceneManager.LoadScene(StarEco.UI.SceneNames.Title);
             });
 
             Hide();

@@ -37,6 +37,12 @@ namespace StarEco.Player
             Current.Enter();
         }
 
+        /// <summary>取出已注册的状态实例（用于转移前向目标状态传参）。</summary>
+        public T Get<T>() where T : class, IPlayerState
+        {
+            return _states.TryGetValue(typeof(T), out var state) ? state as T : null;
+        }
+
         /// <summary>切换状态：先 Exit 当前，再 Enter 新态。</summary>
         public void SwitchState<T>() where T : class, IPlayerState
         {

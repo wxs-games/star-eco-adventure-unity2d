@@ -76,6 +76,55 @@ namespace StarEco.Player
         /// <summary>翻滚水平速度（由距离/时长推导，避免两处手填不一致）。</summary>
         public float DodgeSpeed => DodgeDuration > 0f ? DodgeDistance / DodgeDuration : 0f;
 
+        [Header("冲刺（Dash）")]
+        [Tooltip("冲刺持续时长 (s)，与 Dash 动画等长（Dash.anim 12 帧 @30fps = 0.400s）")]
+        public float DashDuration = 0.4f;
+
+        [Tooltip("冲刺总位移距离 (u)")]
+        public float DashDistance = 2.8f;
+
+        [Tooltip("冲刺冷却 (s)")]
+        public float DashCooldown = 0.5f;
+
+        [Tooltip("空中每段允许的冲刺次数（落地重置）")]
+        public int AirDashCount = 1;
+
+        /// <summary>冲刺水平速度（由距离/时长推导）。</summary>
+        public float DashSpeed => DashDuration > 0f ? DashDistance / DashDuration : 0f;
+
+        [Header("蹲伏（Crouch）")]
+        [Tooltip("蹲伏移速因子（相对 MoveSpeed）")]
+        [Range(0.1f, 1f)] public float CrouchSpeedFactor = 0.45f;
+
+        [Tooltip("蹲伏时碰撞体高度比例（1 = 不压缩）")]
+        [Range(0.3f, 1f)] public float CrouchHeightRatio = 0.62f;
+
+        [Header("墙面（WallSlide / WallJump）")]
+        [Tooltip("贴墙下滑的最大下落速度 (u/s)")]
+        public float WallSlideSpeed = 4f;
+
+        [Tooltip("侧向探墙距离 (u)")]
+        public float WallCheckDistance = 0.1f;
+
+        [Tooltip("蹬墙跳竖直初速度 (u/s)")]
+        public float WallJumpVelocity = 12f;
+
+        [Tooltip("蹬墙跳背离墙面的水平速度 (u/s)")]
+        public float WallJumpPushSpeed = 7f;
+
+        [Tooltip("蹬墙跳后强制推离墙面的时长 (s)，防止立刻贴回同一面墙")]
+        public float WallJumpLockTime = 0.14f;
+
+        [Header("扒边（LedgeGrab）")]
+        [Tooltip("可抓取边缘相对脚底的最低高度 (u)")]
+        public float LedgeMinHeight = 0.35f;
+
+        [Tooltip("可抓取边缘相对脚底的最高高度 (u)")]
+        public float LedgeMaxHeight = 1.7f;
+
+        [Tooltip("松手/爬上后再次抓取的冷却 (s)")]
+        public float LedgeCooldown = 0.4f;
+
         [Header("碰撞")]
         [Tooltip("地面层掩码（默认 Ground）")]
         public LayerMask GroundLayer = 1 << 10;

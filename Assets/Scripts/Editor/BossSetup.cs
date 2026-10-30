@@ -115,22 +115,22 @@ namespace StarEco.EditorTools
             ground.layer = LayerMask.NameToLayer("Ground");
             log.AppendLine("已创建 Ground（48x1u，Boss 战横向空间）");
 
-            // 两侧平台（躲弹幕用）
-            // 平台碰撞体排除 Enemy 层：Boss 精灵高 4.64u、碰撞体高 4.18u，站在 x=16 时
-            // 身体会与 PlatformR（底部 y=2.95）重叠 0.75u，被"地面 + 平台"夹住而稳定陷地 0.48u。
-            // 平台对敌人透明后 Boss 正常落地，对玩家的站立/躲弹功能完全不变（2026-10-20 实测修复）。
-            int enemyLayer = 1 << LayerMask.NameToLayer("Enemy");
-            var platformL = MakeWorldBox("PlatformL", white, 6f, 0.6f, new Vector3(-14f, 3.2f, 0f),
-                new Color(0.34f, 0.34f, 0.38f, 1f), -4);
-            platformL.layer = LayerMask.NameToLayer("Ground");
-            platformL.GetComponent<BoxCollider2D>().excludeLayers = enemyLayer;
+            // 两侧悬浮平台（PlatformL / PlatformR）已移除（2026-10-29）。
+            // 原因：本作是 2D 横版，实心悬浮平台的碰撞体与大体型 Boss 天生互斥 ——
+            // Boss 精灵高 4.64u、碰撞体高 4.18u，站在平台下方时会被"地面 + 平台"夹住陷地，
+            // 原方案只能靠 excludeLayers 把 Enemy 层排除来打补丁，属于治标不治本。
+            // Boss 战改为纯平地面，躲弹幕靠横移与跳跃。
 
-            var platformR = MakeWorldBox("PlatformR", white, 6f, 0.6f, new Vector3(14f, 3.2f, 0f),
-                new Color(0.34f, 0.34f, 0.38f, 1f), -4);
-            platformR.layer = LayerMask.NameToLayer("Ground");
-            platformR.GetComponent<BoxCollider2D>().excludeLayers = enemyLayer;
-
-            log.AppendLine("已创建 PlatformL / PlatformR（碰撞体已排除 Enemy 层，Boss 不再被平台夹住）");
+            // 坠落死亡区：地面只有 48u 宽，玩家从两侧走出边界后会无限下坠；
+            // 在下方铺一层触发区兜底 —— 掉出地板即判定死亡，而不是卡在关卡外。
+            // 走既有 IHittable 伤害流水线，与 Level01 的 KillZone 同构。
+            var killZone = new GameObject("KillZone");
+            killZone.transform.position = new Vector3(0f, -6f, 0f);
+            var killCol = killZone.AddComponent<BoxCollider2D>();
+            killCol.isTrigger = true;
+            killCol.size = new Vector2(80f, 4f);
+            killZone.AddComponent<StarEco.Level.FallHazard>();
+            log.AppendLine("已创建 KillZone（y=-6，80x4 触发区，掉出地板即摔死）");
 
             // 相机（视口略大，容纳 Boss）
             var camGo = new GameObject("Main Camera");
@@ -175,7 +175,8 @@ namespace StarEco.EditorTools
             if (playerPrefab != null)
             {
                 var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);
-                player.transform.position = new Vector3(-12f, 1.5f, 0f);
+                // 出生点唯一事实来源是 LevelConfig.SpawnPoint，避免编辑器摆放与运行时复位两处漂移。
+                player.transform.position = new Vector3(config.SpawnPoint.x, config.SpawnPoint.y, 0f);
                 player.name = "Player";
                 log.AppendLine("已放置 Player");
             }
@@ -212,10 +213,7 @@ namespace StarEco.EditorTools
             MakeAnchor("SpawnAnchorA", new Vector3(-8f, 0.2f, 0f));
             MakeAnchor("SpawnAnchorB", new Vector3(10f, 0.2f, 0f));
 
-            // 检查点（两端各一）
-            MakeCheckpoint("Checkpoint1", "CP_1", new Vector3(-10f, 0.5f, 0f));
-            MakeCheckpoint("Checkpoint2", "CP_2", new Vector3(6f, 0.5f, 0f));
-            log.AppendLine("已放置 CP_1 / CP_2 与两个刷怪锚点");
+            log.AppendLine("已放置两个刷怪锚点");
 
             // 环保系统
             var eco = new GameObject("EcoSystems");
@@ -337,20 +335,6 @@ namespace StarEco.EditorTools
             var white = AssetDatabase.LoadAssetAtPath<Sprite>(WhiteSquarePath);
             var go = MakeWorldBox(name, white, 0.3f, 0.3f, pos, new Color(1f, 0.4f, 0.4f, 0.5f), -3);
             Object.DestroyImmediate(go.GetComponent<BoxCollider2D>());
-        }
-
-        private static void MakeCheckpoint(string name, string id, Vector3 pos)
-        {
-            var white = AssetDatabase.LoadAssetAtPath<Sprite>(WhiteSquarePath);
-            var go = MakeWorldBox(name, white, 1.6f, 1.6f, pos, new Color(0.4f, 0.8f, 1f, 0.35f), 6);
-            var col = go.GetComponent<BoxCollider2D>();
-            col.isTrigger = true;
-
-            var cp = go.AddComponent<Checkpoint>();
-            var so = new SerializedObject(cp);
-            so.FindProperty("_checkpointId").stringValue = id;
-            so.FindProperty("_respawnOffset").vector2Value = new Vector2(0f, 1.2f);
-            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void EnsureFolder(string path)

@@ -41,6 +41,19 @@ namespace StarEco.Eco
             {
                 _config = Resources.Load<EcoConfig>("EcoConfig") ?? EcoConfig.CreateDefault();
             }
+
+            if (_tower != null)
+            {
+                _tower.Disabled += OnTowerDisabled;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_tower != null)
+            {
+                _tower.Disabled -= OnTowerDisabled;
+            }
         }
 
         // ===== IPurifiable =====
@@ -75,12 +88,27 @@ namespace StarEco.Eco
             _purified = false;
         }
 
-        private void CompletePurify()
+        /// <summary>
+        /// 攻击击毁（非喷雾净化）时补记净化事件：塔的 10% 已计入 PuritySystem 分母，
+        /// 若击毁不补发事件，净化值会永远封顶在“垃圾总分 / 含塔总分”。
+        /// </summary>
+        private void OnTowerDisabled()
         {
+            CompletePurify(true);
+        }
+
+        /// <param name="alreadyDisabled">塔已处于关闭态（攻击击毁路径），不再回调 RequestDisable。</param>
+        private void CompletePurify(bool alreadyDisabled = false)
+        {
+            if (_purified)
+            {
+                return;   // 幂等：喷雾净化与击毁只记账一次
+            }
+
             _purified = true;
 
             // 关塔走 M4 既有入口（幂等），净化语义 = 塔关闭（R8）
-            if (_tower != null)
+            if (!alreadyDisabled && _tower != null)
             {
                 _tower.RequestDisable();
             }

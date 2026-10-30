@@ -80,5 +80,86 @@ namespace StarEco.Player
                 Machine.SwitchState<PlayerIdleState>();
             }
         }
+
+        /// <summary>
+        /// 原地转身：站定时按反方向 → 播 Turn 帧并立即翻转朝向。
+        /// 不锁定移动（转身只有 1 帧，加定身反而拖手感），后续 Run 状态会自然接走。
+        /// </summary>
+        protected void TryPlayTurn()
+        {
+            if (!Player.IsGrounded || Mathf.Abs(Player.HorizontalInput) < 0.3f)
+            {
+                return;
+            }
+
+            if (Mathf.Abs(Player.Body.velocity.x) > 0.6f)
+            {
+                return;
+            }
+
+            int want = (int)Mathf.Sign(Player.HorizontalInput);
+            if (want == Player.FacingDir)
+            {
+                return;
+            }
+
+            Player.Sprite.flipX = want < 0;
+            Player.PlayOneShot("Turn");
+        }
+
+        /// <summary>冲刺触发检查：可冲刺且本帧按下左 Ctrl → 切入 Dash 状态。</summary>
+        protected bool TryStartDash()
+        {
+            if (Player.CanStartDash && Player.ConsumeDashInput())
+            {
+                Machine.SwitchState<PlayerDashState>();
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>蹲伏触发检查：地面按住下方向 → 切入 Crouch 状态。</summary>
+        protected bool TryStartCrouch()
+        {
+            if (Player.IsGrounded && Player.DownHeld)
+            {
+                Machine.SwitchState<PlayerCrouchState>();
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 空中墙面动作检查：贴墙 + 下落 + 朝墙推 → 扒边（优先）或贴墙下滑。
+        /// 蹬墙跳后的推离锁定期内不再判定，否则会立刻贴回同一面墙。
+        /// </summary>
+        protected bool TryStartWallOrLedge()
+        {
+            if (Player.IsGrounded || Player.IsWallJumpLocked || Player.VerticalVelocity > -0.1f)
+            {
+                return false;
+            }
+
+            if (Mathf.Abs(Player.HorizontalInput) < 0.3f)
+            {
+                return false;
+            }
+
+            int dir = (int)Mathf.Sign(Player.HorizontalInput);
+            if (!Player.IsTouchingWall(dir))
+            {
+                return false;
+            }
+
+            // 2026-10-30 关闭空中自动扒边。
+            // 原因：进入悬挂时不吸附到边缘，角色会停在出事时的原地 —— 手够不到台沿、
+            // 肚皮悬在台阶边上（FreezeAll 定格），玩家当成卡死。悬浮平台只有 0.18u 厚，
+            // 这种「半空定格」尤其明显。
+            // TryFindLedge / PlayerLedgeState 代码保留，将来若要做真正的吸附式扒边再重新接入。
+            Machine.SwitchState<PlayerWallSlideState>();
+            return true;
+        }
     }
 }

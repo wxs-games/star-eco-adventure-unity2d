@@ -15,6 +15,12 @@ namespace StarEco.UI
 
         public override string PanelName => PanelId;
 
+        /// <summary>
+        /// 是否有对话正在进行（全局只读开关）：对话期间敌人只移动不攻击。
+        /// 由本面板 Open/Close 生命周期维护，敌人状态机与伤害结算只读，不反向写入。
+        /// </summary>
+        public static bool IsDialogueActive { get; private set; }
+
         private const float TypeInterval = 0.03f;
 
         private Text _speakerText;
@@ -42,10 +48,23 @@ namespace StarEco.UI
 
         private void OnDestroy()
         {
+            // 场景卸载时兜底复位，避免开关残留导致新场景敌人永不攻击
+            IsDialogueActive = false;
+
             if (UIManager.HasInstance)
             {
                 UIManager.Instance.Unregister(this);
             }
+        }
+
+        protected override void OnOpen()
+        {
+            IsDialogueActive = true;
+        }
+
+        protected override void OnClose()
+        {
+            IsDialogueActive = false;
         }
 
         /// <summary>开始播放一组对话（由 DialogueTrigger 调用）。</summary>

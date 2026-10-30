@@ -1,8 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
 using StarEco.Framework;
-using StarEco.Eco;
-using StarEco.Eco.Events;
 using StarEco.Level;
 using StarEco.Level.Events;
 using StarEco.Player;
@@ -13,10 +11,10 @@ namespace StarEco.UI
     /// HUD（M7 R1）：常驻关卡界面。
     /// - HP 心形×5（实心=剩余 / 空心=损失）
     /// - 净化剂条 + 数值
-    /// - 净化值进度条 + 百分比
-    /// - 当前目标提示（Label + 进度 x/y）
     /// - 蓄力进度条（蓄力中显示）
     /// 非阻断面板（BlocksInput=false）；关卡终态自动隐藏。
+    /// 注：右上角净化值面板已移除（2026-10-30，让玩家自行探索，不显示数值）。
+    /// 注：顶部「目标」栏（当前目标 + 进度 x/y）已移除（2026-10-30，玩家自行探索，不提示剧情/目标）。
     /// </summary>
     public class HUDController : UIPanel
     {
@@ -28,33 +26,24 @@ namespace StarEco.UI
         private Image[] _hearts;
         private Image _tankFill;
         private Text _tankText;
-        private Image _purityFill;
-        private Text _purityText;
-        private Text _objectiveText;
         private Image _chargeFill;
         private GameObject _chargeRoot;
 
         private PlayerController _player;
-        private PuritySystem _purity;
-        private LevelObjectiveTracker _tracker;
         private LevelManager _level;
         private float _tankBlinkTimer;
         private bool _tankWarned;
         // GC 优化：缓存上一帧文本，仅在数值变化时才重新生成字符串，避免每帧 ToString 分配
         private int _lastTankCurrent = -1;
         private int _lastTankCapacity = -1;
-        private int _lastPurityPercent = -1;
 
         private static readonly Color TankFillColor = new Color(0.35f, 0.75f, 1f);
-        private static readonly Color PurityFillColor = new Color(0.49f, 0.99f, 0.60f);
         private static readonly Color ChargeFillColor = new Color(1f, 0.85f, 0.35f);
 
         private Sprite _heartFullSprite;
         private Sprite _heartEmptySprite;
         private Sprite _tankFrameSprite;
         private Sprite _tankFillSprite;
-        private Sprite _purityFrameSprite;
-        private Sprite _purityFillSprite;
         private Sprite _chargeFrameSprite;
         private Sprite _chargeFillSprite;
 
@@ -69,8 +58,6 @@ namespace StarEco.UI
 
         private void OnDestroy()
         {
-            EventCenter.Unsubscribe<PurityChangedEvent>(OnPurityChanged);
-            EventCenter.Unsubscribe<LevelObjectiveChangedEvent>(OnObjectiveChanged);
             EventCenter.Unsubscribe<ObjectiveCompletedEvent>(OnObjectiveCompleted);
 
             if (UIManager.HasInstance)
@@ -83,14 +70,7 @@ namespace StarEco.UI
         {
             ResolveDependencies();
 
-            EventCenter.Subscribe<PurityChangedEvent>(OnPurityChanged);
-            EventCenter.Subscribe<LevelObjectiveChangedEvent>(OnObjectiveChanged);
             EventCenter.Subscribe<ObjectiveCompletedEvent>(OnObjectiveCompleted);
-
-            // 主动拉取一次：首个 LevelObjectiveChangedEvent 由 LevelManager.Start 触发，
-            // 可能早于本组件的 Start（同场景 Start 顺序不定），不补拉会停在"目标：—"。
-            RefreshObjectiveFromTracker();
-            RefreshPurity();
 
             // 注册可能因 Awake 时序丢失（HUD 的 Awake 早于 UIManager 的 Awake 时
             // HasInstance 为 false）。Start 阶段 UIManager 必已就绪，这里幂等补注册。
@@ -104,8 +84,6 @@ namespace StarEco.UI
         private void ResolveDependencies()
         {
             _player = FindObjectOfType<PlayerController>();
-            _purity = FindObjectOfType<PuritySystem>();
-            _tracker = FindObjectOfType<LevelObjectiveTracker>();
             _level = LevelManager.HasInstance ? LevelManager.Instance : null;
 
             // 无玩家数据源（如误挂主菜单场景）→ HUD 不显示
@@ -238,116 +216,13 @@ namespace StarEco.UI
             }
 
             chargeGo.SetActive(false);
-
-            // 右上：净化值进度条（向中央收拢，减少左右割裂）
-            var purityGo = UIUtility.CreateObject("PurityPanel", root);
-            var purityRt = purityGo.GetComponent<RectTransform>();
-            purityRt.anchorMin = new Vector2(0.5f, 1f);
-            purityRt.anchorMax = new Vector2(0.5f, 1f);
-            purityRt.pivot = new Vector2(0.5f, 1f);
-            purityRt.sizeDelta = new Vector2(320f, 82f);
-            purityRt.anchoredPosition = new Vector2(470f, -22f);
-
-            var purityLabel = UIUtility.CreateText("Label", purityGo.transform, "星球净化值", 22,
-                TextAnchor.MiddleLeft, PurityFillColor);
-            var purityLabelRt = purityLabel.GetComponent<RectTransform>();
-            purityLabelRt.anchorMin = new Vector2(0f, 1f);
-            purityLabelRt.anchorMax = new Vector2(1f, 1f);
-            purityLabelRt.pivot = new Vector2(0f, 1f);
-            purityLabelRt.sizeDelta = new Vector2(0f, 34f);
-            purityLabelRt.anchoredPosition = Vector2.zero;
-
-            _purityFill = UIUtility.CreateBar("Bar", purityGo.transform,
-                new Vector2(320f, 30f), new Vector2(0f, -46f),
-                new Color(0f, 0f, 0f, 0.55f), PurityFillColor, out var purityBarGo);
-            _purityFill.fillAmount = 0f;
-            ApplyHudBarStyle(purityBarGo, _purityFrameSprite, _purityFillSprite, 8f);
-
-            _purityText = UIUtility.CreateText("Percent", purityGo.transform, "0%", 22,
-                TextAnchor.MiddleRight, TextMainColor());
-            var purityTextRt = _purityText.GetComponent<RectTransform>();
-            purityTextRt.anchorMin = new Vector2(0f, 1f);
-            purityTextRt.anchorMax = new Vector2(1f, 1f);
-            purityTextRt.pivot = new Vector2(1f, 1f);
-            purityTextRt.sizeDelta = new Vector2(0f, 34f);
-            purityTextRt.anchoredPosition = Vector2.zero;
-
-            // 顶部居中：当前目标
-            var objGo = UIUtility.CreateObject("Objective", root);
-            var objRt = objGo.GetComponent<RectTransform>();
-            objRt.anchorMin = new Vector2(0.5f, 1f);
-            objRt.anchorMax = new Vector2(0.5f, 1f);
-            objRt.pivot = new Vector2(0.5f, 1f);
-            objRt.sizeDelta = new Vector2(760f, 60f);
-            objRt.anchoredPosition = new Vector2(0f, -24f);
-
-            var objBg = UIUtility.CreateImage("Background", objGo.transform,
-                new Color(0.05f, 0.08f, 0.12f, 0.65f));
-            UIUtility.Stretch(objBg.GetComponent<RectTransform>());
-
-            _objectiveText = UIUtility.CreateText("Label", objGo.transform, "目标：—", 28,
-                TextAnchor.MiddleCenter, UIUtility.TextBody);
-            UIUtility.Stretch(_objectiveText.GetComponent<RectTransform>());
         }
-
-        private static Color TextMainColor() => UIUtility.TextMain;
 
         // ===== 事件 =====
 
-        private void OnPurityChanged(PurityChangedEvent evt)
-        {
-            RefreshPurity();
-        }
-
-        private void OnObjectiveChanged(LevelObjectiveChangedEvent evt)
-        {
-            if (_objectiveText == null)
-            {
-                return;
-            }
-
-            if (evt.Index < 0 || string.IsNullOrEmpty(evt.Label))
-            {
-                _objectiveText.text = "目标：关卡目标已完成";
-            }
-            else if (evt.Required > 0)
-            {
-                _objectiveText.text = $"目标：{evt.Label}（{evt.Current}/{evt.Required}）";
-            }
-            else
-            {
-                _objectiveText.text = $"目标：{evt.Label}";
-            }
-        }
-
-        /// <summary>从目标链直接读当前目标文本（初始化与事件丢失时的兜底）。</summary>
-        private void RefreshObjectiveFromTracker()
-        {
-            if (_objectiveText == null || _tracker == null)
-            {
-                return;
-            }
-
-            var objective = _tracker.CurrentObjective;
-            int required = _tracker.CurrentRequired;
-
-            if (objective == null)
-            {
-                _objectiveText.text = "目标：关卡目标已完成";
-            }
-            else if (required > 0)
-            {
-                _objectiveText.text = $"目标：{objective.Label}（{_tracker.CurrentProgress}/{required}）";
-            }
-            else
-            {
-                _objectiveText.text = $"目标：{objective.Label}";
-            }
-        }
-
         private void OnObjectiveCompleted(ObjectiveCompletedEvent evt)
         {
-            // 计数刷新由 LevelObjectiveChangedEvent 统一驱动；这里只做日志
+            // 目标栏已移除（2026-10-30），这里只保留一条调试日志
             Debug.Log($"[HUD] 目标完成：{evt.Label}");
         }
 
@@ -387,8 +262,6 @@ namespace StarEco.UI
             _heartEmptySprite = Resources.Load<Sprite>("UI/HUD/hud_heart_empty");
             _tankFrameSprite = Resources.Load<Sprite>("UI/HUD/hud_tank_frame");
             _tankFillSprite = Resources.Load<Sprite>("UI/HUD/hud_tank_fill");
-            _purityFrameSprite = Resources.Load<Sprite>("UI/HUD/hud_purity_frame");
-            _purityFillSprite = Resources.Load<Sprite>("UI/HUD/hud_purity_fill");
             _chargeFrameSprite = Resources.Load<Sprite>("UI/HUD/hud_charge_frame");
             _chargeFillSprite = Resources.Load<Sprite>("UI/HUD/hud_charge_fill");
         }
@@ -521,28 +394,6 @@ namespace StarEco.UI
             if (charging && _chargeFill != null)
             {
                 _chargeFill.fillAmount = Mathf.Clamp01(ratio);
-            }
-        }
-
-        private void RefreshPurity()
-        {
-            if (_purity == null || _purityFill == null)
-            {
-                return;
-            }
-
-            float percent = Mathf.Clamp01(_purity.Percent);
-            _purityFill.fillAmount = percent;
-
-            if (_purityText != null)
-            {
-                // 仅在百分比变化时重新生成字符串（GC 优化项 1）
-                int percentRounded = Mathf.RoundToInt(percent * 100f);
-                if (percentRounded != _lastPurityPercent)
-                {
-                    _lastPurityPercent = percentRounded;
-                    _purityText.text = $"{percentRounded}%";
-                }
             }
         }
     }

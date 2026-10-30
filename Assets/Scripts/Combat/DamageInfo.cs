@@ -25,6 +25,12 @@ namespace StarEco.Combat
         /// </summary>
         public bool IsPurify;
 
+        /// <summary>
+        /// 是否为坠落伤害（坠落死亡区置 true）。
+        /// 只用于结算面板的失败原因文案（「跌落山崖」而不是「被击败」），不影响伤害数值。
+        /// </summary>
+        public bool IsFall;
+
         public DamageInfo(int amount, Vector2 sourceDirection, GameObject source)
         {
             Amount = amount;
@@ -32,6 +38,7 @@ namespace StarEco.Combat
             Source = source;
             KnockbackPower = 0f;
             IsPurify = false;
+            IsFall = false;
         }
     }
 }

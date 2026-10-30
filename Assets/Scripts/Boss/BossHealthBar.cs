@@ -62,21 +62,19 @@ namespace StarEco.Boss
 
         private void Start()
         {
-            if (_boss == null)
-            {
-                _boss = FindObjectOfType<BossController>();
-            }
-
-            if (_boss == null)
-            {
-                Debug.LogWarning("[BossHealthBar] 场景内没有 BossController，血条停用。");
-                Hide();
-            }
+            TryBindBoss();
         }
 
         private void Update()
         {
-            if (_boss == null || _canvas == null || !_canvas.gameObject.activeSelf)
+            // Boss 由 BossGate 控制登场：未登场时血条保持隐藏，登场后再绑定显示
+            if (_boss == null)
+            {
+                TryBindBoss();
+                return;
+            }
+
+            if (_canvas == null || !_canvas.gameObject.activeSelf)
             {
                 return;
             }
@@ -147,6 +145,26 @@ namespace StarEco.Boss
         private void OnBossDefeated(Events.BossDefeatedEvent evt)
         {
             Hide();
+        }
+
+        /// <summary>Boss 登场后绑定并显示血条（开场 Boss 隐藏时不报错、不显示）。</summary>
+        private void TryBindBoss()
+        {
+            if (_boss != null)
+            {
+                return;
+            }
+
+            var boss = FindObjectOfType<BossController>();
+            if (boss == null)
+            {
+                return;
+            }
+
+            _boss = boss;
+            _lastHp = -1;
+            _lastMaxHp = -1;
+            Show();
         }
 
         private void Hide()
@@ -256,7 +274,7 @@ namespace StarEco.Boss
             phaseRt.anchoredPosition = new Vector2(0f, -240f);
             _phaseText.gameObject.SetActive(false);
 
-            Show();
+            Hide();   // 等 Boss 真正登场后再显示（见 TryBindBoss）
         }
 
         private static void CreateTick(Transform parent, float percent)

@@ -85,7 +85,7 @@ namespace StarEco.Eco
 
         private void ReadInput()
         {
-            bool inputAllowed = _player != null && !_player.IsDead && !_player.InputLocked;
+            bool inputAllowed = _player != null && !_player.InputBlocked;
             SprayHeld = inputAllowed && Input.GetKey(KeyCode.K);
             ChargeHeld = inputAllowed && Input.GetKey(KeyCode.L);
 

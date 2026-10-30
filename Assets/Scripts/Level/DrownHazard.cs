@@ -6,7 +6,7 @@ namespace StarEco.Level
 {
     /// <summary>
     /// 溺水伤害区（M9 R5）：玩家掉入河道深水区即重伤（走既有 IHittable 伤害流水线，
-    /// HP 归零 → IsDead → LevelManager 检查点复活，与 M6 死亡处理完全一致）。
+    /// HP 归零 → IsDead → LevelManager 判定失败并弹出结算面板，与 M6 死亡处理完全一致）。
     /// 用 Stay 持续结算：受伤无敌期（1s）内的掉落也能在无敌结束后立即致死，不会卡在河床。
     /// TakeDamage 自带 死亡/无敌 守卫，重复调用安全。
     /// </summary>

@@ -14,6 +14,14 @@ namespace StarEco.EditorTools
         private const string SprayHitboxName = "SprayHitbox";
         private const string AttackHitboxName = "AttackHitbox";
 
+        // ---- 武器解耦：钳子不再烘焙进角色帧，改为 ToolAnchor 子物体 + 动画曲线驱动 ----
+        private const string ToolAnchorName = "ToolAnchor";
+        private const string ToolSpritePath = "Assets/Art/Art/Player/Tools/Player_Tool_Pliers.png";
+        // 待机第 0 帧的右手锚点（朝右基准，单位：世界单位）。逐帧值由 Idle.anim 的曲线覆盖。
+        private static readonly Vector3 ToolRestPosition = new Vector3(-0.05291f, -0.48280f, 0f);
+        // 钳子原图是横握的，挂到下垂的手里需要翻过来；185° 与 art_gen 里合成预览一致。
+        private const float ToolRestAngle = 185f;
+
         [MenuItem("StarEco/Setup/Player Prefab")]
         public static void Run()
         {
@@ -118,6 +126,8 @@ namespace StarEco.EditorTools
                     log.AppendLine("已添加 SprayController");
                 }
 
+                EnsureToolAnchor(root, log);
+
                 Inject(combat, "_config", combatConfig);
                 Inject(tank, "_config", ecoConfig);
                 Inject(attackHitbox, "_hitbox", attackHitboxGo.GetComponent<Collider2D>());
@@ -138,6 +148,68 @@ namespace StarEco.EditorTools
 
             AssetDatabase.SaveAssets();
             Debug.Log("[PlayerPrefabSetup] Player 预制体组件固化完成 ✓\n" + log);
+        }
+
+        /// <summary>
+        /// 固化手中工具锚点。幂等：已有则校正参数，没有才创建。
+        /// 工具是 Player 的子物体，不带碰撞体，纯视觉；位置由 AnimationClip 的
+        /// ToolAnchor.m_LocalPosition 曲线逐帧驱动（Idle.anim 已含该曲线）。
+        /// </summary>
+        private static void EnsureToolAnchor(GameObject root, StringBuilder log)
+        {
+            var body = root.GetComponent<SpriteRenderer>();
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(ToolSpritePath);
+            if (sprite == null)
+            {
+                Debug.LogWarning($"[PlayerPrefabSetup] 找不到工具精灵 {ToolSpritePath}，跳过 ToolAnchor");
+                return;
+            }
+
+            var anchorTr = root.transform.Find(ToolAnchorName);
+            bool created = false;
+            if (anchorTr == null)
+            {
+                var go = new GameObject(ToolAnchorName);
+                anchorTr = go.transform;
+                anchorTr.SetParent(root.transform, false);
+                created = true;
+            }
+
+            anchorTr.gameObject.layer = root.layer;
+            anchorTr.localPosition = ToolRestPosition;
+            anchorTr.localRotation = Quaternion.Euler(0f, 0f, ToolRestAngle);
+            anchorTr.localScale = Vector3.one;
+
+            var sr = anchorTr.GetComponent<SpriteRenderer>();
+            if (sr == null)
+            {
+                sr = anchorTr.gameObject.AddComponent<SpriteRenderer>();
+            }
+
+            sr.sprite = sprite;
+            if (body != null)
+            {
+                sr.sortingLayerID = body.sortingLayerID;
+                // 比角色高 1 层：钳子垂在腿前面，若排在角色之后会被腿切掉一块。
+                // 手压在工具上的层次由美术帧本身承担（身体帧带手，手在钳子上缘之外）。
+                sr.sortingOrder = body.sortingOrder + 1;
+            }
+
+            sr.color = Color.white;
+            sr.flipX = false;
+
+            var follower = anchorTr.GetComponent<StarEco.Player.PlayerToolAnchor>();
+            if (follower == null)
+            {
+                follower = anchorTr.gameObject.AddComponent<StarEco.Player.PlayerToolAnchor>();
+            }
+
+            Inject(follower, "_body", body);
+            Inject(follower, "_tool", sr);
+
+            log.AppendLine(created
+                ? $"已创建 {ToolAnchorName} 子物体（{sprite.rect.width}x{sprite.rect.height}px, PPU 378）"
+                : $"{ToolAnchorName} 子物体已存在，参数已校正");
         }
 
         private static void Inject(Component target, string field, Object value)

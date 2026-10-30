@@ -10,8 +10,9 @@ namespace StarEco.EditorTools
 {
     /// <summary>
     /// Boss01 动画与预制体装配（M8 R8）：
-    /// 帧目录 → 8 个 clip（Idle/Move/AttackA/AttackB/Hurt/Die/Enrage/Special）→ Boss01.controller → Boss01.prefab。
-    /// 新增加 Boss 专属参数 AttackB / Special / Enrage；AttackA 复用通用 Attack 触发器。
+    /// 帧目录 → 9 个 clip（Idle/Move/AttackA/AttackB/Hurt/Die/Enrage/Special/Charge）
+    /// → Boss01.controller → Boss01.prefab。Charge 为专用蓄力帧（Boss01_Charge，8 帧循环）。
+    /// 新增加 Boss 专属参数 AttackB / Special / Enrage / Charge；AttackA 复用通用 Attack 触发器。
     /// 菜单：StarEco → Setup → Boss01 Animation（幂等，可重复运行）
     /// </summary>
     public static class BossAnimationSetup
@@ -68,7 +69,91 @@ namespace StarEco.EditorTools
                 }
             }
 
+            // 蓄力 clip（Charge）：专用帧目录 Boss01_Charge（8 帧：核心鼓胀 → 绿雾外溢 → 回落），
+            // 循环播放 1.1s 作为远程技能 B / 特殊招的长前摇提示（与 Boss01.asset 前摇对齐）。
+            var charge = BuildChargeClip();
+            if (charge != null)
+            {
+                clips["Charge"] = charge;
+            }
+
             return clips;
+        }
+
+        // ===== 1.1 蓄力 clip（专用帧目录 Boss01_Charge，8 帧） =====
+
+        private const string ChargeSourceAction = "Charge";
+        private const float ChargeLengthSeconds = 1.1f;
+
+        private static AnimationClip BuildChargeClip()
+        {
+            var sprites = LoadActionSprites(ChargeSourceAction);
+            if (sprites.Count < 2)
+            {
+                Debug.LogWarning($"[BossAnimationSetup] {ChargeSourceAction} 帧不足 2 张，跳过 Charge 蓄力 clip。");
+                return null;
+            }
+
+            // 8 帧依次播完 + 末尾补回首帧：末帧决定 clip 长度 = 1.1s，循环时首尾无缝。
+            int n = sprites.Count;
+            var keyframes = new ObjectReferenceKeyframe[n + 1];
+            for (int i = 0; i < n; i++)
+            {
+                keyframes[i] = new ObjectReferenceKeyframe
+                {
+                    time = i * (ChargeLengthSeconds / n),
+                    value = sprites[i]
+                };
+            }
+            keyframes[n] = new ObjectReferenceKeyframe
+            {
+                time = ChargeLengthSeconds,
+                value = sprites[0]
+            };
+
+            var clip = new AnimationClip { frameRate = DefaultFps, name = "Charge" };
+            var binding = EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite");
+            AnimationUtility.SetObjectReferenceCurve(clip, binding, keyframes);
+
+            var settings = AnimationUtility.GetAnimationClipSettings(clip);
+            settings.loopTime = true;             // 前摇期间持续循环，直到 OnWindupEnd 切攻击动作
+            settings.stopTime = ChargeLengthSeconds;
+            AnimationUtility.SetAnimationClipSettings(clip, settings);
+
+            string clipPath = $"{OutputRoot}/Charge.anim";
+            var existing = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
+            if (existing != null)
+            {
+                EditorUtility.CopySerialized(clip, existing);
+                Object.DestroyImmediate(clip);
+                clip = existing;
+                clip.name = "Charge";
+            }
+            else
+            {
+                AssetDatabase.CreateAsset(clip, clipPath);
+            }
+
+            AnimationUtility.SetAnimationEvents(clip, new AnimationEvent[0]);
+            return clip;
+        }
+
+        /// <summary>按自然序读取某个动作帧目录下的全部 Sprite。</summary>
+        private static List<Sprite> LoadActionSprites(string actionName)
+        {
+            string folder = $"{FramesRoot}/{BossName}_{actionName}";
+            if (!AssetDatabase.IsValidFolder(folder))
+            {
+                return new List<Sprite>();
+            }
+
+            return AssetDatabase.FindAssets("t:Texture2D", new[] { folder })
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => p.EndsWith(".png"))
+                .OrderBy(NaturalOrder)
+                .Select(AssetDatabase.LoadAssetAtPath<Sprite>)
+                .Where(s => s != null)
+                .ToList();
         }
 
         private static AnimationClip BuildClip(string folder, string clipName, bool loop)
@@ -176,6 +261,7 @@ namespace StarEco.EditorTools
                 new AnimatorControllerParameter { name = "Speed", type = AnimatorControllerParameterType.Float, defaultFloat = 0f },
                 new AnimatorControllerParameter { name = "IsMove", type = AnimatorControllerParameterType.Bool, defaultBool = false },
                 new AnimatorControllerParameter { name = "Attack", type = AnimatorControllerParameterType.Trigger },
+                new AnimatorControllerParameter { name = "Charge", type = AnimatorControllerParameterType.Trigger },
                 new AnimatorControllerParameter { name = "AttackB", type = AnimatorControllerParameterType.Trigger },
                 new AnimatorControllerParameter { name = "Special", type = AnimatorControllerParameterType.Trigger },
                 new AnimatorControllerParameter { name = "Enrage", type = AnimatorControllerParameterType.Trigger },
@@ -189,10 +275,11 @@ namespace StarEco.EditorTools
             root.entryTransitions = new AnimatorTransition[0];
 
             AnimatorState idle = null, move = null, attackA = null, attackB = null,
-                special = null, enrage = null, hurt = null, die = null;
+                special = null, enrage = null, hurt = null, die = null, charge = null;
 
             idle = TryAdd(root, clips, "Idle", new Vector2(250f, 0f));
             move = TryAdd(root, clips, "Move", new Vector2(500f, -120f));
+            charge = TryAdd(root, clips, "Charge", new Vector2(500f, 160f));
             attackA = TryAdd(root, clips, "AttackA", new Vector2(750f, 0f));
             attackB = TryAdd(root, clips, "AttackB", new Vector2(750f, 160f));
             special = TryAdd(root, clips, "Special", new Vector2(750f, 320f));
@@ -211,7 +298,7 @@ namespace StarEco.EditorTools
             // 触发器：Any State → 各动作
             foreach (var pair in new[]
             {
-                (attackA, "Attack"), (attackB, "AttackB"), (special, "Special"),
+                (attackA, "Attack"), (charge, "Charge"), (attackB, "AttackB"), (special, "Special"),
                 (enrage, "Enrage"), (hurt, "Hurt"), (die, "Die")
             })
             {
@@ -239,7 +326,7 @@ namespace StarEco.EditorTools
             }
 
             EditorUtility.SetDirty(controller);
-            log.AppendLine($"已生成 controller：{controllerPath}（参数 8 个，含 AttackB/Special/Enrage）");
+            log.AppendLine($"已生成 controller：{controllerPath}（参数 9 个，含 Charge/AttackB/Special/Enrage）");
             return controller;
         }
 
@@ -321,7 +408,14 @@ namespace StarEco.EditorTools
             // Pivot = Center（.meta alignment:0），bounds 中心即 transform 原点。
             // ×0.9 后碰撞体比精灵矮 10%，offset 取 0（同心）会让 Boss 落地时精灵脚底陷进地面，
             // 故 offset.y 取「碰撞体半高 − 精灵半高」，把碰撞体底边对齐精灵脚底。
-            Vector2 bossBounds = new Vector2(sprite.bounds.size.x, sprite.bounds.size.y);
+            // 注意：不能用 sprite.bounds 推导 —— 那是「画布」尺寸，含四周透明留白。
+            // 2026-10-26 Boss01 画布从 831×798 加宽到 1216×798（防止挥砍/倒地这类横向大动作
+            // 被裁掉本体），若继续用 bounds，碰撞体会跟着胖 46%（实测 1.98 → 2.90），
+            // 把纯美术改动变成玩法改动。这里固定「角色本体基准 831×798」与画布解耦：
+            // 以后画布再怎么加宽，碰撞体/射击点/判定盒的尺寸都不受影响。
+            const float ColliderRefW = 831f, ColliderRefH = 798f;
+            float ppuRef = sprite.pixelsPerUnit > 0f ? sprite.pixelsPerUnit : 378f;
+            Vector2 bossBounds = new Vector2(ColliderRefW / ppuRef, ColliderRefH / ppuRef);
             Vector2 bossColliderSize = bossBounds * 0.9f;
             Vector2 bossColliderOffset = new Vector2(0f, (bossColliderSize.y - bossBounds.y) * 0.5f);
 
