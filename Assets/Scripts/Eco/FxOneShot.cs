@@ -12,11 +12,13 @@ namespace StarEco.Eco
     {
         private Animator _animator;
         private FxOneShot _sourcePrefab;
+        private SpriteRenderer _renderer;
         private bool _resolved;
 
         private void Awake()
         {
             _animator = GetComponent<Animator>();
+            _renderer = GetComponent<SpriteRenderer>();
         }
 
         private void OnEnable()
@@ -30,8 +32,33 @@ namespace StarEco.Eco
             _sourcePrefab = sourcePrefab;
         }
 
+        /// <summary>池取出后由播放方调用：注入来源预制体 + 运行时层级。</summary>
+        /// <param name="sourcePrefab">来源预制体（播完按此归还池）。</param>
+        /// <param name="sortingOrder">运行时 sortingOrder。§5.2：特效前 21 / 特效后 20。
+        /// 传 -1 表示不改，沿用 prefab 资产上的值。</param>
+        public void Init(FxOneShot sourcePrefab, int sortingOrder)
+        {
+            _sourcePrefab = sourcePrefab;
+
+            if (sortingOrder >= 0 && _renderer != null)
+            {
+                _renderer.sortingOrder = sortingOrder;
+            }
+        }
+
         /// <summary>便捷播放：经对象池取出、摆位、注入 prefab（prefab 为空静默跳过）。</summary>
         public static void Play(FxOneShot prefab, Vector3 position)
+        {
+            Play(prefab, position, -1);
+        }
+
+        /// <summary>
+        /// 便捷播放（带层级）：经对象池取出、摆位、注入 prefab、设定 sortingOrder。
+        /// </summary>
+        /// <param name="prefab">特效 prefab（为空静默跳过）。</param>
+        /// <param name="position">播放位置。</param>
+        /// <param name="sortingOrder">运行时 sortingOrder；-1 表示沿用 prefab 上的值。</param>
+        public static void Play(FxOneShot prefab, Vector3 position, int sortingOrder)
         {
             if (prefab == null || PoolManager.Instance == null)
             {
@@ -40,7 +67,7 @@ namespace StarEco.Eco
 
             var fx = PoolManager.Instance.Get(prefab);
             fx.transform.position = position;
-            fx.Init(prefab);
+            fx.Init(prefab, sortingOrder);
         }
 
         private void Update()

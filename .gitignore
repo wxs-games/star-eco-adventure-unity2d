@@ -74,6 +74,14 @@ Assets/Scripts/Editor/Level03BindBossHealthBar.cs*
 Assets/Editor.meta
 Assets/Editor/FixAttackRange.cs*
 
+# 例外：分层口径脚本必须入库（2026-10-31）
+# FixAllLevelSpriteSorting 已不是一次性调试脚本，而是 RiskRegister T-25 的
+# 「防冲回」载体——A 侧重刷三关 91 个 SpriteRenderer 唯一的实现。
+# 它若不入库，换机/新克隆就拿不到，重刷流程会断链；且规则表是 §5.2 口径的
+# 唯一代码化实现，不入库等于口径只活在某个人的磁盘上。
+!Assets/Scripts/Editor/FixAllLevelSpriteSorting.cs
+!Assets/Scripts/Editor/FixAllLevelSpriteSorting.cs.meta
+
 # Coplay 工具生成的临时计划模板（空壳）
 Assets/CoplayPlan.md*
 

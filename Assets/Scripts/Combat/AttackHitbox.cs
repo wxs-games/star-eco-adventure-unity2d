@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using StarEco.Eco;
 using StarEco.Player;
 
 namespace StarEco.Combat
@@ -14,6 +15,18 @@ namespace StarEco.Combat
     {
         [Tooltip("攻击 trigger 碰撞体（允许挂在 Player 子物体上）")]
         [SerializeField] private Collider2D _hitbox;
+
+        [Tooltip("挥击斩击光特效（§AnimationVFXSpec §8.3：开窗时播在角色朝向前方 0.8 单位）")]
+        [SerializeField] private FxOneShot _fxSlashPrefab;
+
+        [Tooltip("命中火花特效（§AnimationVFXSpec §8.3：命中瞬间对准受击点）")]
+        [SerializeField] private FxOneShot _fxHitPrefab;
+
+        /// <summary>§5.2：斩击/命中属「特效（前）」= 21。</summary>
+        private const int FxFrontOrder = 21;
+
+        /// <summary>斩击光相对角色的前方距离（世界单位）。</summary>
+        private const float SlashForwardOffset = 0.8f;
 
         private readonly HashSet<IHittable> _hitThisWindow = new HashSet<IHittable>();
         private PlayerController _player;
@@ -78,6 +91,21 @@ namespace StarEco.Combat
             {
                 _hitbox.enabled = true;
             }
+
+            PlaySlashFx();
+        }
+
+        /// <summary>挥击斩击光：播在角色朝向前方 0.8 单位（§AnimationVFXSpec §8.3）。</summary>
+        private void PlaySlashFx()
+        {
+            if (_fxSlashPrefab == null || _player == null)
+            {
+                return;
+            }
+
+            float facing = _player.Sprite != null && _player.Sprite.flipX ? -1f : 1f;
+            Vector3 pos = transform.position + new Vector3(facing * SlashForwardOffset, 0f, 0f);
+            FxOneShot.Play(_fxSlashPrefab, pos, FxFrontOrder);
         }
 
         /// <summary>关窗：HitOff 事件帧调用。</summary>
@@ -113,7 +141,8 @@ namespace StarEco.Combat
             var info = new DamageInfo(dmg, FacingDirection(), gameObject)
             {
                 KnockbackPower = CurrentSegment == 3 ? thirdKnock : 0f
-            };
+            }.WithPoint(HitPoint(other));
+
             target.TakeDamage(info);
 
             // 命中手感：短顿帧 + 轻震屏（第三段收尾更重一点）
@@ -139,6 +168,30 @@ namespace StarEco.Combat
         private Vector2 FacingDirection()
         {
             return _player != null && _player.Sprite.flipX ? Vector2.right : Vector2.left;
+        }
+
+        /// <summary>
+        /// 命中点：取被击中碰撞体上离命中盒最近的那个接触点（最贴近"真正被打中的位置"）。
+        /// 取不到时回退到受击物体自身位置。
+        /// </summary>
+        private Vector2 HitPoint(Collider2D other)
+        {
+            if (other == null)
+            {
+                return Vector2.zero;
+            }
+
+            if (_hitbox != null)
+            {
+                Vector2 closest = _hitbox.ClosestPoint(other.bounds.center);
+                // 接触点距离碰撞体中心过远时说明没真正相交，用碰撞体中心更稳
+                if (Vector2.Distance(closest, other.bounds.center) <= other.bounds.extents.magnitude + 0.1f)
+                {
+                    return closest;
+                }
+            }
+
+            return other.bounds.center;
         }
     }
 }

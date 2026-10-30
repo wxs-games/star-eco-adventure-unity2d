@@ -31,6 +31,13 @@ namespace StarEco.Combat
         /// </summary>
         public bool IsFall;
 
+        /// <summary>
+        /// 命中点（世界坐标）。用于把 `fx_hit` 火花对准真正被打中的位置（§AnimationVFXSpec §8.3）。
+        /// 未提供时为 false，播放方回退到受击者自身位置。
+        /// </summary>
+        public bool HasPoint;
+        public Vector2 Point;
+
         public DamageInfo(int amount, Vector2 sourceDirection, GameObject source)
         {
             Amount = amount;
@@ -39,6 +46,16 @@ namespace StarEco.Combat
             KnockbackPower = 0f;
             IsPurify = false;
             IsFall = false;
+            HasPoint = false;
+            Point = Vector2.zero;
+        }
+
+        /// <summary>附上命中点（用于命中特效对准）。</summary>
+        public DamageInfo WithPoint(Vector2 point)
+        {
+            Point = point;
+            HasPoint = true;
+            return this;
         }
     }
 }

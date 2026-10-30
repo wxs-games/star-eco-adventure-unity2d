@@ -27,6 +27,9 @@ namespace StarEco.Level
         private int _index;
         private bool _initialized;
 
+        /// <summary>目标链完成回调的代次令牌：关卡重开时自增，用于作废上一局遗留的延迟回调。</summary>
+        private int _chainVersion;
+
         // 各类型累计计数（只由当前目标推进时写入）
         private int _purifiedTargets;
         private int _purifiedTowers;
@@ -107,6 +110,7 @@ namespace StarEco.Level
             _rescuedAnimals = 0;
             _waterCleared = 0;
             ChainCompleted = false;
+            _chainVersion++;   // 作废上一局遗留的延迟完成回调
 
             ClampRequired();
 
@@ -125,6 +129,7 @@ namespace StarEco.Level
             _waterCleared = 0;
             ChainCompleted = false;
             _initialized = false;
+            _chainVersion++;   // 作废上一局遗留的延迟完成回调
         }
 
         /// <summary>指定序号目标是否已完成（LevelSpawner 用它判断刷怪解锁）。</summary>
@@ -234,6 +239,27 @@ namespace StarEco.Level
             ChainCompleted = true;
             _index = (_config.Objectives?.Length ?? 0);
             BroadcastCurrent();
+
+            // 完成回调延后一帧再发（2026-10-31 修复「结算显示击杀：0」）：
+            // 触发链完成的事件（EnemyDeathEvent / GarbagePurifiedEvent）与统计类订阅者
+            // （LevelStats 记 KillCount）是同一次 EventCenter.Publish 的并列订阅者，
+            // 而 Publish 是倒序遍历——若 LevelStats 排在本类之后被调用，
+            // 本类同步回调 LevelManager.FinishLevel 时取到的 KillCount 快照还是旧值，
+            // 结算面板就会显示「击杀：0」而运行时实际已计数。
+            // 延后一帧后，同一事件的所有订阅者都已跑完，统计值必然是最新的。
+            StartCoroutine(NotifyChainCompletedNextFrame(_chainVersion));
+        }
+
+        /// <summary>延后一帧发完成回调；version 与当前代次不符说明期间关卡重开，丢弃。</summary>
+        private System.Collections.IEnumerator NotifyChainCompletedNextFrame(int version)
+        {
+            yield return null;   // 等同一次事件派发中的其他订阅者处理完
+
+            if (version != _chainVersion)
+            {
+                yield break;     // 关卡已重开，丢弃这次回调
+            }
+
             _onChainCompleted?.Invoke();
         }
 

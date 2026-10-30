@@ -1,4 +1,5 @@
 using UnityEngine;
+using StarEco.Eco;
 using StarEco.Framework;
 
 namespace StarEco.EnemyAI
@@ -11,6 +12,9 @@ namespace StarEco.EnemyAI
     {
         [SerializeField] private Transform _firePoint;
         [SerializeField] private EnemyProjectile _projectilePrefab;
+
+        [Tooltip("喷毒特效（§AnimationVFXSpec §8.3：Enemy02.Attack 时播在判定框中心，order 21）")]
+        [SerializeField] private FxOneShot _fxGasPrefab;
 
         protected override void BuildStateMachine()
         {
@@ -43,6 +47,12 @@ namespace StarEco.EnemyAI
                 Source = gameObject,
                 OwnerLayer = gameObject.layer
             });
+
+            // 喷毒特效：播在弹体生成点（判定框中心），§5.2 特效前 = 21
+            if (_fxGasPrefab != null)
+            {
+                FxOneShot.Play(_fxGasPrefab, projectile.transform.position, 21);
+            }
         }
     }
 }

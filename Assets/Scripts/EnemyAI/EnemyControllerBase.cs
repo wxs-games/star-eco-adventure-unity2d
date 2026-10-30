@@ -1,5 +1,6 @@
 using UnityEngine;
 using StarEco.Combat;
+using StarEco.Eco;
 using StarEco.Framework;
 using StarEco.EnemyAI.Events;
 using StarEco.UI;
@@ -15,6 +16,12 @@ namespace StarEco.EnemyAI
     {
         [SerializeField] protected EnemyConfig _config;
         [SerializeField] protected EnemyControllerBase _sourcePrefab;
+
+        [Tooltip("命中火花特效（§AnimationVFXSpec §8.3：命中瞬间对准受击点，order 21）")]
+        [SerializeField] protected FxOneShot _fxHitPrefab;
+
+        [Tooltip("死亡爆炸特效（§AnimationVFXSpec §8.3：OnDieEnd 时播在尸体坐标，order 21）")]
+        [SerializeField] protected FxOneShot _fxExplodePrefab;
 
         public EnemyConfig Config => _config;
         public SpriteRenderer Sprite { get; private set; }
@@ -354,6 +361,28 @@ namespace StarEco.EnemyAI
 
             // 受击闪白：与血条同一帧触发，命中反馈更"跟手"
             HitFlash.Play(Sprite);
+
+            // 命中火花：§AnimationVFXSpec §8.3「IHittable.TakeDamage 成功后」播在受击点。
+            // 玩家受击同样走这条链路（PlayerCombat 也实现 IHittable），此处只管敌人侧。
+            PlayHitFx(info);
+        }
+
+        /// <summary>§5.2：命中火花属「特效（前）」= 21。</summary>
+        private const int FxFrontOrder = 21;
+
+        /// <summary>命中火花：播在受击点（未提供命中点时用自身位置）。</summary>
+        private void PlayHitFx(DamageInfo info)
+        {
+            if (_fxHitPrefab == null)
+            {
+                return;
+            }
+
+            Vector3 pos = info.HasPoint
+                ? new Vector3(info.Point.x, info.Point.y, transform.position.z)
+                : transform.position;
+
+            FxOneShot.Play(_fxHitPrefab, pos, FxFrontOrder);
         }
 
         public bool ConsumePendingHurt()
@@ -424,6 +453,13 @@ namespace StarEco.EnemyAI
         /// <summary>Animation Event: DieEnd — 死亡回收 + 事件广播（Boss 覆写以插入击败演出）。</summary>
         public virtual void OnDieEnd()
         {
+            // 死亡爆炸：§AnimationVFXSpec §8.3「Enemy03.Die / BossController.Die 的 OnDieEnd」播在尸体坐标。
+            // 必须在 Recycle 之前播——回收后 transform 会被池重置。
+            if (_fxExplodePrefab != null)
+            {
+                FxOneShot.Play(_fxExplodePrefab, transform.position, FxFrontOrder);
+            }
+
             BroadcastDeath();
             Recycle();
         }

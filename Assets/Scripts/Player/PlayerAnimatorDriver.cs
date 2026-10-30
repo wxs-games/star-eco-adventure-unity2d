@@ -1,4 +1,5 @@
 using UnityEngine;
+using StarEco.Eco;
 
 namespace StarEco.Player
 {
@@ -45,8 +46,17 @@ namespace StarEco.Player
         [Tooltip("判定为「站定」的速度阈值（世界单位/秒）")]
         [SerializeField] private float _idleSpeedEpsilon = 0.1f;
 
+        [Header("跑动扬尘")]
+        [Tooltip("跑动扬尘特效（§AnimationVFXSpec §8.3：Run 步频时播在脚底，order 20 = 角色后）")]
+        [SerializeField] private FxOneShot _fxDustRunPrefab;
+        [Tooltip("两次扬尘之间的最短间隔（秒）。越小脚步越密。")]
+        [SerializeField] private float _dustInterval = 0.28f;
+        [Tooltip("跑动速度达到该值（世界单位/秒）才开始扬尘，低于则不播（避免慢走也冒烟）。")]
+        [SerializeField] private float _dustMinSpeed = 2.0f;
+
         private Animator _animator;
         private float _idleTimer;
+        private float _dustTimer;
 
         private void Awake()
         {
@@ -82,7 +92,55 @@ namespace StarEco.Player
 
             UpdateLongIdle();
 
+            UpdateDustRun();
+
             // 受击/死亡触发器：由状态机在 Enter 时调用 FireOneShot 触发
+        }
+
+        /// <summary>§5.2：扬尘属「特效（后）」= 20（角色之后）。</summary>
+        private const int FxBackOrder = 20;
+
+        /// <summary>
+        /// 跑动扬尘：跑动状态下按固定间隔在脚底播一次 fx_dust_run。
+        /// §AnimationVFXSpec §8.3「PlayerAnimatorDriver 的 Run 步频 / Jump / Land 脚下扬尘」。
+        /// 用固定间隔而不是动画事件，是因为扬尘特效自身是单次播放（0.33s），
+        /// 按步频播会和动画节奏对齐；间隔由 _dustInterval 控制，可调。
+        /// </summary>
+        private void UpdateDustRun()
+        {
+            if (_fxDustRunPrefab == null || _player == null)
+            {
+                return;
+            }
+
+            float speed = Mathf.Abs(_player.Body.velocity.x);
+            bool running = _player.IsGrounded && speed >= _dustMinSpeed;
+
+            if (!running)
+            {
+                _dustTimer = 0f;
+                return;
+            }
+
+            _dustTimer += Time.deltaTime;
+            if (_dustTimer < _dustInterval)
+            {
+                return;
+            }
+
+            _dustTimer = 0f;
+
+            // 播在脚底：把角色 pivot 换算到脚下（pivot 通常在身体中段）
+            Vector3 feet = transform.position;
+            var sr = _player.Sprite;
+            if (sr != null && sr.sprite != null)
+            {
+                float halfH = sr.sprite.bounds.extents.y;
+                float pivotToFeet = halfH - sr.sprite.bounds.min.y;
+                feet.y -= pivotToFeet;
+            }
+
+            FxOneShot.Play(_fxDustRunPrefab, feet, FxBackOrder);
         }
 
         /// <summary>
