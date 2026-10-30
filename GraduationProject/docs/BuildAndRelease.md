@@ -72,7 +72,9 @@ nextBuild = result.LevelIndex + 1;  → LoadScene(nextBuild)
 ### 3.2 命令行（可复现、可脚本化）
 
 ```bash
-"C:/Program Files/Unity/Hub/Editor/2022.3.62f3c1/Editor/Unity.exe" \
+# 注意：本机 Unity 实际装在 E:\software\Unity Editor\（Hub 的 secondaryInstallPath），
+# 不是默认的 C:\Program Files\Unity\Hub\Editor\。以 Unity Hub 的 secondaryInstallPath.json 为准。
+"E:/software/Unity Editor/2022.3.62f3c1/Editor/Unity.exe" \
   -quit -batchmode -nographics \
   -projectPath "E:/desktop/UnityXiangMu/BiShe/BiShe" \
   -buildWindows64Player "E:/desktop/UnityXiangMu/BiShe/BiShe/Builds/2026-10-30/StarEco.exe" \
