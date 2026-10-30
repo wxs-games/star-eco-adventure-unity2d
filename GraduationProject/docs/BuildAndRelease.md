@@ -117,12 +117,29 @@ Builds/<YYYY-MM-DD>/build.log
 | 4 | 中文 | 所有文本正常显示（**不是方块**）——内置字体无 CJK 字形是历史坑 |
 | 5 | 第一关 | 能移动/跳/攻击/喷洒；清 3 个垃圾堆 → 100% → 结算面板出现 |
 | 6 | 第二关 | 解救 2 只动物 → 清 3 处堵塞（水位上升、木筏通路出现）→ 清 3 个污染源 → 杀 4 只 → 结算 |
-| 7 | 第三关 | 清 4 个污染源（第 4 个是封锁墙）→ Boss 破土登场 → 三阶段 → 击败演出 → 落幕对白 → 结算 |
+| 7 | 第三关 | 清 4 个污染源（场景共 5 个可净化对象，任意 4 个）→ 走到 x≈68 打 Boss（**Boss 一进场就 active，无破土登场演出，见 `11-Level03` §4.3**）→ 三阶段 → 击败演出 → 落幕对白 → 结算。⚠️ **已知 P0**：Boss 被 `Env_Vent` 持续扣血，约 6.5 分钟会自己死（`RiskRegister` T-15） |
 | 8 | 存档 | 通关后回主菜单 →「继续游戏」解锁进度正确；图鉴里已拾取的卡是亮的 |
 | 9 | 退出 | 主菜单「退出游戏」能退出（不是静默失败） |
 | 10 | 日志 | `%USERPROFILE%\AppData\LocalLow\StarEco Studio\StarEco\Player.log` 无 `Exception`/`NullReference` |
 
 > 第 5~7 项是**三关回归**，也是 `TestPlan.md` §2.4 的同一份清单。构建后不跑这三关，等于没验。
+
+### 4.1 最近一次实测记录（2026-10-30 23:42）
+
+| 项 | 实测值 |
+|---|---|
+| 构建方式 | `manage_build`，target=windows64，options=`clean_build`，development=false |
+| 耗时 | **62.35 s** |
+| 产物大小 | **331 MB**（`total_size_mb: 330.43`） |
+| 编译结果 | **errors: 0**，warnings: 1 |
+| 场景打包 | ✅ `level0/level1/level2/level3` 四个全在 `StarEco_Data/` 下 |
+| 程序集 | `StarEco.Runtime.dll` + `MCPForUnity.Runtime.dll`（后者不该在，见 §10） |
+| 无窗口冒烟 | `StarEco.exe -batchmode -nographics -quit` → `Loaded All Assemblies` ✓ → `[UIUtility] 场景缺少 EventSystem，已自动创建` ✓ → `[UIManager] UI 管理器就绪` ✓ |
+| 冒烟中的 shader error | 5 条 `shader is not supported on this GPU`——**`-nographics` 用 NullGfxDevice 的必然结果，不是打包缺 shader**，真实 GPU 下不会出现 |
+
+> 无窗口冒烟只能证明「能启动、能加载场景、能初始化管理器」，**不能替代真机通关**。第 5~7 项仍需人工跑。
+
+
 
 ---
 
@@ -215,6 +232,8 @@ StarEco_Demo/
 | B-02 | 无自动构建脚本（每次手点或手敲命令） | 易漏步骤（尤其场景顺序） | 可加 `Tools/build.ps1`（可选，非必需） |
 | B-03 | 构建不写入 `version.txt` | 无法反查 exe 对应提交 | §5 规范，待落地 |
 | B-04 | 未做 IL2CPP / 未签名 | exe 可能被杀软误报 | 毕设环境可接受；如需分发再用 IL2CPP |
+| **B-05** | **发布包带进 `MCPForUnity.Runtime.dll`**（32 KB）：`com.coplaydev.unity-mcp` 是编辑器工具，但它的 `Runtime/MCPForUnity.Runtime.asmdef` 里 `includePlatforms: []` 为空 = 全平台编译，于是被打进包 | 不专业（答辩时包里有开发工具），功能无害（8 个 Helper/Serialization 类，无网络代码）；占包体 0.01% | **不改**：这是第三方包，改 asmdef 会被下次更新覆盖，且设成 Editor-only 可能影响 Play 模式下的 MCP 桥接。只在此登记 |
+| **B-06** | **四个场景都没有 EventSystem**：Title/L01/L02/L03 全为 0，靠 `UIUtility.EnsureEventSystem()` 运行时创建 | 编辑模式下看不到 EventSystem；理论上首帧点击可能落空 | P2：给四个场景各存一个 EventSystem 即可；当前有兜底，不影响运行 |
 
 ---
 
@@ -222,4 +241,5 @@ StarEco_Demo/
 
 | 版本 | 日期 | 变化 |
 |---|---|---|
+| v1.1 | 2026-10-30 | §4 验收第 7 项删掉「第 4 个是封锁墙 → Boss 破土登场」（BossGate 在毕设版未挂载，见 `11-Level03` §4.3）并标注 T-15 这个 P0；新增 **§4.1 最近一次实测记录**（62.35s / 331MB / 0 error / level0~3 全打包 / 无窗口冒烟通过）；§10 新增 B-05（发布包带 MCPForUnity.Runtime.dll）、B-06（四场景均无 EventSystem） | A6 收口实际跑了一次 clean build，把实测数据落进文档而不是只写在对话里 |
 | v1.0 | 2026-10-30 | 首版。环境锁定（2022.3.62f3c1/Mono/.NET Std 2.1）、场景定序不变式与理由、GUI + CLI 两种构建方式、输出目录统一约定、10 项构建后验收、版本号规范、存档路径与清档、回滚策略、提交纪律、答辩演示包与 30 分钟清单 |

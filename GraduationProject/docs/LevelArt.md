@@ -633,10 +633,30 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 | `ground_polluted_soil.png` | `Environment/Tiles/` | L1 污染土壤（大幅原图，3.4 MB） |
 | `water_river.png` | `Environment/Tiles/` | L2 水面横条 |
 | `Boss01_Lockup_A.png` | `Boss/Boss01/Lockup/` | Boss 定妆图（美术留档，不进运行时） |
+| `raft_deck.png` | `Environment/Props/` | **C3 新增**。木筏甲板，1800×260 @ PPU 400 = 4.5×0.65u（现占位 4.5×0.4u），替代 `WhiteSquare` 纯色块；由 A 挂到 `Level02` 的 `Raft1/2/3` |
+| `crate_wood.png` | `Environment/Props/` | **C3 新增**。木箱，440×400 @ PPU 400 = 1.10×1.00u，与 `breakable_rock`（1.57×0.95）同量级；当前**无场景引用**，留给 L1/L3 可破坏物摆位 |
 
 ### A.5 冻结区说明
 
 `Assets/Art/Art/Player/**` 本轮**零动作**：未归档、未改名、未移动。
 该区共 441 项改动（299 修改 / 124 新增 / 18 删除）原样保留，其中 362 个资产被 `.anim` 引用，
 `Sheets/raw`、`Sheets/*_sheet.png`、`align_fist.json` 虽属中间产物，因冻结规则一并原地保留。
+
+### A.6 命名与目录的约定例外（2026-10-30 定稿）
+
+C2 复核时发现两处「不符合字面规范但**有意保留**」的情况，经确认按现状固化，不再改动：
+
+1. **帧文件用 PascalCase，不用 snake_case**。
+   `Frames/<角色>_<动作>/<角色>_<动作>_NN.png` 这套命名已被 **422 个帧文件**统一沿用，
+   且 `process_sheets.SPECS`、`verify_raw_grid.GRID`、`auto_pipeline.py` 的模式识别都按它匹配。
+   改成 snake_case 会让这批脚本全部失配，收益为零、风险很高，故**保留 PascalCase**。
+   新增的**独立精灵**（非帧）仍要求 snake_case，两类命名的分界线是「是否属于某个动作序列」。
+2. **`npc_ava.png`、`npc_guard_robot.png` 保留在 `Environment/Props/`**。
+   严格按分类它们属于「角色」类，应放 `NPC/`；但这两个是场景直接摆放的单张 NPC 立绘
+   （不是逐帧动画），且正在被关卡场景按 GUID 引用，迁移只会带来一次无意义的资源重导入。
+   故**原地保留**，后续若 NPC 也改成逐帧动画，再随新目录一起迁。
+
+**结论**：`Assets/Art` 根目录已无散文件，新增资产全部落在七个约定目录内；
+上述两条属已确认的例外，不作为缺陷。
+
 
