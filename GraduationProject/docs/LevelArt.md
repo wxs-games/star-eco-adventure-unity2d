@@ -175,7 +175,7 @@ L2 是唯一有明确三层结构的关卡：
 | 区段 | X 范围 | 美术内容 | 问题 |
 |---|---|---|---|
 | **左岸森林** | −27.4 ~ −10 | 4 棵树、2 块平台、1 张知识卡、艾娃 | 树与艾娃同层，遮挡风险 |
-| **河道** | −15 ~ 4.5 | 3 个垃圾堵塞物（`garbage_wall`）、水面、河床、3 块木筏 | ⚠️ 木筏**不可见**（见 §4.5） |
+| **河道** | −15 ~ 4.5 | 3 个垃圾堵塞物（`garbage_wall`）、水面、河床、3 块木筏 | ⚠️ 木筏为纯色占位块、比河道宽、沉在低位（见 §4.5，v1.1 已更正） |
 | **笼区** | −2 ~ 2 | 2 个动物笼 + 2 只水獭 | order 15，与玩家同层 |
 | **右岸森林** | 4.5 ~ 25.1 | 4 棵树、2 块平台、2 张知识卡、提示牌 | — |
 
@@ -187,20 +187,30 @@ L2 是唯一有明确三层结构的关卡：
 
 这是全文档最直接的一处错配，修复成本极低（改 2 个 `SpriteRenderer.sprite`）。
 
-### 4.5 问题二：三块木筏是隐形的
+### 4.5 问题二：三块木筏是纯色占位块（**原描述"隐形"有误**）
+
+> ⚠️ **v1.1 更正（2026-10-30 23:40）**：本节原写「`SpriteRenderer.m_Sprite = {fileID: 0}`，木筏不可见」——**实测不成立**。
+> 木筏的 sprite 是 `Assets/Settings/WhiteSquare.png`（4×4 px @ 100 PPU），可正常序列化；
+> `localScale = (112.5, 10)` 放大后正好是 4.5×0.4 世界单位，`color = (0.55, 0.42, 0.28)` 棕色。
+> 相机实拍（`.workbuddy/tmp/level02_raft.png`）确认：**解谜后玩家能看到一条棕色横带**，不是隐形。
 
 `Raft1/Raft2/Raft3` 是玩家过河的唯一通路（`WaterPuzzleController` 解谜后 `RaftPath` 组激活）。
 
-实测它们的 `SpriteRenderer.m_Sprite = {fileID: 0}`——**没有贴图**。
+真实问题有三条，都不是"不可见"：
 
-原因：生成脚本 `Level02Setup.MakeRaftPlank()` 传入的是 `UIUtility.WhiteSprite`（运行时 `Sprite.Create` 出来的内存精灵），**这种 sprite 无法被序列化进场景**，保存后就变成 null。场景里只留下了一个 4.5×0.4 单位的棕色 BoxCollider2D。
+| # | 问题 | 实测 |
+|---|---|---|
+| 1 | **纯色块，无木头纹理** | 4×4 白图放大 112.5 倍，视觉上是一块平涂棕色，读不出"木筏" |
+| 2 | **比河道宽** | 3 段各 4.5u 连成 −6.75~6.75 共 **13.5u**，而河道只有 −15~4.5；两端压在岸上，像"悬空横板"而非浮筏 |
+| 3 | **整组在低位** | `RaftPath.y = −1.60`（= `WaterPuzzleController._lowY`），地面顶面在 **0.00**；水位升到 `highY = 0.05` 时木筏**不跟着升**，仍然沉在低位 |
 
-玩家的实际体验：解开河道堵塞谜题后，三块**看不见的板子**凭空出现，踩上去可以过河。
+**成因**：`Level02Setup.MakeRaftPlank()` 用 `MakeWorldBox(name, white, 4.5f, 0.4f, ...)` 生成，靠 `WhiteSquare` + color 染色占位。这条路本身能序列化，问题在设计而非技术。
 
-**这是关卡美术的 P0 缺陷**。修法（半小时内）：
+**修法**（拆给两条车道）：
 
-1. 把 3 个 `Raft*` 的 `SpriteRenderer.sprite` 指向 `platform_log.png`（原木，语义正确——木筏就是木头做的），调 `localScale` 匹配 4.5×0.4 的比例。
-2. 顺手把 `Level02Setup.cs` 里 `MakeRaftPlank` 的 `white` 参数换成资产化的 `platform_log`，防止下次重建关卡时又丢。
+1. **C（美术）**：用 `platform_log.png`（原木，语义正确）或新出一张木筏贴图，替换 `SpriteRenderer.sprite`；宽度压到河道内。
+2. **A（场景）**：`RaftPath` 增加跟随水位的位移，或把三段缩到河道宽度并重排 x（当前 −4.5 / 0 / 4.5）。
+3. **B（可选）**：`WaterPuzzleController` 在激活 `_raftPath` 时同步把它的 y 从 `lowY` 补到 `highY`。
 
 ### 4.6 问题三：17 个物件挤在兜底层
 
@@ -214,7 +224,7 @@ L2 的 `Tree`（8 棵）、`Water`、`Riverbed`、`AnimalVisual`（2）、`CageV
 
 | 级别 | 项 | 做法 |
 |---|---|---|
-| **P0** | 木筏补贴图 | 3 个 `SpriteRenderer` 指向 `platform_log` |
+| **P1** | 木筏换真贴图 + 收窄 + 跟随水位 | C 出贴图，A 调宽度与 y（见 §4.5） |
 | **P0** | 地面换 `ground_forest.png` | 2 个 `SpriteRenderer` |
 | **P0** | 17 个 order 15 归位 | 改场景排序值 |
 | P1 | 背景图重出 1920×1080 | 当前 1024×576 放大约 1.88 倍 |
@@ -421,7 +431,7 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 
 | 级别 | 项 | 关卡 | 成本 | 影响 |
 |---|---|---|---|---|
-| **P0** | 木筏补可见贴图 | L2 | 30 min | 玩家踩隐形板过河 |
+| **P1** | 木筏换真贴图 | L2 | 40 min | 原判「隐形」有误：实为纯色块，能看见但读不出是木筏 |
 | **P0** | 三关地面换本关专用贴图 | L1/L2/L3 | L1 无需改；L3 直接换 `ground_industrial`；L2 需先重画 forest 到 2048 | 一眼可见的主题错配 |
 | **P0** | L2 的 17 个 order 15 归位 | L2 | 1 h | 玩家被树/笼遮挡 |
 | **P0** | 净化后地面换草地版 | 全部 | 2 h | 净化"看得见" |
@@ -439,7 +449,7 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 | 日期 | 发现 | 说明 |
 |---|---|---|
 | 2026-10-30 | 三关地面共用污染土壤贴图，3 张专用贴图闲置 | 生成脚本 `MakeGround` 从未按关卡取不同贴图 |
-| 2026-10-30 | L2 木筏 `SpriteRenderer.sprite` 为 null | `Level02Setup` 传的是运行时 `WhiteSprite`，不可序列化 |
+| 2026-10-30 | L2 木筏 `SpriteRenderer.sprite` 为 `WhiteSquare`（**非 null**） | v1.1 更正：4×4 白图 × scale 112.5 = 4.5×0.4u，能序列化也能看见，只是纯色无纹理 |
 | 2026-10-30 | L2 有 17 个对象 order = 15（兜底值） | `FixAllLevelSpriteSorting.GuessOrder()` 返回 15 |
 | 2026-10-30 | L3 `NPC_Ava_LeverHint` 用机器人贴图 | 命名与素材矛盾 |
 | 2026-10-30 | L3 七块装饰牌中 `Jump_Sign`/`Puzzle_Sign` 名字暗示提示牌但无脚本 | 设计意图未落地 |
