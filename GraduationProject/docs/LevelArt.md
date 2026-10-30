@@ -633,8 +633,8 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 | `ground_polluted_soil.png` | `Environment/Tiles/` | L1 污染土壤（大幅原图，3.4 MB） |
 | `water_river.png` | `Environment/Tiles/` | L2 水面横条 |
 | `Boss01_Lockup_A.png` | `Boss/Boss01/Lockup/` | Boss 定妆图（美术留档，不进运行时） |
-| `raft_deck.png` | `Environment/Props/` | **C3 新增**。木筏甲板，1800×260 @ PPU 400 = 4.5×0.65u（现占位 4.5×0.4u），替代 `WhiteSquare` 纯色块；由 A 挂到 `Level02` 的 `Raft1/2/3` |
-| `crate_wood.png` | `Environment/Props/` | **C3 新增**。木箱，440×400 @ PPU 400 = 1.10×1.00u，与 `breakable_rock`（1.57×0.95）同量级；当前**无场景引用**，留给 L1/L3 可破坏物摆位 |
+| `raft_deck.png` | `Environment/Props/` | **C3 新增**。木筏甲板，1800×157 @ PPU 400 = 4.50×0.3925u，**与 `Level02` 中 `Raft1/2/3` 的 `BoxCollider2D`（4.41×0.392）齐平**（初版 4.50×0.65 比碰撞盒高 0.13u，角色脚底会陷进甲板，已按碰撞盒重生）；由 A 挂载 |
+| `crate_wood.png` | `Environment/Props/` | **C3 新增**。木箱，440×400 @ PPU 400 = 1.10×1.00u，与 `breakable_rock`（1.57×0.95）同量级；当前**无场景引用**。落位规则：中心 `y=0.50`（底边正好落在 `Ground` 顶面 `y=0`），左右需 **1.2u 净空**。实测空闲区间：L1 约 `x=-8.6 / -4.0 / +4.9`，L3 约 `x=-7.0`——最终摆位由 A 决定 |
 
 ### A.5 冻结区说明
 
