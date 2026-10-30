@@ -269,6 +269,33 @@ Player（order 10）
 | `GarbagePile.cs:120` | 垃圾堆被净化完成时 |
 | `SprayController.cs:206` | 净水喷洒命中判定点（每 2 tick 播一次） |
 
+### 8.1.1 源图定位与帧序（C4 实测 · 2026-10-30）
+
+**结论：6 套特效全是「逐帧独立 PNG」，不是图集，因此不需要切分方案。**
+每套一个目录，帧文件按 `<特效名>_00.png … <特效名>_NN.png` 连续编号，`.anim` 已按此顺序逐帧绑定。
+
+| 特效 | 源图目录 | 帧数 | 单帧像素 | 采样率 | 时长 | 循环 |
+|---|---|---|---|---|---|---|
+| `fx_dust_run` | `Assets/Art/Art/FX/Frames/fx_dust_run/` | 4 | 906×559 | 12 fps | 0.333 s | 单次（`m_LoopTime=0`） |
+| `fx_explode` | `Assets/Art/Art/FX/Frames/fx_explode/` | 8 | 743×724 | 12 fps | 0.667 s | 单次 |
+| `fx_gas` | `Assets/Art/Art/FX/Frames/fx_gas/` | 6 | 855×699 | 12 fps | 0.500 s | 单次 |
+| `fx_hit` | `Assets/Art/Art/FX/Frames/fx_hit/` | 6 | 855×737 | 12 fps | 0.500 s | 单次 |
+| `fx_purify` | `Assets/Art/Art/FX/Frames/fx_purify/` | 8 | 740×693 | 12 fps | 0.667 s | 单次 |
+| `fx_slash` | `Assets/Art/Art/FX/Frames/fx_slash/` | 6 | 835×759 | 12 fps | 0.500 s | 单次 |
+
+**导入设置（6 套一致）**：`spritePixelsToUnits = 378`、`filterMode = Bilinear`、单张精灵未做九宫格。
+
+**帧序**：全部为 `00 → NN` 顺播（`_00` 为起手帧、`_NN` 为收尾帧），无倒放、无跳帧。
+12 fps 均匀采样，相邻关键帧间隔 `1/12 ≈ 0.0833 s`。
+
+**当前绑定状态**：5 个 prefab 已由 A4 补齐（`Assets/Prefabs/FX/fx_{dust_run,explode,gas,hit,slash}.prefab` + 对应 `.controller`），
+加上原有的 `fx_purify.prefab`，6 套已全部有预制体。预制体引用的是 `Frames/` 下的单帧，
+**不引用任何拼版图集**——所以 C1 把 `FX/Sheets/` 归档（移到 `Assets/Art/_archive/`）不影响运行。
+
+**如果以后要压成图集**（当前不需要，仅留规范）：按行横向排列，每列宽取该套最大帧宽、
+统一每帧高，列间留 4 px 透明间隙，行内禁止跨格；切分后必须跑
+`python Tools/art-pipeline/verify_raw_grid.py`（要求「贴边帧 = 0」）再交给 `process_sheets.py`。
+
 ### 8.2 打击感当前靠什么
 
 既然 `fx_hit` / `fx_slash` 都没有，打击感只能靠 `HitFeel`：

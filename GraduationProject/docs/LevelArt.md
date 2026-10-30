@@ -175,7 +175,7 @@ L2 是唯一有明确三层结构的关卡：
 | 区段 | X 范围 | 美术内容 | 问题 |
 |---|---|---|---|
 | **左岸森林** | −27.4 ~ −10 | 4 棵树、2 块平台、1 张知识卡、艾娃 | 树与艾娃同层，遮挡风险 |
-| **河道** | −15 ~ 4.5 | 3 个垃圾堵塞物（`garbage_wall`）、水面、河床、3 块木筏 | ⚠️ 木筏为纯色占位块、比河道宽、沉在低位（见 §4.5，v1.1 已更正） |
+| **河道** | −15 ~ 4.5 | 3 个垃圾堵塞物（`garbage_wall`）、水面、河床、3 块木筏 | ⚠️ 木筏已换真贴图（`raft_deck`），但仍比河道宽 2.25u、沉在低位不跟水位（见 §4.5） |
 | **笼区** | −2 ~ 2 | 2 个动物笼 + 2 只水獭 | order 15，与玩家同层 |
 | **右岸森林** | 4.5 ~ 25.1 | 4 棵树、2 块平台、2 张知识卡、提示牌 | — |
 
@@ -198,19 +198,31 @@ L2 是唯一有明确三层结构的关卡：
 
 真实问题有三条，都不是"不可见"：
 
-| # | 问题 | 实测 |
-|---|---|---|
-| 1 | **纯色块，无木头纹理** | 4×4 白图放大 112.5 倍，视觉上是一块平涂棕色，读不出"木筏" |
-| 2 | **比河道宽** | 3 段各 4.5u 连成 −6.75~6.75 共 **13.5u**，而河道只有 −15~4.5；两端压在岸上，像"悬空横板"而非浮筏 |
-| 3 | **整组在低位** | `RaftPath.y = −1.60`（= `WaterPuzzleController._lowY`），地面顶面在 **0.00**；水位升到 `highY = 0.05` 时木筏**不跟着升**，仍然沉在低位 |
+| # | 问题 | 实测 | 状态 |
+|---|---|---|---|
+| 1 | **纯色块，无木头纹理** | 4×4 白图放大 112.5 倍，视觉上是一块平涂棕色，读不出"木筏" | ✅ **已修（2026-10-30 23:59）** |
+| 2 | **比河道宽** | 3 段各 4.5u 连成 −6.75~6.75 共 **13.5u**，而河道只有 −15~4.5；右端长出 2.25u 压在岸上 | ⚠️ 仍存在 |
+| 3 | **整组在低位** | `RaftPath.y = −1.60`（= `WaterPuzzleController._lowY`），地面顶面在 **0.00**；水位升到 `highY = 0.05` 时木筏**不跟着升**，仍然沉在低位 | ⚠️ 仍存在 |
 
 **成因**：`Level02Setup.MakeRaftPlank()` 用 `MakeWorldBox(name, white, 4.5f, 0.4f, ...)` 生成，靠 `WhiteSquare` + color 染色占位。这条路本身能序列化，问题在设计而非技术。
 
 **修法**（拆给两条车道）：
 
-1. **C（美术）**：用 `platform_log.png`（原木，语义正确）或新出一张木筏贴图，替换 `SpriteRenderer.sprite`；宽度压到河道内。
-2. **A（场景）**：`RaftPath` 增加跟随水位的位移，或把三段缩到河道宽度并重排 x（当前 −4.5 / 0 / 4.5）。
-3. **B（可选）**：`WaterPuzzleController` 在激活 `_raftPath` 时同步把它的 y 从 `lowY` 补到 `highY`。
+1. ~~**C（美术）**：替换 `SpriteRenderer.sprite`~~ → ✅ **已交付**：C3 产出 `Assets/Art/Art/Environment/Props/raft_deck.png`（512×74 @ PPU 113.78 = **4.50×0.65u**，透明底，独立 GUID `e2ab2e7d…`）
+2. **A（场景）**：`RaftPath` 增加跟随水位的位移，或把三段缩到河道宽度并重排 x（当前 −4.5 / 0 / 4.5）——**未做**
+3. **B（可选）**：`WaterPuzzleController` 在激活 `_raftPath` 时同步把它的 y 从 `lowY` 补到 `highY`——**未做**
+
+#### ✅ 已完成部分（v1.2，2026-10-30 23:59）
+
+| 项 | 改动前 | 改动后 |
+|---|---|---|
+| `SpriteRenderer.sprite` | `WhiteSquare`（4×4 纯白） | `raft_deck`（真木甲板，带纵向木条分界） |
+| `SpriteRenderer.color` | `(0.55, 0.42, 0.28)` 棕色染色 | `(1, 1, 1)` 白（让贴图原色显示） |
+| `localScale` | `112.5 × 10` | `1 × 1`（贴图本身已是 4.5×0.65u） |
+| `BoxCollider2D.size` | `0.0392 × 0.0392`（×scale 后= 4.41×0.39 世界） | `4.41 × 0.39`（**世界尺寸刻意保持不变**） |
+
+> **为什么 collider 要重算**：旧写法靠 `scale=112.5` 把 0.04 的 collider 放大到 4.41。换成 `scale=1` 后若不改 collider，碰撞盒会缩小 112 倍，玩家会直接穿过木筏掉进水里。这是换 sprite 时最容易漏的一步。
+
 
 ### 4.6 问题三：17 个物件挤在兜底层
 
@@ -224,7 +236,8 @@ L2 的 `Tree`（8 棵）、`Water`、`Riverbed`、`AnimalVisual`（2）、`CageV
 
 | 级别 | 项 | 做法 |
 |---|---|---|
-| **P1** | 木筏换真贴图 + 收窄 + 跟随水位 | C 出贴图，A 调宽度与 y（见 §4.5） |
+| ~~P1~~ ✅ | ~~木筏换真贴图~~ | **已完成**：`raft_deck.png` 已挂 Raft1/2/3，collider 同步换算（见 §4.5） |
+| **P1** | 木筏收窄到河道内 + 跟随水位 | A 重排 3 段 x（当前 −4.5/0/4.5）或 B 在激活时把 y 从 `lowY` 补到 `highY` |
 | **P0** | 地面换 `ground_forest.png` | 2 个 `SpriteRenderer` |
 | **P0** | 17 个 order 15 归位 | 改场景排序值 |
 | P1 | 背景图重出 1920×1080 | 当前 1024×576 放大约 1.88 倍 |
@@ -463,3 +476,167 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 | 版本 | 日期 | 变化 | 原因 |
 |---|---|---|---|
 | v1.0 | 2026-10-30 | 首版。三关逐关物件实测清单（19/35/37 个精灵）、区段划分与美术意图、三层空间结构、7 处具体缺陷与修法、通用元素规范（地面/平台/装饰牌/提示牌/NPC）、净化视觉扩展 4 项、资产使用全量清点（3 闲置 / 3 规格不合格 / 4 错配） | 项目此前只有关卡策划视角的 `LevelDesign.md`（管坐标和流程），完全没有"关卡美术"这一岗位的文档。实测发现木筏隐形、三关地面同一张、17 个物件挤兜底层等硬伤，都没有落到任何文档里 |
+| v1.1 | 2026-10-30 | 新增「附录 A · 美术资产清账」：`Assets/Art/**` 624 个资产全量分类（有效保留 533 / 归档 91），归档清单与冻结区说明落表 | 美术目录累积了大量拼版中间产物与备份，缺少可核查的账目；C1 清账需要一份"每个文件去哪了"的记录 |
+
+---
+
+## 附录 A · 美术资产清账（C1 · 2026-10-30）
+
+**口径**：清点 `Assets/Art/**` 下全部资产文件（`.meta` 不计入条目数，但随资产一起移动）。
+「是否被引用」= 在 `Assets/` 内 113 个非 Art 文本资产（`.anim` / `.prefab` / `.unity` / `.asset` / `.mat` / `.controller` / `.json` 等）里能否搜到该文件的 GUID。
+按路径（`Sheets/`、`_预览/`、`*.xlsx`、`*.meta_keep`）判定中间产物，按 GUID 判定是否在用，两者交叉复核。
+
+**总量**：624 个资产 · 被引用 469 · 未引用 155 · **归档 91** · 保留 533。
+
+### A.1 分类汇总
+
+| 类别 | 文件数 | 处置 | 说明 |
+|---|---|---|---|
+| 有效替换 · 动画帧 | 422 | **保留** | `Frames/<角色>_<动作>/*.png`，全部被 `.anim` 按 GUID 引用 |
+| 有效替换 · 精灵 | 46 | **保留** | `Environment/Props`、`Environment/Tiles`、`Environment/Background`、`FX/Frames`，被场景或 FX prefab 引用 |
+| 新增待接入 · 精灵 | 8 | **保留** | 已生成但尚未挂到场景，等 A 线接入（见 A.4） |
+| 参考稿 | 1 | **保留** | `00_角色设定/Player_Concept.png`（设定稿，非运行时资源） |
+| 文档 / 工具图 | 3 | **保留** | `README_素材说明.md`、`Player/Lockup/Player_Lockup_A.png`、`Player/Tools/Player_Tool_Pliers.png` |
+| 中间产物 · raw 图集 | 64 | 38 归档 / 26 保留 | `Sheets/raw/*_raw.png` 是拼版前的原始大图，Unity 不引用；保留的 26 个在冻结区 `Player/` 内 |
+| 中间产物 · 拼版图集 | 58 | 37 归档 / 21 保留 | `Sheets/*_sheet.png` 是管线副产物（运行时只吃 `Frames/`），故归档；保留的 21 个在冻结区 |
+| 中间产物 · 预览图 | 13 | **归档** | `_预览/contact_*.png`、`_预览/check_*.png`，人工比对用的取样拼图 |
+| 中间产物 · 排期表 | 3 | **归档** | `Assets/Art` 根下的 `*.xlsx`（含 `_备份_原始规划`），属项目管理文件，不属运行时资产 |
+| 中间产物 · 对齐数据 | 3 | **保留** | `Player/Frames/*/align_fist.json`，在冻结区内 |
+| 未引用帧 | 3 | **保留（不动）** | `Enemy02_Attack_02`、`NPC_Ava_Idle_03`、`NPC_Ava_Idle_05`。当前 `.anim` 未引用，但处在帧序列中间，删除会让"重跑管线 → 帧数变化"，故只记录不归档 |
+
+### A.2 归档去向
+
+全部移到 `Assets/Art/_archive/`，**目录结构按 `Assets/Art/` 相对路径原样镜像**（例如
+`Assets/Art/Art/Boss/Boss01/Sheets/raw/Boss01_Idle_raw.png` → `Assets/Art/_archive/Art/Boss/Boss01/Sheets/raw/Boss01_Idle_raw.png`）。
+移动用 `git mv`，`.png` 与 `.png.meta` 一起移动，**GUID 不变**，因此不存在引用断链。
+复核结果：归档后全库美术资产被引用数仍为 469，**归档区内被引用文件 = 0**。
+
+### A.3 归档清单（91 个资产）
+
+- `(根)/`（3）
+  - 2D游戏动画资源排期表.xlsx
+  - 2D游戏动画资源排期表_备份_原始规划.xlsx
+  - schedule_before_attack03.xlsx
+- `_预览/`（13）
+  - check_Enrage01.png
+  - check_Move00_armpit.png
+  - contact_a.png
+  - contact_b.png
+  - contact_Boss_Boss01.png
+  - contact_Boss01_20261026.png
+  - contact_Enemies_Enemy01.png
+  - contact_Enemies_Enemy02.png
+  - contact_Enemies_Enemy03.png
+  - contact_FX.png
+  - contact_P1_new_clips.png
+  - contact_sheets.png
+  - contact_Towers_Tower01.png
+- `Art/Boss/Boss01/Sheets/`（9）
+  - Boss01_AttackA_sheet.png
+  - Boss01_AttackB_sheet.png
+  - Boss01_Charge_sheet.png
+  - Boss01_Die_sheet.png
+  - Boss01_Enrage_sheet.png
+  - Boss01_Hurt_sheet.png
+  - Boss01_Idle_sheet.png
+  - Boss01_Move_sheet.png
+  - Boss01_Special_sheet.png
+- `Art/Boss/Boss01/Sheets/raw/`（10）
+  - Boss01_AttackA_raw.png
+  - Boss01_AttackB_raw.png
+  - Boss01_Charge_raw.png
+  - Boss01_Die_raw.png
+  - Boss01_Die_raw_OLD2048.png.meta_keep
+  - Boss01_Enrage_raw.png
+  - Boss01_Hurt_raw.png
+  - Boss01_Idle_raw.png
+  - Boss01_Move_raw.png
+  - Boss01_Special_raw.png
+- `Art/Enemies/Enemy01/Sheets/`（5）
+  - Enemy01_Attack_sheet.png
+  - Enemy01_Die_sheet.png
+  - Enemy01_Hurt_sheet.png
+  - Enemy01_Idle_sheet.png
+  - Enemy01_Move_sheet.png
+- `Art/Enemies/Enemy01/Sheets/raw/`（5）
+  - Enemy01_Attack_raw.png
+  - Enemy01_Die_raw.png
+  - Enemy01_Hurt_raw.png
+  - Enemy01_Idle_raw.png
+  - Enemy01_Move_raw.png
+- `Art/Enemies/Enemy02/Sheets/`（5）
+  - Enemy02_Attack_sheet.png
+  - Enemy02_Die_sheet.png
+  - Enemy02_Hurt_sheet.png
+  - Enemy02_Idle_sheet.png
+  - Enemy02_Move_sheet.png
+- `Art/Enemies/Enemy02/Sheets/raw/`（5）
+  - Enemy02_Attack_raw.png
+  - Enemy02_Die_raw.png
+  - Enemy02_Hurt_raw.png
+  - Enemy02_Idle_raw.png
+  - Enemy02_Move_raw.png
+- `Art/Enemies/Enemy03/Sheets/`（6）
+  - Enemy03_Attack_sheet.png
+  - Enemy03_Chase_sheet.png
+  - Enemy03_Die_sheet.png
+  - Enemy03_Hurt_sheet.png
+  - Enemy03_Idle_sheet.png
+  - Enemy03_Spawn_sheet.png
+- `Art/Enemies/Enemy03/Sheets/raw/`（6）
+  - Enemy03_Attack_raw.png
+  - Enemy03_Chase_raw.png
+  - Enemy03_Die_raw.png
+  - Enemy03_Hurt_raw.png
+  - Enemy03_Idle_raw.png
+  - Enemy03_Spawn_raw.png
+- `Art/FX/Sheets/`（6）
+  - fx_dust_run_sheet.png
+  - fx_explode_sheet.png
+  - fx_gas_sheet.png
+  - fx_hit_sheet.png
+  - fx_purify_sheet.png
+  - fx_slash_sheet.png
+- `Art/FX/Sheets/raw/`（6）
+  - fx_dust_run_raw.png
+  - fx_explode_raw.png
+  - fx_gas_raw.png
+  - fx_hit_raw.png
+  - fx_purify_raw.png
+  - fx_slash_raw.png
+- `Art/NPC/NPC_Ava/Sheets/`（2）
+  - NPC_Ava_Idle_sheet.png
+  - NPC_Ava_JinlingAssault_sheet.png
+- `Art/NPC/NPC_Ava/Sheets/raw/`（2）
+  - NPC_Ava_Idle_raw.png
+  - NPC_Ava_JinlingAssault_raw.png
+- `Art/Towers/Tower01/Sheets/`（4）
+  - Tower01_Aim_sheet.png
+  - Tower01_Disable_sheet.png
+  - Tower01_Fire_sheet.png
+  - Tower01_Idle_sheet.png
+- `Art/Towers/Tower01/Sheets/raw/`（4）
+  - Tower01_Aim_raw.png
+  - Tower01_Disable_raw.png
+  - Tower01_Fire_raw.png
+  - Tower01_Idle_raw.png
+
+### A.4 保留但尚未接入场景的 8 张精灵（交 A 线挂载）
+
+| 文件 | 位置 | 用途 |
+|---|---|---|
+| `checkpoint.png` | `Environment/Props/` | 存档点标记 |
+| `platform_catwalk.png` | `Environment/Props/` | L3 工业栈道 |
+| `platform_stairs.png` | `Environment/Props/` | 楼梯平台（StarEco 版 L3 用作 `StairsL/StairsR`） |
+| `bulkhead_industrial.png` | `Environment/Props/` | 工业舱壁 |
+| `ground_industrial.png` | `Environment/Tiles/` | L3 地面候选 |
+| `ground_polluted_soil.png` | `Environment/Tiles/` | L1 污染土壤（大幅原图，3.4 MB） |
+| `water_river.png` | `Environment/Tiles/` | L2 水面横条 |
+| `Boss01_Lockup_A.png` | `Boss/Boss01/Lockup/` | Boss 定妆图（美术留档，不进运行时） |
+
+### A.5 冻结区说明
+
+`Assets/Art/Art/Player/**` 本轮**零动作**：未归档、未改名、未移动。
+该区共 441 项改动（299 修改 / 124 新增 / 18 删除）原样保留，其中 362 个资产被 `.anim` 引用，
+`Sheets/raw`、`Sheets/*_sheet.png`、`align_fist.json` 虽属中间产物，因冻结规则一并原地保留。
+
