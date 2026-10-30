@@ -5,6 +5,7 @@ using StarEco.Eco;
 using StarEco.Eco.Events;
 using StarEco.Framework;
 using StarEco.Level;
+using StarEco.Level.Events;
 
 namespace StarEco.Boss
 {
@@ -71,11 +72,13 @@ namespace StarEco.Boss
         private void OnEnable()
         {
             EventCenter.Subscribe<GarbagePurifiedEvent>(OnGarbagePurified);
+            EventCenter.Subscribe<ObjectiveCompletedEvent>(OnObjectiveCompleted);
         }
 
         private void OnDisable()
         {
             EventCenter.Unsubscribe<GarbagePurifiedEvent>(OnGarbagePurified);
+            EventCenter.Unsubscribe<ObjectiveCompletedEvent>(OnObjectiveCompleted);
         }
 
         private void OnGarbagePurified(GarbagePurifiedEvent evt)
@@ -87,6 +90,25 @@ namespace StarEco.Boss
 
             _revealed = true;
             StartCoroutine(Reveal());
+        }
+
+        /// <summary>
+        /// 一致性告警（B4）：第三关目标①"清理工厂污染源（含封锁墙）"已达成，
+        /// 但本闸门从未被触发（_revealed 仍为 false）——说明墙上 GarbagePile._targetId
+        /// 与本组件 _gateTargetId 不一致，或事件在 Awake 前被错过。目标完成但 Boss 不登场
+        /// 属于静默失败，必须显式告警提示核对配置。
+        /// </summary>
+        private void OnObjectiveCompleted(ObjectiveCompletedEvent evt)
+        {
+            if (_revealed || evt.Index != 0)
+            {
+                return;
+            }
+
+            Debug.LogWarning(
+                $"[BossGate] 目标①已达成但 Boss 闸门未触发（_revealed=false）。" +
+                $"请核对 BossGate._gateTargetId（当前 \"{_gateTargetId}\"）" +
+                $"与封锁墙 GarbagePile._targetId 是否一致。");
         }
 
         private IEnumerator Reveal()
