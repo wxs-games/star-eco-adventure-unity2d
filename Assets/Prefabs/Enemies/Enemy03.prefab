@@ -125,6 +125,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _config: {fileID: 11400000, guid: a0ebf8b24044c0f45b17d65949275d8a, type: 2}
   _sourcePrefab: {fileID: 5987096034780832342}
+  _fxHitPrefab: {fileID: 6723326672747166943, guid: 5ba218ed0ae954d4ab07376808d8a7fe, type: 3}
+  _fxExplodePrefab: {fileID: 2682232066828830962, guid: 59a6d3dcda76fb545926fb583af0ee5c, type: 3}
 --- !u!114 &6128995089391696277
 MonoBehaviour:
   m_ObjectHideFlags: 0

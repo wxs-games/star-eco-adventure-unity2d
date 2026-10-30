@@ -109,6 +109,18 @@ namespace StarEco.EnemyAI
         {
             EnsureMachine();
 
+            // 死亡优先于对白冻结（T-20）。
+            // 对话期间「敌人整体定住」只是活着时的表现约束；已经死亡的敌人必须继续推进状态机，
+            // 否则 EnemyDieState 永远切不进去 → Die 动画不播 → OnDieEnd 动画事件不触发
+            // → EnemyDeathEvent 不广播（结算面板击杀数不涨）→ 敌人也不回收，尸体留在场上。
+            // 典型触发路径：投掷的钳子还在空中时玩家读了提示牌，钳子落下把敌人打死；
+            // 或 Boss 血量归零时恰好播着对白 → L03 直接卡死（击败演出与 BossDefeatedEvent 永不触发）。
+            if (IsDead)
+            {
+                Machine.Tick();
+                return;
+            }
+
             // 对话期间敌人整体定住：停移动、停状态机、停感知与计时，
             // 动画由 EnemyAnimatorDriver 按 Body 速度自动切回 Idle。
             if (DialoguePanel.IsDialogueActive)
@@ -117,11 +129,6 @@ namespace StarEco.EnemyAI
                 return;
             }
 
-            if (IsDead)
-            {
-                Machine.Tick();
-                return;
-            }
             SenseTarget();
             UpdateTimers();
             Machine.Tick();

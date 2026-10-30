@@ -409,6 +409,9 @@ MonoBehaviour:
   _player: {fileID: 0}
   _longIdleDelay: 10
   _idleSpeedEpsilon: 0.1
+  _fxDustRunPrefab: {fileID: 1270773655787834690, guid: b4f153716c5405a4b819c646a42017d5, type: 3}
+  _dustInterval: 0.28
+  _dustMinSpeed: 2
 --- !u!114 &9199346450211395387
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -465,6 +468,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _hitbox: {fileID: 5432908658887443895}
+  _fxSlashPrefab: {fileID: 2311530099708964964, guid: 947d3b77ee64a3648935905c2e3c4373, type: 3}
+  _fxHitPrefab: {fileID: 6723326672747166943, guid: 5ba218ed0ae954d4ab07376808d8a7fe, type: 3}
 --- !u!1 &8619655257873437900
 GameObject:
   m_ObjectHideFlags: 0

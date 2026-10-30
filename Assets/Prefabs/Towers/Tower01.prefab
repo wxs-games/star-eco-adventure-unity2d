@@ -156,6 +156,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _config: {fileID: 11400000, guid: 6b036117ebc49874089f6568ce47d346, type: 2}
   _sourcePrefab: {fileID: 7249372611565395094}
+  _fxHitPrefab: {fileID: 6723326672747166943, guid: 5ba218ed0ae954d4ab07376808d8a7fe, type: 3}
+  _fxExplodePrefab: {fileID: 2682232066828830962, guid: 59a6d3dcda76fb545926fb583af0ee5c, type: 3}
   _firePoint: {fileID: 2292508789191546637}
   _projectilePrefab: {fileID: 1872304646482249133, guid: 63515f66cd081944384e5e20eaad1ff5, type: 3}
 --- !u!114 &4386802028541063006
@@ -207,7 +209,7 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 2.4920635, y: 2.589947}
+    oldSize: {x: 2.751147, y: 2.589947}
     newSize: {x: 2.4920635, y: 2.589947}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
