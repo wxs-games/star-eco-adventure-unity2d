@@ -54,6 +54,10 @@
 | **T-12** | **`LevelIndex == buildIndex` 是隐式不变式**，靠约定维持（`LevelManager` 用 `scene.buildIndex` 重载、`ResultPanel` 用 `buildIndex` 跳下一关） | 中 | 高（加载错关/跳错关） | **P1** | 已写进 `CodeStandard.md` 与 `specs/06` §5 L6；`Level03Setup` 每次运行都重排 Build Settings。改顺序必须同步改三关 `LevelConfig.LevelIndex` | 已缓解（规范约束） |
 | **T-13** | `LevelObjectiveType.PurifyTowers` 在三个关卡配置里**一次都没用**（代码有计数与夹取分支） | 已存在 | 低 | **P3** | 保留：L1 的塔可攻击击毁，`TowerDisableEvent` 已接入；将来加"击毁 N 座塔"目标无需改代码 | 监测中 |
 | **T-14** | `LevelObjectiveTracker.CurrentProgress` / `CurrentRequired` 在 HUD 目标栏移除后**无消费方** | 已存在 | 低 | **P3** | 保留（恢复面板/调试 HUD 用），已在 `specs/06` §3.1 注明 | 监测中 |
+| **T-15** | **Boss 被自己的喷气口持续扣血并吹起**：Boss collider `x=65.82~70.18` 与 `Env_Vent` `x=64.4~66.0` **重叠 0.18**；`VentHazard.OnTriggerStay2D` 只找 `IHittable` **不筛敌我**，边扣血边 `_liftSpeed` 上推 → Boss 在 y2.3↔6.0 震荡 | **已发生** | **P0**（Boss 血不受玩家控制地流失） | A6 实测 144.7s 内从 80 掉到 **54（67.5%）**，约 2.5s/点；阈值 Phase2=60%/Phase3=30% → 约 3 分钟自动进二阶段、6.5 分钟自己死。**两种修法待选**：① A 移开/缩窄 `Env_Vent`（场景侧，快）；② B 让 `VentHazard` 只伤害玩家（语义更正确：陷阱是给玩家的） | 待处理 |
+| **T-16** | **Boss 血条永不显示**：`BossHealthBar._boss` 在 Inspector 预绑 `Boss01` → `TryBindBoss()` 首行 `if(_boss!=null) return;` **永不调用 `Show()`**；而 `Build()` 末尾已 `Hide()` → `BossHealthBarCanvas.active=False` | **已发生** | **P1**（打 Boss 全程看不到血量） | 把 `Show()` 提到预绑分支之前，或去掉预绑改为运行时查找。归 B 线 | 待处理 |
+| **T-17** | **`FrameworkSelfTest` 无开关**：`[RuntimeInitializeOnLoadMethod(AfterSceneLoad)]` 每次进场景都跑；`TestAudioManager` 把 `sfxVolume` 设 0.5 再恢复**硬编码 `1f`** → 玩家音量设置每次启动被重置；且故意损坏存档产生的 error 污染控制台 | **已发生** | **P1**（答辩演示一启动见红字 error；玩家设置丢失） | 加 `#if UNITY_EDITOR` 或 `if (Debug.isDebugBuild)` 判断；恢复音量时读回原值而不是硬编码 1f。归 B 线 | 待处理 |
+| **T-18** | **`BossGate.cs` 372 行是死代码**：五个场景零挂载、零代码引用。它是**求职展示版**的 Boss 破土登场演出，毕设版走的是「净化 `GarbageWall_03R` 开路 + Boss 已 active」 | 已存在 | 低（不影响运行） | P2 | 不必删（求职版要用）；须在两份 SDD 里标明未启用——**已于 2026-10-30 修正 11-Level03 v1.2 / 08-Boss v2.1** | 已缓解（文档已更正） |
 
 ---
 
@@ -87,6 +91,8 @@
 | **P-07** | **无版本号/构建产物管理**：`Builds/StandaloneWindows64/StarEco.exe` 只有一个，无版本标记，无法回溯"哪个 exe 对应哪次提交" | 已存在 | 低 | **P2** | `BuildAndRelease.md` §4 定版本号规则（`v主.次.构建号 + commit 短哈希`），构建时写进 `version.txt` | 待处理 |
 
 ---
+
+| **P-08** | **文档把「代码存在」当成「功能生效」**：v1.1/v2.0 的 11-Level03 §4.3 与 08-Boss §2.4 把 `BossGate` 的破土登场写成实际流程，实际该脚本在毕设版五场景零挂载 | **已发生** | 中（答辩讲错功能） | **已修 2026-10-30** | 这是本项目**第二次**同类错误（前一次是「检查点」：三份文档都写"死亡回检查点"，实际无 `Checkpoint.cs`）。已固化为规则：**判「有」必须查三件——脚本存在、场景挂载、调用点** | 已修复 |
 
 ## 5. 已闭环记录（不删，作为过程证据）
 
