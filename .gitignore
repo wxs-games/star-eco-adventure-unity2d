@@ -43,6 +43,14 @@ crashlytics-build.properties
 .DS_Store
 Thumbs.db
 
+# 大体积临时 / 备份目录（仅本地保留，不入库）
+/_backup/
+/art_gen/
+/.tmp-collider/
+
+# Office 临时锁文件
+~$*
+
 #临时脚本不入库
 .workbuddy/
 Assets/Screenshots/
