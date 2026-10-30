@@ -85,9 +85,9 @@ namespace StarEco.Eco
                 _sprite.enabled = false;
             }
 
-            // 拾取反馈（B2）：统一用拾取音。项目暂无通用 toast 机制
-            // （DialoguePanel 的提示仅服务于对话面板），文字提示留 TODO。
+            // 拾取反馈（B2）：拾取音 + 一行短提示（ToastLayer 运行时自举，无需场景挂载）
             AudioManager.Instance?.PlaySfx(SfxId.Pickup);
+            UI.ToastLayer.Show($"获得知识卡：{card.Title}", UI.UIUtility.AccentGreen);
 
             if (isNew)
             {
