@@ -3,15 +3,16 @@ using UnityEngine;
 namespace StarEco.Framework
 {
     /// <summary>
-    /// 框架自检脚本：进入 Play 模式时自动运行 M1 五件套的功能验证，结果输出到 Console。
-    /// 位置：RuntimeInitializeOnLoadMethod，无需场景挂载。
+    /// 框架自检：M1 五件套的功能验证，结果输出到 Console。
+    /// 入口：编辑器菜单 StarEco/Tools/框架自检（FIND P1 修复：原 RuntimeInitializeOnLoadMethod
+    /// 每次进场景自动跑——TestAudioManager 会把玩家音量重置为硬编码 1f、TestSaveSystem 故意
+    /// 损坏存档产生 error 污染控制台；改为手动触发后构建版与日常调试均无副作用）。
     /// </summary>
     public static class FrameworkSelfTest
     {
         private static bool _eventReceived;
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void Run()
+        public static void Run()
         {
             Debug.Log("========== [FrameworkSelfTest] 开始自检 ==========");
 
@@ -101,17 +102,22 @@ namespace StarEco.Framework
             }
         }
 
-        // R5：音量设置与持久化
+        // R5：音量设置与持久化（FIND P1：恢复玩家原音量，而不是硬编码 1f）
         private static void TestAudioManager()
         {
             var audio = AudioManager.Instance;
             Check("AudioManager 单例创建", audio != null);
+            if (audio == null)
+            {
+                return;
+            }
 
+            float original = audio.SfxVolume;
             audio.SetSfxVolume(0.5f);
             var data = SaveSystem.Load<GameSettingsData>("settings");
             Check("AudioManager 音量持久化", Mathf.Approximately(data.sfxVolume, 0.5f));
 
-            audio.SetSfxVolume(1f); // 恢复默认
+            audio.SetSfxVolume(original);
         }
 
         private static void Check(string name, bool pass)

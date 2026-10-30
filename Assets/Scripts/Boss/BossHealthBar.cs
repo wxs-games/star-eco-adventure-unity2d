@@ -67,16 +67,28 @@ namespace StarEco.Boss
 
         private void Update()
         {
-            // Boss 由 BossGate 控制登场：未登场时血条保持隐藏，登场后再绑定显示
+            // Boss 由 BossGate 控制登场：未登场（对象隐藏）时血条保持隐藏
             if (_boss == null)
             {
                 TryBindBoss();
                 return;
             }
 
-            if (_canvas == null || !_canvas.gameObject.activeSelf)
+            // FIND P1 修复：显示不再依赖 TryBindBoss 里的一次性 Show()——
+            // Inspector 预绑 _boss 时原逻辑直接 return 永不显示。改为每帧按登场状态驱动：
+            // Boss 对象激活（BossGate 演出结束）的瞬间显示血条，隐藏期间保持隐藏。
+            if (!_boss.gameObject.activeInHierarchy)
             {
+                if (_canvas != null && _canvas.gameObject.activeSelf)
+                {
+                    Hide();
+                }
                 return;
+            }
+
+            if (_canvas != null && !_canvas.gameObject.activeSelf)
+            {
+                Show();
             }
 
             if (_boss.IsDead)
@@ -147,7 +159,11 @@ namespace StarEco.Boss
             Hide();
         }
 
-        /// <summary>Boss 登场后绑定并显示血条（开场 Boss 隐藏时不报错、不显示）。</summary>
+        /// <summary>
+        /// Boss 登场后绑定并显示血条（开场 Boss 隐藏时不报错、不显示）。
+        /// FIND P1 修复：预绑 _boss 时不再直接 return——绑定成功后显示时机
+        /// 交由 Update 按 activeInHierarchy（Boss 是否已登场）每帧驱动。
+        /// </summary>
         private void TryBindBoss()
         {
             if (_boss != null)
@@ -155,16 +171,14 @@ namespace StarEco.Boss
                 return;
             }
 
-            var boss = FindObjectOfType<BossController>();
-            if (boss == null)
+            _boss = FindObjectOfType<BossController>();
+            if (_boss == null)
             {
                 return;
             }
 
-            _boss = boss;
             _lastHp = -1;
             _lastMaxHp = -1;
-            Show();
         }
 
         private void Hide()

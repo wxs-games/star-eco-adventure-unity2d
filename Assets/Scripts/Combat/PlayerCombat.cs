@@ -39,8 +39,10 @@ namespace StarEco.Combat
         private void Update()
         {
             // 每帧刷新：死亡/锁定输入时不接收（InputBlocked 同时涵盖对话等外部强制锁）
+            // B5 修复：去掉 Fire1（Unity 默认=左 Ctrl）——左 Ctrl 已被 PlayerController 用作冲刺，
+            // 共用会导致按左 Ctrl 同时冲刺+攻击。保留 J 键与鼠标左键（原 Fire1 的 altPositiveButton）攻击。
             AttackPressedThisFrame = _player != null && !_player.InputBlocked
-                && (Input.GetButtonDown("Fire1") || Input.GetKeyDown(KeyCode.J));
+                && (Input.GetKeyDown(KeyCode.J) || Input.GetMouseButtonDown(0));
         }
 
         /// <summary>状态机消费攻击输入：仅当前帧有效，消费即清。</summary>
