@@ -335,7 +335,10 @@ FinishLevel(success)
 |---|---|---|---|
 | 1 | **`LevelResultUI` 是死代码**：`StarEco.Level` 下有一套程序化结算 UI（订阅 `LevelCompletedEvent`），但**四个场景里一个都没挂**；实际生效的是 `UI/ResultPanel`（UIManager 栈式面板）。两套并存，`LevelCompletedEvent` 有 2 个订阅者，其中 1 个永远不触发 | 读代码误判结算在哪实现 | P2 删除 |
 | 2 | **6 个孤儿事件 + 1 个完全未用事件**（§6） | 误以为有订阅方 | P2 清理；其中 `LevelObjectiveChangedEvent` 是 2026-10-30 HUD 目标栏移除后才变孤儿的，需在恢复面板时优先启用 |
-| 3 | **`DropSpawner` 三关都挂着但配置全空**（`_dropTable` / `_pickupPrefab` 均为 null） | 敌人死亡不掉任何东西；文档曾误判为"未接入" | P1 补配置 |
+| ~~3~~ | ~~`DropSpawner` 三关配置全空~~ | — | ✅ **已修 2026-10-30**：三关已挂 `TestDrop` + `PurifyPickup`（`_dropTable`/`_pickupPrefab` 均非 null），运行时实测生效 |
+| **8** | **`BossGate` 372 行是死代码**：五场景零挂载、零代码引用。它是**求职展示版**的 Boss 破土登场演出，毕设版走的是「净化 `GarbageWall_03R` 开路 + Boss 已 active」 | 照代码读结论、没验场景挂载 → 两份 SDD 曾把它写成实际功能 | P2：若要启用，只需在 `GarbageWall_03R` 上加组件并设 `_gateTargetId` |
+| **9** | **`FrameworkSelfTest` 无开关**：`[RuntimeInitializeOnLoadMethod(AfterSceneLoad)]` 每次进场景都跑，其中 `TestAudioManager` 把 `sfxVolume` 设 0.5 再恢复**硬编码 1f** → 玩家音量每次启动被重置；且故意损坏存档产生的 error 会污染控制台 | 答辩演示一启动就见到红字 error | **P1**：加 `#if UNITY_EDITOR` 或 `Development` 判断 |
+| **10** | **`BossHealthBar` 预绑导致血条永不显示**：`_boss` 在 Inspector 预绑 → `TryBindBoss()` 首行 `if(_boss!=null) return;` 永不 `Show()`；`Build()` 末尾已 `Hide()` | 打 Boss 全程无血条 | **P1（B 修）**：把 `Show()` 提到预绑分支之前 |
 | 4 | **`TDD.md` §2.1 目录结构与 §3.1 系统关系图停留在 M1 规划态** | 与实际严重不符（写着"当前仅 SampleScene.unity"） | **P0 已在本轮修正** |
 | 5 | **`specs/01~03` 的 SDD 是 M1~M3 时期写的**，其中 03 描述的"原地攻击 + 移动可取消"已被 10-27/10-28 两次改动推翻 | SDD 与实现不符 | **P0 已在本轮修正** |
 | 6 | **`EnemyAI` 与 `Eco` 之间用事件解耦，但 `Boss` 直接引用 `Player.Combat`** | Boss 无法脱离玩家单独测试 | P3 可接受 |

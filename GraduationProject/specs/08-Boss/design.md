@@ -4,7 +4,9 @@
 > 前置已就位：M3 `IHittable`/`DamageInfo`、M4 `EnemyControllerBase`/`EnemyStateMachine`/`EnemyStateBase`/`EnemyProjectile`/`EnemyAnimatorDriver`/`EnemyConfig`、M5 `FxOneShot`/`GarbagePurifiedEvent`、M6 `LevelManager`/`LevelObjectiveTracker`/`LevelConfig`、M7 `UIManager`/`UIUtility`
 > 立项决策（已定稿）：Boss **继承** `EnemyControllerBase` 而非另起炉灶；`BossConfig : EnemyConfig`（配置继承，字段兼容）；阶段过场短无敌 + 一次性守卫；喷雾倍率靠 `DamageInfo.IsPurify` 标记（不改伤害流水线）；血条固定屏幕顶部（不跟头顶）
 >
-> **v2.0 修正的四处失实**：① 第三关 Build index 是 **3** 不是 2（Build 顺序 Title/L01/L02/L03）② 目标链首段是 `PurifyTargets` **4** 不是 3（含封锁墙）③ Boss `MaxHP` 实测 **80**（v1.0 写"血条显示 30/30"）④ v1.0 **完全没写** 封锁墙登场（`BossGate`，350 行）与 5.5s 击败演出（`DefeatSequence`）——这是本关最有辨识度的两段，本节已补全
+> **v2.0 修正的四处失实**：① 第三关 Build index 是 **3** 不是 2（Build 顺序 Title/L01/L02/L03）② 目标链首段是 `PurifyTargets` **4** 不是 3（含封锁墙）③ Boss `MaxHP` 实测 **80**（v1.0 写"血条显示 30/30"）④ v1.0 没写 5.5s 击败演出（`DefeatSequence`）——本节已补全
+>
+> **⚠️ v2.1 撤回一条（2026-10-30 23:58，A6 实测）**：v2.0 曾称"v1.0 完全没写封锁墙登场"并把它当成本关的实际功能补写。**实测证明毕设版场景根本没有挂 `BossGate`**——那个脚本是求职展示版用的，372 行代码在毕设版是死代码。§2.4 已整节重写。这是本项目第二次犯同类错误（前一次是"检查点"）：**照代码读结论，漏了验证代码在场景里有没有被挂上**。
 
 ## 1. 结构
 
@@ -43,7 +45,7 @@ EnemyConfig（M4 SO）
 | `BossPhase.cs` | — | 三阶段枚举 + `DisplayName()` 扩展 |
 | `BossAnimParams.cs` | — | 动画参数 hash 常量（`AttackB`/`Special`/`Enrage`/`Victory` 等） |
 | `BossHealthBar.cs` | 294 | 顶部血条：Fill + 数值 + 60%/30% 刻度 + 阶段提示文字（1.5s 淡出） |
-| `BossGate.cs` | 350 | **封锁墙**：监听指定 `TargetId` 的 `GarbagePurifiedEvent` → 墙崩解 → 地震 → Boss 破土登场 |
+| `BossGate.cs` | **372** | **封锁墙登场演出**（求职版启用）：监听指定 `TargetId` 的 `GarbagePurifiedEvent` → 墙崩解 → 地震 → Boss 破土登场。⚠️ **毕设版五场景零挂载，当前是死代码**（见 §2.4） |
 | `Events/BossPhaseChangedEvent.cs` | — | 阶段变化（Phase/PhaseName/HpPercent） |
 | `Events/BossDefeatedEvent.cs` | — | 击败（BossId/LevelIndex/ElapsedSeconds） |
 
@@ -54,11 +56,11 @@ EnemyConfig（M4 SO）
 | 场景 | `Assets/Scenes/Level03.unity`，**Build index = 3** |
 | 配置 | `Assets/Settings/Levels/Level03.asset`（`LevelIndex = 3`） |
 | Boss 配置 | `Assets/Settings/Boss/Boss01.asset`（`BossConfig`） |
-| 目标链 | ① `PurifyTargets` **4**「清理工厂污染源（含封锁墙）」→ ② `DefeatEnemies` **1**「击败工厂污染核心 Boss01」 |
+| 目标链 | ① `PurifyTargets` **4**「清理工厂污染源（含封锁墙）」→ ② `DefeatEnemies` **1**「击败工厂污染核心 Boss01」。⚠️ Label 里的「含封锁墙」与实际场景不符（无封锁墙），建议改文案 |
 | 机关 | `CrumblePlatform`（碎裂平台）/ `MovingPlatform`（移动平台）/ `VentHazard`（蒸汽）/ `ConveyorZone`（传送带） |
 | 复用 | M6 全套（`LevelManager`/`LevelSpawner`/`LevelObjectiveTracker`/`LevelStats`）、M7 全套面板、M10 音频 |
 
-> 目标链的 4 个污染源包含**封锁墙本身**——所以"清完 4 个"必然包含"打开 Boss 的门"，两段目标在因果上串起来，不是并列。
+> 目标链的 4 个污染源，实测场景里可净化的对象共 **5 个**（`Garbage1/2/3` TargetId 均为 `GarbagePile`，加 `GarbageWall_03L/03R`），`_purifiedTargets` 按事件递增不去重，任意 4 个即达成。**原本设计的"第 4 个必然是封锁墙 → 打开 Boss 的门"这层因果在毕设版不成立**：既没有封锁墙，Boss 也没有门禁，一直 active 站在原地。
 
 ### 1.4 Boss01 实测数值（`Assets/Settings/Boss/Boss01.asset`）
 
@@ -137,10 +139,27 @@ TakeDamage(info)：
 
 `DamageInfo` 原本无法区分伤害来源（`Source` 两种情况都是玩家对象）。三个方案里选了"给 struct 加一个 `bool IsPurify`"：对既有构造点零影响（默认 false），语义明确，未来别的系统也能复用这个标记。**这条改动只影响 Boss**——基类不读该字段，普通怪物的数值一分不变。
 
-### 2.4 封锁墙与 Boss 登场（`BossGate`，v1.0 完全没有）
+### 2.4 封锁墙与 Boss 登场（`BossGate`）——**毕设版未启用，代码是死代码**
+
+> ⚠️ **v2.1 重大更正（2026-10-30 23:58，A6 实机验收发现）**
+>
+> v2.0 把这一节写成了"实际功能"，并称"v1.0 完全没写"。**两处都错**：
+>
+> | 核查项 | 实测结果 |
+> |---|---|
+> | `BossGate.cs` | ✅ 存在，**372 行**，代码完整（`Reveal()` 协程、地震、破土、`PushPlayerClearOf` 全都在） |
+> | 五个场景挂载数（Title/L01/L02/L03/Sample） | ❌ **全部 0** |
+> | 场景里有 `BossGateWall` 吗 | ❌ **没有** |
+> | Boss 初始状态 | **一线入场就 `active=True`** 站在 (68.0, ~2.3)，无升起/破土 |
+>
+> **真相**：这套演出是**求职展示版**专属。`Level03ExtendSetup.cs:25` 原文：
+> > 两份项目通用：右端封锁墙按名字查，**毕设版是 `GarbageWall_03R`，求职展示版是 `BossGateWall`**（后者挂着 BossGate 演出脚本，只移位不动逻辑）。
+>
+> 毕设版的实际流程是「净化右端垃圾墙开路 → Boss 已经站在那里等你」。下面这段代码逻辑**描述的是求职版行为**，毕设版不执行：
 
 ```text
-第三关进场：Boss 被一面「封锁墙」挡在场地深处，墙本身是一个 IPurifiable（TargetId = "BossGateWall"）
+【以下为 BossGate.cs 代码逻辑，毕设版场景未挂载，不会执行】
+Boss 被一面「封锁墙」挡在场地深处，墙本身是一个 IPurifiable（TargetId = "BossGateWall"）
 玩家把它净化完 → GarbagePurifiedEvent{TargetId="BossGateWall"}
  → BossGate.OnGarbagePurified：_revealed 守卫 → StartCoroutine(Reveal())
 
@@ -155,7 +174,9 @@ Reveal() 时间轴：
   ⑥ Boss 激活，进入 BossIdleState
 ```
 
-**设计意图**：Boss 不是"走到场地尽头就看见"，而是**玩家自己净化污染把它放出来**——第三关的叙事是"工厂把整颗星球的污染抽成一颗核心"，那么"你净化了封锁墙 = 你打开了核心的牢笼"在因果上成立。也让第三关的第一个目标（清 4 个污染源）与第二个目标（打 Boss）有先后逻辑，而不是两件并列的事。
+**这段代码的价值**：它是一套完整可用、随时可挂的登场演出（求职版正在用）。毕设版如果要启用，只需在 `GarbageWall_03R` 上加 `BossGate` 组件并把 `_gateTargetId` 设为该墙的 TargetId——代码不需要改。
+
+**为什么文档会写错**：v2.0 是照代码读的。代码确实实现了完整演出，读代码得出"这就是实际流程"在逻辑上没错，**漏的是"这个脚本在场景里到底有没有被挂上"这一步**。这与本项目"检查点"教训同类——**判"有"必须查三件：脚本存在、场景挂载、调用点**。
 
 ### 2.5 击败演出（`DefeatSequence`，5.5s）
 
@@ -212,16 +233,18 @@ DefeatSequence()：
       → TickTransition 到点 → SwitchState<BossIdleState> → 冷却乘 0.8、解锁 Special？否（P3 才解锁）
 ```
 
-### 3.2 一次净化封锁墙 → Boss 登场 → 打完 → 结算
+### 3.2 一次净化污染源 → 目标①完成 → 打完 Boss → 结算
 
 ```text
-【登场】
-玩家净化 BossGateWall（第 4 个污染源）
- → GarbagePile.CompletePurify → Publish(GarbagePurifiedEvent{TargetId="BossGateWall"})
- → 并行三方：
+【清污染源】场景共 5 个可净化对象，凑满 4 个即完成目标①
+玩家喷雾净化任一个
+ → GarbagePile.CompletePurify → Publish(GarbagePurifiedEvent{TargetId=该对象的 TargetId})
+ → 并行两方：
      · PuritySystem：净化值 +10 → PurityChangedEvent → 背景色向自然绿插值
-     · LevelObjectiveTracker：_purifiedTargets = 4 → 目标①完成 → 目标② DefeatEnemies(1) 解锁
-     · BossGate：Reveal() 协程 2.3s：墙崩 → 地震 → Boss 破土 → 玩家被挤出包围盒 → Boss 激活
+     · LevelObjectiveTracker：_purifiedTargets++ → 到 4 时目标①完成 → 目标② DefeatEnemies(1) 解锁
+（没有第三方的 BossGate —— 毕设版未挂载，见 §2.4）
+
+【Boss】Boss01 从一进场就 active 站在 (68.0, ~2.3)，无登场演出、无门禁
 
 【战斗】三阶段，见 §3.1
 
@@ -278,7 +301,9 @@ P3 且 _specialCooldown <= 0 且 BossIdleState 判定通过
 
 | # | 风险 | 概率 | 影响 | 现状与对策 |
 |---|---|---|---|---|
-| B1 | 封锁墙的 `TargetId` 与 `BossGate._gateTargetId` 不一致 → Boss 永远不登场 | 中 | **高（关卡卡死）** | 两处都是字符串 `"BossGateWall"`，靠约定。`BossGate` 无警告日志（`evt.TargetId != _gateTargetId` 时静默 return）。对策：加一条"目标 4 已清但 Boss 未激活"的 Warning（P1） |
+| **B0** | **Boss 站在自己关卡的喷气口旁，被 `Env_Vent` 持续扣血 + 吹起** | **已发生** | **P0：Boss 血不受玩家控制地流失** | A6 实测 144.7s 内从 80 掉到 **54（67.5%）**，约 2.5s/点。Boss collider x=65.82~70.18 与 `Env_Vent` x=64.4~66.0 **重叠 0.18**；`VentHazard.OnTriggerStay2D` 只找 `IHittable` 不筛敌我。阈值 60%/30% → 约 3 分钟自动进二阶段、6.5 分钟自己死。详见 `11-Level03` §7.2 N0 |
+| **B0b** | **Boss 血条永不显示** | **已发生** | **高：打 Boss 看不到血量** | `BossHealthBar._boss` 预绑 `Boss01` → `TryBindBoss()` 首行 `if(_boss!=null) return;` **永不 `Show()`**；`Build()` 末尾已 `Hide()` → `BossHealthBarCanvas.active=False`。修法：把 `Show()` 提到预绑分支之前 |
+| ~~B1~~ | ~~封锁墙 `TargetId` 不一致 → Boss 永不登场~~ | — | — | ❌ **风险不存在**：毕设版场景未挂 `BossGate`，Boss 一进场就 active（§2.4 已更正）。该 Warning 已由 B4 任务加进 `BossGate.cs`，但代码本身不执行 |
 | B2 | 击败演出期间玩家输入被锁，若协程被异常打断会永久锁输入 | 低 | 高 | `GrantInvincibility(6.5s)` 是超时兜底；`InputLocked` 无超时兜底。若演出抛异常，玩家会卡在不能动的状态。对策：`try/finally` 或在 `LevelManager` 侧加超时解锁（P1） |
 | B3 | 阶段过场无敌期间玩家输出全被丢弃，可能误判为"打不动" | 中 | 中 | 血条同步弹「狂暴阶段」提示 + 日志；过场仅 0.8s |
 | B4 | `BossDefeatedEvent` **0 订阅者** | 已存在 | 低（预留） | 本关通关实际走 `EnemyDeathEvent` → 目标链。该事件当前是纯冗余，将来做"Boss 战计时/成就"才有消费者 |

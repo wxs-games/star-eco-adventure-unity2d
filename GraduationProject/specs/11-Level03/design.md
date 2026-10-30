@@ -138,26 +138,39 @@ Idle ──► Move ──► AttackA / AttackB ──► Idle
 - `AttackB`（喷毒）：3 发弹幕，3 s/次
 - `Special`（Phase3）：14 帧特殊招，判定最宽
 
-### 4.3 封锁墙与 Boss 登场（`BossGate`）
+### 4.3 封锁墙与 Boss 登场（`BossGate`）——**毕设版未启用**
 
-> ⚠️ **v1.1 修正**：v1.0 把这里写成"进 Boss 场后门关闭、封锁退路"——**与实现相反**。实现里 `BossGate` 是"挡住 Boss 的墙"，不是"关住玩家的门"。第三关**没有**封锁退路的机制。
+> ⚠️ **v1.2 重大更正（2026-10-30 23:58，A6 实机验收发现）**
+>
+> v1.1 把这一节写成了"玩家净化那面墙 → 墙崩解 → 地震 → Boss 破土登场 2.32s 演出"。
+> **这个描述在毕设版里完全不成立。** 实测：
+>
+> | 核查项 | 结果 |
+> |---|---|
+> | `BossGate.cs` 是否存在 | ✅ 存在，**372 行**，代码完整 |
+> | 五个场景（Title/L01/L02/L03/Sample）里有没有挂 `BossGate` 的对象 | ❌ **全部 0 引用** |
+> | 场景里有没有叫 `BossGateWall` 的对象 | ❌ **没有** |
+> | L3 的 5 个可净化对象 | `Garbage1`/`Garbage2`/`Garbage3`（TargetId 均为 `GarbagePile`）、`GarbageWall_03L`、`GarbageWall_03R` |
+> | Boss 初始状态 | **一进场就 `active=True`** 站在 (68.0, ~2.3)，没有"从地下升起" |
+>
+> **真相**：`BossGate` 是**求职展示版**才启用的演出脚本。`Level03ExtendSetup.cs:25` 的注释写得很清楚：
+>
+> > 两份项目通用：右端封锁墙按名字查，**毕设版是 `GarbageWall_03R`，求职展示版是 `BossGateWall`**（后者挂着 BossGate 演出脚本，只移位不动逻辑）。
+>
+> 也就是说：**毕设版走的是"净化右端垃圾墙开路 → Boss 已经站在那里等你"**，没有破土登场。那套演出代码保留在仓库里，是为求职版准备的，毕设版场景没有挂。
 
 ```text
-进场：Boss 被一面封锁墙挡在场地深处，墙本身是一个 IPurifiable（TargetId = "BossGateWall"）
-      ——它同时是目标①（清理 4 个污染源）中的第 4 个
-玩家净化完这面墙 → GarbagePurifiedEvent{TargetId="BossGateWall"}
- → BossGate.OnGarbagePurified（_revealed 幂等守卫）→ Reveal() 协程：
-      ① 0.22s  墙体淡出 + 压扁（只关 SpriteRenderer，不 SetActive 整物体
-                —— BossGate 自己挂在这面墙上，关整个物体会停掉协程，Boss 就永远不出来）
-      ② 1.80s  地震：相机幅度 0.35，伴随 BreakStone（0.15 音量）碎石音
-      ③ 0.30s  破土：Boss 从地下升起（初始 scale 0.35 → 1.0，下压深度 1.6u）
-      ④ 把玩家挤出 Boss 包围盒（PushPlayerClearOf），防止被"顶"进墙里
-      ⑤ Boss 激活 → BossIdleState
+毕设版 L3 真实流程（实测）：
+进场：Boss01 已在场地深处 (68.0, 2.3) active，被 GarbageWall_03R（x=71.5）挡在右侧
+      —— 注意墙在 Boss 右边，不是挡在玩家和 Boss 之间
+目标①：清 4 个污染源（5 个可净化对象里任意 4 个；Required=4，_purifiedTargets 按事件递增不去重）
+目标②：击败 Boss01
+结局：BaseDie → EnemyDeathEvent → 目标链完成 → 结局对白 ava_ending → 结算
 ```
 
-**设计意图**：Boss 不是"走到场地尽头就看见"，而是**玩家自己净化污染把它放出来**。第三关的叙事是"工厂把整颗星球的污染抽成一颗核心"，那么"净化封锁墙 = 打开核心的牢笼"在因果上成立——这也让目标①与目标②从并列变成先后。
+**为什么文档会写错**：v1.1 那次修订是照 `BossGate.cs` 的代码读出来的——代码确实实现了那套演出，读代码得出"净化墙→破土登场"的结论在逻辑上没错，**但漏了最关键的一步：确认这个脚本在场景里到底有没有被挂上**。代码存在 ≠ 功能启用。这与本项目之前"检查点"的教训是同一类错误（三份文档都写"死亡回检查点"，实际无 `Checkpoint.cs`）——**判"有"要查三件：脚本、场景挂载、调用点**。
 
-`_fxBurstPrefab`（`fx_burst`）就是第 ③ 步破土那一瞬间的特效，不是"Boss 死亡爆心"。
+`_fxBurstPrefab`（`fx_burst`）在这套未启用的演出里是"破土那一瞬间"的特效，不是"Boss 死亡爆心"；该 prefab 已由 A4 补齐存在，但当前无引用方。
 
 ---
 
@@ -224,13 +237,16 @@ Idle ──► Move ──► AttackA / AttackB ──► Idle
 ### 5.4 一次第三关全程推进（目标链 4 → 1 → 结局）
 
 ```text
-【目标① 清理 4 个污染源（含封锁墙）】
-  玩家喷雾净化 #1..#3 → LevelObjectiveTracker._purifiedTargets = 3 / 4
-  净化 #4 = BossGateWall → _purifiedTargets = 4 → ObjectiveCompleted(①)
-      同一帧 BossGate 也开始 Reveal()（2.32s 后 Boss 登场）
-  → 目标② DefeatEnemies(1) 解锁 → HUD「击败工厂污染核心 Boss01 0/1」
+【目标① 清理 4 个污染源】场景实测可净化对象共 5 个，任意 4 个即可
+  Garbage1(-6.0) / Garbage2(2.0) / Garbage3(9.0)   ← TargetId 均为 "GarbagePile"
+  GarbageWall_03L(-21.5) / GarbageWall_03R(71.5)   ← TargetId 为各自名字
+  玩家喷雾净化，每个 CompletePurify → Publish(GarbagePurifiedEvent)
+  → LevelObjectiveTracker.OnGarbagePurified → _purifiedTargets++（按事件递增，不按 TargetId 去重）
+  → 第 4 个时 _purifiedTargets = 4 → ObjectiveCompleted(①)
+  → 目标② DefeatEnemies(1) 解锁
 
-【Boss 战】
+【Boss】Boss01 一进场就 active 站在 (68.0, ~2.3)，没有登场演出，
+       也没有"必须先清墙才能打"的门禁——玩家清够 4 个后可以直接走过去打
   §4.1 三阶段 → HP 80 → 0
   击败演出 5.5s（3 次净化波连炸 → 污染色褪绿 → 核心上浮消散 → Victory + 落幕字幕）
 
@@ -240,7 +256,7 @@ Idle ──► Move ──► AttackA / AttackB ──► Idle
   → 玩家按 E 看完 → 等 1 帧 → CommitFinish(true) → 结算面板 S/★★★
 ```
 
-**注意目标①的"4 个"里包含封锁墙本身**：这不是凑数，是为了让"放 Boss 出来"必须发生在"打完 Boss"之前，两段目标因果相连。若把封锁墙排除在外（Required=3），玩家可能清完 3 个就去找 Boss，而 Boss 还在墙后面——逻辑上说不通。
+**关于目标①的"4 个"**：`Level03.asset` 里 `Required: 4`，Label 写「清理工厂污染源（含封锁墙）」。但**"含封锁墙"这个措辞已经失真**——场景里没有叫 `BossGateWall` 的封锁墙，只有左右两道普通垃圾墙 `GarbageWall_03L/03R`。当前 5 个对象都算普通污染源，凑满 4 个就过。`Label` 建议改为「清理工厂污染源 ×4」以免答辩时被追问"封锁墙在哪"（登记为 `RiskRegister` 的文案缺口）。
 
 ## 6. 落幕对白的实现取舍
 
@@ -288,18 +304,22 @@ CommitFinishAfterEnding:
 | Boss 阶段切换中被打死 | `IsPhaseTransition` 期间不判新阶段，直接进 Death | `EvaluatePhase` 守卫 |
 | 落幕对白数据缺失 | 降级直接结算 | R6 |
 | 玩家在 Boss 门口死亡 | 整关重载（**无中途检查点**） | 全项目无检查点系统 |
-| 玩家清理污染源数量不足 | Boss 门不开（门订阅 `GarbagePurifiedEvent`） | `BossGate` |
+| 玩家清理污染源数量不足 4 个 | 目标①不完成，目标②不解锁，**Boss 仍可被攻击但打死也不算通关** | `LevelObjectiveTracker` |
+| 玩家清够 4 个后直接去打 Boss | 允许（**无门禁**，Boss 一直 active） | 毕设版无 `BossGate`（见 §4.3） |
 
 ### 7.2 风险
 
 | # | 风险 | 概率 | 影响 | 现状与对策 |
 |---|---|---|---|---|
-| N1 | 封锁墙的 `TargetId` 与 `BossGate._gateTargetId` 不一致 → Boss 永不登场 | 中 | **高（卡关）** | 两处都是字符串 `"BossGateWall"`，靠约定且 `BossGate` 无警告日志。对策：加"目标①已清但 Boss 未激活"的 Warning（P1，与 08-Boss §5 B1 同一项） |
+| **N0** | **Boss 站在自己关卡的喷气口旁，被 `Env_Vent` 持续扣血 + 吹起** | **已发生** | **P0：Boss 血不受玩家控制地流失** | A6 实机 144.7s 内从 80 掉到 **54（67.5%）**，约 2.5s/点。Boss collider x=65.82~70.18 与 `Env_Vent` x=64.4~66.0 **重叠 0.18**；`VentHazard.OnTriggerStay2D` 只找 `IHittable` 不筛敌我，边扣血边 `_liftSpeed` 上推 → Boss 在 y2.3↔6.0 震荡。阈值 Phase2=60%/Phase3=30% → 约 3 分钟自动进二阶段、6.5 分钟自己死。**两种修法待选**：① A 移开/缩窄 `Env_Vent`（场景，快）；② B 让 `VentHazard` 只伤害玩家（语义更正确） |
+| **N0b** | **Boss 血条永不显示** | **已发生** | **高：打 Boss 看不到血量** | `BossHealthBar._boss` 在 Inspector 预绑 `Boss01`，`TryBindBoss()` 首行 `if(_boss!=null) return;` 直接返回，**永不调用 `Show()`**；`Build()` 末尾已 `Hide()` → `BossHealthBarCanvas.active=False`。修法：把 `Show()` 移到预绑分支之前，或去掉预绑改由运行时查找（归 B） |
+| ~~N1~~ | ~~封锁墙 `TargetId` 与 `BossGate._gateTargetId` 不一致~~ | — | — | ❌ **风险不存在**：毕设版场景未挂 `BossGate`（§4.3 已更正），该脚本 372 行当前是死代码 |
 | N2 | 平台坐标与 `Level03ExtendSetup.cs` 的 `ClonePlatform` 结果漂移 | 高 | 中（文档失真） | §2.2 表为场景实测值；每次跑 Setup 或手改场景后必须回填本表。已在表下写警示 |
 | N3 | 碎裂平台"计时不取消"被误判为 bug 改掉 | 中 | 高（关卡节奏崩坏） | §3.1 与 §5.1 两处都写明这是刻意设计；`CrumblePlatform` 源码注释保留原委 |
-| N4 | 玩家被 Boss 破土顶进墙里 / 挤出边界 | 中 | 中（穿模） | `PushPlayerClearOf(bossBounds)` 把玩家推到包围盒外；边界另由 `CameraFollow2D` 与场景碰撞兜底 |
+| ~~N4~~ | ~~玩家被 Boss 破土顶进墙里~~ | — | — | ❌ **风险不存在**：无破土演出的情况下 `PushPlayerClearOf` 那套逻辑根本不会执行 |
 | N5 | 击败演出期间输入锁 + 无敌，若协程异常会卡死 | 低 | 高 | 见 08-Boss §5 B2；当前无超时解锁兜底 |
-| N6 | 第三关地面用的仍是 `ground_polluted_soil`（与三关同图） | 已存在 | 低（视觉同质） | `ground_factory` / `ground_industrial` 素材存在但闲置，登记于 `LevelArt.md` 缺陷表与 RiskRegister |
+| N6 | 第三关地面曾与三关同图 | **已修** | — | A2 已改为 `ground_factory`（`117e444`） |
+| N7 | 目标① Label 写「含封锁墙」但场景无封锁墙 | 已存在 | 低（答辩被问） | 见 §5.4 末段；建议改文案为「清理工厂污染源 ×4」 |
 
 
 
@@ -321,5 +341,6 @@ CommitFinishAfterEnding:
 
 | 版本 | 日期 | 变化 | 原因 |
 |---|---|---|---|
+| v1.2 | 2026-10-30 | **§4.3 整节重写**：`BossGate` 372 行是死代码，五场景零引用，毕设版右端墙是 `GarbageWall_03R`（求职版才是 `BossGateWall`）→ "净化墙→破土登场 2.32s 演出"在毕设版**不存在**；§5.4 目标①改为"5 个可净化对象任意 4 个"并指出 Label「含封锁墙」措辞失真；§7.1 删"门不开"改"无门禁"；§7.2 删 N1/N4（风险不存在）、新增 **N0 Boss 被喷气口持续扣血（P0，实测 144.7s 掉到 67.5%）** 与 N0b Boss 血条永不显示 | A6 实机验收四个场景时发现。v1.1 是照代码读出来的结论，**漏了验证脚本在场景里到底有没有挂**——与"检查点"同类的错误：判"有"必须查脚本+场景挂载+调用点三件 |
 | v1.1 | 2026-10-30 | 修正 §4.3：`BossGate` 是"挡住 Boss 的墙"不是"封锁退路的门"（v1.0 写反了）；§4.2 死亡箭头改为 `EnemyDeathEvent`（`BossDefeatedEvent` 0 订阅）；新增 §5 数据流（碎平台 / 移动平台 / 拉杆 / 全程推进四条链路）与 §7.2 风险表 6 条 | 按落地代码复核 01~10 时发现第三关两处描述与实现相反；且全文缺数据流，"平台为什么带人"这类关键结论无处可查 |
 | v1.0 | 2026-10-30 | 首版（补写）。四段结构与 17 个平台/机关实测坐标、碎裂与移动平台参数表及设计理由、Boss 三阶段与状态机、封锁门机制、落幕对白的三段式实现与三条约束、8 条边界表 | `specs/` 有 01~10 共 10 个功能规范，唯独第三关没有。三关里最复杂的一关（84u / 37 个精灵 / Boss 战 / 落幕对白）反而无规范可依，后续改动全凭记忆 |
