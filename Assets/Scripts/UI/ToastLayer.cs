@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using StarEco.Framework;
 
 namespace StarEco.UI
 {
@@ -38,6 +40,14 @@ namespace StarEco.UI
         private readonly Queue<Message> _queue = new Queue<Message>();
         private float _timer;
         private bool _showing;
+
+        /// <summary>
+        /// 结算期间抑制提示。2026-10-31 修：toast 在屏幕底部 190px 处，
+        /// 而 ResultPanel 的「重新开始 / 返回主菜单」按钮正好压在这一带，
+        /// 关卡失败/通关时弹出的提示文字会被按钮盖住、糊成一团（Play 截图可见）。
+        /// 结算面板打开即清队列并收起当前条，场景重载（重开/下一关）后自动复位。
+        /// </summary>
+        private bool _suppressed;
 
         private struct Message
         {
@@ -102,6 +112,61 @@ namespace StarEco.UI
             Build();
         }
 
+        private void OnEnable()
+        {
+            if (Instance != null && Instance != this)
+            {
+                return;
+            }
+
+            EventCenter.Subscribe<StarEco.Level.Events.LevelFailedEvent>(OnLevelEnded);
+            EventCenter.Subscribe<StarEco.Level.Events.LevelCompletedEvent>(OnLevelCompleted);
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        private void OnDisable()
+        {
+            EventCenter.Unsubscribe<StarEco.Level.Events.LevelFailedEvent>(OnLevelEnded);
+            EventCenter.Unsubscribe<StarEco.Level.Events.LevelCompletedEvent>(OnLevelCompleted);
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+
+        /// <summary>关卡失败/通关：结算面板要占屏幕底部，提示条让位。</summary>
+        private void OnLevelEnded(StarEco.Level.Events.LevelFailedEvent evt)
+        {
+            Suppress();
+        }
+
+        private void OnLevelCompleted(StarEco.Level.Events.LevelCompletedEvent evt)
+        {
+            Suppress();
+        }
+
+        /// <summary>重开本关 / 进入下一关：结算面板已关，提示恢复。</summary>
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            _suppressed = false;
+        }
+
+        /// <summary>清空待播队列并立刻收起当前条（不等待淡出，避免残影留在结算面板上）。</summary>
+        private void Suppress()
+        {
+            if (_suppressed)
+            {
+                return;
+            }
+
+            _suppressed = true;
+            _queue.Clear();
+            _showing = false;
+            _timer = 0f;
+
+            if (_group != null)
+            {
+                _group.alpha = 0f;
+            }
+        }
+
         private void OnDestroy()
         {
             if (Instance == this)
@@ -112,6 +177,11 @@ namespace StarEco.UI
 
         private void Update()
         {
+            if (_suppressed)
+            {
+                return;
+            }
+
             if (!_showing)
             {
                 if (_queue.Count > 0)
@@ -158,7 +228,8 @@ namespace StarEco.UI
 
         private void Enqueue(string text, Color color)
         {
-            if (_queue.Count >= _maxQueue)
+            // 结算期间直接丢弃，而不是排队等结算后补播——过时的拾取提示晚到更莫名其妙
+            if (_suppressed || _queue.Count >= _maxQueue)
             {
                 return;
             }

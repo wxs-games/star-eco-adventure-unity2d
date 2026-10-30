@@ -45,6 +45,13 @@ namespace StarEco.Boss
         private PlayerController _player;
         private bool _engaged;
 
+        /// <summary>
+        /// 战斗已结束（Boss 死 / 关卡失败 / 关卡完成）。置位后血条永久隐藏，不再被战区判定重新拉起。
+        /// 2026-10-31 修：此前只有 Boss 死亡会隐藏，玩家被打死弹出结算面板时血条仍挂在屏幕顶部，
+        /// 和「你倒下了……」面板叠在一起（Play 实测截图可见）。
+        /// </summary>
+        private bool _battleOver;
+
         // 仅在 HP 数值变化时重生成字符串，避免每帧 ToString 分配（GC 优化）
         private int _lastHp = -1;
         private int _lastMaxHp = -1;
@@ -63,12 +70,17 @@ namespace StarEco.Boss
         {
             EventCenter.Subscribe<Events.BossPhaseChangedEvent>(OnPhaseChanged);
             EventCenter.Subscribe<Events.BossDefeatedEvent>(OnBossDefeated);
+            // 战斗结束信号：失败/通关都要收血条，否则会叠在结算面板上
+            EventCenter.Subscribe<StarEco.Level.Events.LevelFailedEvent>(OnLevelEnded);
+            EventCenter.Subscribe<StarEco.Level.Events.LevelCompletedEvent>(OnLevelCompleted);
         }
 
         private void OnDisable()
         {
             EventCenter.Unsubscribe<Events.BossPhaseChangedEvent>(OnPhaseChanged);
             EventCenter.Unsubscribe<Events.BossDefeatedEvent>(OnBossDefeated);
+            EventCenter.Unsubscribe<StarEco.Level.Events.LevelFailedEvent>(OnLevelEnded);
+            EventCenter.Unsubscribe<StarEco.Level.Events.LevelCompletedEvent>(OnLevelCompleted);
         }
 
         private void Start()
@@ -79,9 +91,29 @@ namespace StarEco.Boss
 
         private void Update()
         {
+            if (_battleOver)
+            {
+                HideIfVisible();
+                return;
+            }
+
             if (_boss == null)
             {
                 TryBindBoss();
+                return;
+            }
+
+            // 玩家已死兜底：LevelFailedEvent 由 LevelManager 判定发出，可能比死亡晚一两帧，
+            // 这两帧里血条会和结算面板同时存在，所以直接读玩家状态抢先收条。
+            if (_player == null)
+            {
+                _player = FindObjectOfType<PlayerController>();
+            }
+
+            if (_player != null && _player.IsDead)
+            {
+                _battleOver = true;
+                HideIfVisible();
                 return;
             }
 
@@ -197,6 +229,21 @@ namespace StarEco.Boss
 
         private void OnBossDefeated(Events.BossDefeatedEvent evt)
         {
+            _battleOver = true;
+            Hide();
+        }
+
+        /// <summary>关卡失败（玩家死亡/依赖缺失）：收掉血条，避免与「你倒下了……」结算面板重叠。</summary>
+        private void OnLevelEnded(StarEco.Level.Events.LevelFailedEvent evt)
+        {
+            _battleOver = true;
+            Hide();
+        }
+
+        /// <summary>关卡完成：同理收条，结算面板期间不再占用屏幕顶部。</summary>
+        private void OnLevelCompleted(StarEco.Level.Events.LevelCompletedEvent evt)
+        {
+            _battleOver = true;
             Hide();
         }
 
