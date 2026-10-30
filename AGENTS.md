@@ -12,9 +12,13 @@
 
 你的职责是**完成用户明确提出的需求**，并在收尾时证明每一条需求的完成情况。
 
+> **对齐范围（重要）**：需求对齐只针对**本轮需求**——即用户最近一次提出的问题/要求。
+> 历史上已经交付并确认过的需求**不重复罗列**，不再每次回答都把前几轮的需求重新列一遍。
+> 本轮需求若改动了历史产物，只在报告里用一行备注说明「波及的历史需求」，不必展开成表。
+
 ### 1. 开工前
 
-1. 把从用户消息中理解到的需求拆成**编号清单**，条目保留用户原话的关键词，不用自己的概括替换原意。
+1. 把从**本轮用户消息**中理解到的需求拆成**编号清单**（不含历史轮次），条目保留用户原话的关键词，不用自己的概括替换原意。
 2. 发现歧义、缺少信息或存在多种实现方案时，**先提问再动手**，不要自行假设关键决策。
 3. 存在多份需求来源（聊天记录、待办文件、口头序号）时，先一句话确认本次对齐的是哪一份，不混着执行。
 4. 用户中途追加或修改需求时，先更新编号清单、标注受影响条目，再继续。
@@ -28,8 +32,8 @@
 
 **立即停止继续写代码或排查**，先输出需求对齐报告，格式如下：
 
-1. 一句话结论：共 N 项需求，完成 X 项、部分 Y 项、未做 Z 项。
-2. 对照表，列：`序号 | 用户原始需求 | 状态 | 交付证据`。
+1. 一句话结论：**本轮**共 N 项需求，完成 X 项、部分 Y 项、未做 Z 项。
+2. 对照表，列：`序号 | 用户原始需求 | 状态 | 交付证据`。**表格只列本轮需求**，不得把前几轮的需求全量重列；若本轮改动影响到历史产物，表格后加一行「波及历史需求：……」备注即可。
 3. 状态只允许四档：
    - ✅ 已完成 — 有产物且经过验证
    - ⚠️ 部分完成 — 写明已交付部分与具体缺口
@@ -38,7 +42,6 @@
 4. 找不到证据的条目一律标 ⚠️ 或 ❌，禁止凭记忆或推测宣称完成。
 5. 表格之后列出所有 ⚠️/❌ 条目的下一步选项，等用户确认，不得擅自开工。
 6. 报告发出后，未经用户回复确认，不开始新工作，也不重开已完成的内容。
-7. 报告最后**必须询问用户"接下来应该做什么"**，并给出 2~4 个具体候选（见"收尾询问下一步"规则）。
 
 ### 4. 诚实性要求
 
@@ -60,41 +63,231 @@
 - ...
 -->
 
-### 「求职版」生成规程（口令触发）
-
-**触发词**：用户说「求职版」/「做个求职版」/「出一个求职版」/「生成求职版」时，执行本节。
-
-**核心原则：只改文字，不改功能；不维护第二份副本，不做增量同步。**
-毕设版（`E:/desktop/UnityXiangMu/BiShe/BiShe/`）是唯一开发主线。求职版不是长期并行的分支，
-而是在用户需要时一次性复制出来、只动两行文案的产物。**任何功能/美术/关卡改动都只做在毕设版**，
-做完不需要同步，等用户口令时再整体复制。
-
-生成步骤：
-
-1. 复制整个毕设工程目录到目标位置（默认 `E:/desktop/UnityXiangMu/StarEco/`），
-   排除 `Library/`、`Temp/`、`Logs/`、`obj/`、`.vs/`、`UserSettings/`。
-2. 改 `Assets/Scripts/UI/MainMenuPanel.cs` 的两处文案 —— **这是两版唯一的代码差异**：
-
-   | 位置 | 毕设版 | 求职版 |
-   | --- | --- | --- |
-   | 主菜单副标题（约 112 行） | `—— 动作冒险 · 毕业设计 ——` | `—— 动作冒险 · 环保教育 ——` |
-   | 右下角版本角标（约 173 行） | `Unity 2022.3 · 毕业设计` | `v1.0 · Unity 2022.3` |
-
-3. 删掉毕设专属材料：`GraduationProject/`、`AGENTS.md`、`docs/`（内部规格、交接文档）。
-4. 补上对外包装：`README.md`、`LICENSE`、`Docs/`（含 `Docs/images/` 截图、`Docs/AI-工作流.md`）。
-   求职版要**突出 AI 协同开发能力**，与毕设版「绝不能出现 AI 表述」的要求相反。
-5. 校验：`diff -w` 两版的 `MainMenuPanel.cs` 必须**只差上面那两行**；其余 `.cs` 文件应全部相同。
-   若发现别处也有差异，说明毕设版被改脏了，先报告再处理。
-
-明确不做：不建第二个仓库来长期维护、不逐次同步改动、不在求职版残留任何「毕业设计」字样。
-是否另外建 git 仓库、推送、打 Release，由用户当场决定，不默认执行。
-
 ### 回复语言
 
 - **强制使用简体中文回复**：所有返回给用户的回答（包括解释、报告、进度、结论）必须使用简体中文。
 - 即使用户用英文提问，也必须用简体中文回答。
 - 代码标识符（类名、方法名、命名空间、文件路径等）保持英文，不翻译。
 - 技术术语在中文中夹注英文原文即可（如"状态机（FSM）"）。
+
+### 美术资源生成：只用 Codex Image Router 插件
+
+- **生成/编辑任何图像一律用 `codex-image-router` 插件**（Codex Image Router，模型 `gpt-image-2.5-sunburst`）。
+  它对外提供 `image_generate`（文生图）和 `image_edit`（图生图/改图）两个工具，
+  配置读 `%APPDATA%\codex-image-router\config.json`（gateway 地址、模型、密钥都在这里）。
+- **禁止使用 Unity MCP（`unityMCP`）自带的 `generate_image` / `generate_model`**。
+  那条通道要求自己在编辑器里填第三方 API 密钥，且当前槽位里是 `nvapi-` 开头的 NVIDIA 密钥，
+  fal 侧一律返回 `HTTP 401`。不要为了它去改密钥、换 provider 或绕开报错。
+- Unity MCP 只用来做**引擎侧的事**：导入资源、跑装配菜单、读控制台、改场景/预制体等。
+  一句话区分：**出图找 Image Router，进 Unity 找 unityMCP。**
+- **保持角色一致性必须走 `image_edit`**：先定一张定妆图，后续每个动作都以定妆图为 `image_path`
+  做图生图；只靠 `image_generate` 纯文生图会导致各动作人物不一致。
+- 生成好的图必须落进工程 `Assets/Art/...`（绝对路径写入），再在 Unity 里刷新确认，不能只留在临时目录。
+- **出图用 `Tools/art-pipeline/gen_sheet.mjs`**（已封装 runImageEdit + 失败自动重试 + 固定留白预算 + 逐动作网格）：
+  `node Tools/art-pipeline/gen_sheet.mjs Player --only Idle Run`，不要每次手写调用脚本。
+- **生成后必须跑 `Tools/art-pipeline/verify_raw_grid.py`**，要求「贴边帧=0」。
+  AI 生图习惯把人物画到格子分割线上，切图时就会把人切掉一块 —— 这是「切到不该切的地方」的唯一根因，
+  不是切割尺寸设小了。贴边的处理顺序：①重试（提示词已内置 65%/85% 留白预算）②仍贴边就换网格
+  （少数几列×多几行 = 每格更宽；或加大画布，单边上限 3840）。
+- **同一角色的所有动作必须共用一套输出参数**：固定画格宽高 + 固定 target 身高 + `anchor='base'`
+  脚底锚点 + `fixed_canvas`。这是「动作切换时体型/画布零跳变」的硬性前提。
+  画格宽要按**最宽的那个动作**定（Player 实测冲刺/蹬墙需要 1183，故取 1200），
+  否则会为个别动作放宽画格，反而造成跨动作画布不一致。
+- 处理后必须跑 `python Tools/art-pipeline/check_frames.py <全部Clip> --ref Player_Idle`，要求结果 PASS。
+
+### ComfyUI 本地出图通道（2026-10-27 建立）
+
+**背景**：`codex-image-router` 那条路已不可用——`%APPDATA%\codex-image-router\config.json` 从未存在，
+且目前唯一能用的网关 `api.banban.plus/v1` 实测 `/models` 只返回 `deepseek-v4.1-flash-1017` 一个对话模型，
+**没有任何图像模型**，填了配置也出不了图。故改用本地 ComfyUI。
+
+**安装位置**：`C:\Software\ComfyUI`（源码 + 独立 venv，python 3.11.9）
+- 底模：`models/checkpoints/sd_xl_base_1.0.safetensors`（SDXL 1.0 base，6.94GB，2515 张量）
+- torch：`2.11.0+cu128` / torchvision `0.26.0+cu128`（**必须 cu128 及以上**：RTX 5060 是 Blackwell sm_120）
+- 系统 Python 3.11 里的 torch 是 `+cpu` 版，**不要**拿来跑 ComfyUI
+
+**启动**：`Tools/art-pipeline/comfy_start.cmd`（或直接跑 venv 的 python main.py --listen 127.0.0.1 --port 8188）
+启动后控制台出现 `To see the GUI go to: http://127.0.0.1:8188` 才算就绪，窗口不能关。
+
+**出图**：`python Tools/art-pipeline/comfy_gen.py`（纯标准库客户端，走 HTTP API，不依赖操作网页）
+- `--check`：探活 + 列底模，装完第一件事先跑这个
+- `--prompt` / `--negative` / `--size` / `--steps` / `--cfg` / `--seed`
+- `--sprite-grid 2x2`：往提示词追加白底+留白+不画格线的约束
+- `--ref 图 --denoise 0.5`：图生图，保角色一致性
+- `--workflow xx.json`：套用 ComfyUI 界面里调好的工作流（Save (API Format) 导出），只替换提示词/尺寸/种子
+- 产物落 `--out` 指定路径，之后照旧走 `slice_actions.py → process_sheets.py → check_frames.py`
+
+**抠图（已解决背景问题）**：`Tools/art-pipeline/cutout_bg.py` + 独立 venv `C:\Software\cutout-venv`（rembg 2.0.86 + onnxruntime CPU）
+- **不能**把 rembg 装进系统 Python（会动美术管线的 numpy/scipy），也**不能**装进 ComfyUI 的 venv（崩了要重下 2.7GB torch）
+- 默认模型 `isnet-anime`（卡通角色专用）。实测对比：`isnet-anime` 半透明边缘 1.17% / 内部空洞 0；
+  `u2net` 硬边 0%；`isnet-general-use` 只留 9.2% 不透明面积，把白色机体删掉一大块 → **不要用**
+- 一键用法：`comfy_gen.py --cutout`（出图后自动原地转透明底，原图备份为 `.orig.png`）
+- 单独用：`C:/Software/cutout-venv/Scripts/python.exe cutout_bg.py --in 图.png [--out 结果.png]`
+- **硬约束：只改 alpha，绝不裁剪画布**。网格切分靠「画布尺寸 ÷ 列数」算格子边界，裁剪会让所有坐标错位
+- 权重放 `~/.u2net/`，从 `hf-mirror.com/tomjackson2023/rembg` 下（GitHub releases 直连不了）。
+  已有 `u2net.onnx` / `isnet-anime.onnx` / `isnet-general-use.onnx`
+
+**两个已实测的硬限制（别指望提示词解决）**：
+1. **SDXL base 出不了精灵网格**。给 `--sprite-grid 2x2` 也只会画出**单个角色占满整幅**。
+   网格要靠 LoRA、分区条件或逐帧生成后拼图——这与「逐帧独立生成范式」的结论一致。
+2. **脚下的灰色投影去不掉**（已成抠图后残留）。SDXL 默认带投影，抠图会把它当主体边缘保留。
+   试过「按亮度窗口剔除下部中性灰」的方案并已放弃：实测清掉 3203px 却没减少目标灰带（仅 9%），
+   反而在腿部灰色明暗过渡处打出 16 个空洞共 2282px → 净效果是破坏画面。
+   **但要区分影响**：实测两个样本里投影**都没有越过脚底**（灰带最低点与脚底同一行），
+   所以不破坏 `process_sheets` 的脚底基线，属观感瑕疵而非功能问题。
+   要彻底去投影必须在 ComfyUI 端用专门去背/遮罩节点，不要抠图后用颜色剔除。
+
+**网络经验**：`hf-mirror.com`（模型）实测 38MB/s；PyPI **清华源对部分 comfyui-* 包 404，用阿里云源**；
+`download.pytorch.org` 可直连但会中断续传。pip 装大包时可能报
+`WinError 5 拒绝访问 ... RECORD.tmp -> RECORD`（Defender 锁文件），**直接重跑同一命令即可**，第二轮通常就过。
+
+### 美术资源两种模式：一图一动作 / 一图多动作（自动识别）
+
+**生成端 `Tools/art-pipeline/gen_sheet.mjs` 两种模式：**
+
+- `--layout single`（默认）= 一图一动作，输出 `<角色>_<动作>_raw.png`。
+- `--layout multi --only Attack01 Attack02` = 一图多动作：**一个动作占一整行**，
+  输出 `<角色>_Attack01+Attack02_raw.png`（名字用 `+` 连接，就是处理端的模式线索）。
+  所选动作帧数必须一致，否则直接报错提示改用 single。
+  每格基准 384x768，画布超 3840 单边上限会自动压缩并打印 `[warn]`（密度下降要知会用户）。
+- 只有 `image_edit` + 定妆图，两种模式都一样，角色一致性靠定妆图，不靠文生图。
+
+**处理端唯一入口：`python Tools/art-pipeline/auto_pipeline.py <角色> [--only ...] [--vision] [--scan]`**
+（判定 → 选模式 → 切分 → process_sheets → verify_raw_grid 自检，一条命令走完）
+
+判定优先级（先准后猜，不许反过来）：
+
+1. **文件名含 `+`** → 多动作，按行带均分给每个动作（`Player_Attack01+Attack02_raw.png`）。
+2. **名字在 `process_sheets.SPECS` 注册表里** → 单动作，按注册参数处理。
+   **注册表优先，不问识图** —— 实测识图模型会把一套连招的第二段也算成一个"动作"
+   （Attack02 被拆成"踢腿 1-4 / 出拳 5-8"），照它切会把一个 Clip 劈成两个。
+3. 都不命中 → 调 `detect_layout.py` 的识图层判断；单段走单动作（参数从同角色参考条目派生），
+   多段则按识图给的帧区间切分，切出来的名字是 `<原名>_A1 / _A2`，需要人工在 SPECS 里登记或改名。
+
+**相关工具：**
+
+- `slice_actions.py --src 大图 --layout layout.json`：纯像素裁剪，按行带×列带切成多条 raw，
+  不改缩放、不抠图；自带越界/重叠/空格子校验。
+- `detect_layout.py --src x.png [--json] [--no-vision]`：布局识别。几何层算网格与剪影跳变，
+  语义层问多模态模型"这张图里有几个动作"。**调 gateway 时 `max_tokens` 必须 ≥ 12000** ——
+  该模型的思考过程也计入 completion，给小了只会输出 `reasoning_content`、`content` 为空。
+
+### 新流程：逐帧生成 → 拼版 → 复用老管线（2026-10-27 建立，已验证等价）
+
+老两种模式（single / multi）的入口都是「**已经排好帧的网格图**」。但现在出图范式改成
+逐帧独立生成（整网格文生图无法控制每帧姿态），产出是 N 张单帧，所以中间多了一环拼版。
+
+```
+ComfyUI 出图（灰底，一帧一图）
+  ↓ cutout_bg.py         rembg isnet-anime 抠成透明底（质量优于阈值抠图）
+  ↓ compose_sheet.py     把 N 张单帧摆回均匀网格 raw
+  ↓ process_sheets.py    抠像/去白边/连通域清理/身高归一/基线对齐  ← 老代码，一行没改
+  ├→ Frames/{动作}/{动作}_00..NN.png   ← Unity .anim 引用这个
+  └→ Sheets/{动作}_sheet.png           ← 精灵表，副产物
+```
+
+**`compose_sheet.py` 只做摆格子，不做任何图像处理。**
+
+```bash
+python Tools/art-pipeline/compose_sheet.py --frames <目录|glob> --name Player_Run
+python .../compose_sheet.py --frames ... --name Player_Run --cols 4     # 手动定列数
+python .../compose_sheet.py --frames ... --name Player_Run --run-pipeline  # 拼完直接过管线
+python .../compose_sheet.py --frames ... --name Player_Run --dry       # 只看方案不落盘
+```
+
+默认网格规则：**空格最少 → 横向优先(cols>=rows) → 不超 4096 → 接近正方**。
+横向优先是迁就既有 22 张 sheet 的习惯（Attack01 4列x2行、Attack03 3列x3行），
+单纯求「最方」会把 8 帧排成 2列x4行，与既有素材不一致。
+
+**实测证据（2026-10-27，Player_Attack01）**：原 raw 拆成 8 张单帧 → 拼回 → 与原始 raw
+逐像素差 **0**；再走 process_sheets，产出与仓库现有 1 张 sheet + 8 张单帧**全部差 0**。
+即新流程与老流程**完全等价**，可无缝替换。
+
+**三个必须知道的坑：**
+
+1. **`process_sheets` 不幂等**。拿已经处理过的成品帧（1200x833 透明底）再喂一遍，
+   结果与成品不同（alpha 通道差 255，26.6% 像素变化）——它会再裁一次、再归一一次。
+   所以新流程**必须喂 ComfyUI 的原始出图**，绝不能喂 `Frames/` 里已完工的帧。
+2. **拼版必须用 `Image.paste`，不能用 `alpha_composite`**。后者会把 alpha=0 像素的 RGB
+   清成 (0,0,0)，肉眼无差，但 `process_sheets` 的 `BLACK_THR=60` 近黑判据会把它们
+   当成「黑底」，可能误判走错抠图分支。实测 paste 方案透明区 RGB 原样保留。
+3. **每帧要居中贴在自己的格子里、不许跨格**。process_sheets 按 cols/rows 均匀切格，
+   切完自己做居中与基线对齐；贴图贴太靠边会被连通域清理误判成碎影。
+
+**老两种模式（single / multi）代码全部保留未动**，可继续用于网格图输入。
+
+### Unity 装配菜单：Player Animation 会重建预制体
+
+- `StarEco/Setup/Player Animation` 内部是 `new GameObject("Player")` 从零重建并覆盖
+  `Assets/Prefabs/Player/Player.prefab`，只会写入 SpriteRenderer / Rigidbody2D / BoxCollider2D /
+  Animator / PlayerController / PlayerAnimatorDriver。
+- **历史事故（2026-10-26）**：跑过一次这个菜单后，PlayerCombat / AttackHitbox / SprayController /
+  PurifyTank 全被抹掉 → 按攻击键毫无反应（`PlayerStates` 里 `Player.Combat != null` 永远为 false），
+  同时 `HUDController.RefreshHearts` 每帧 NullReferenceException。
+- 现已在 `PlayerAnimationSetup.BuildPrefab()` 末尾自动调用 `PlayerPrefabSetup.Run()` 复原组件。
+- 规矩：**改完美术要重跑装配菜单后，必须检查 Player 预制体上这 5 个组件是否都在**
+  （PlayerController / PlayerAnimatorDriver / PlayerCombat / AttackHitbox / SprayController），
+  并确认控制台无 error，再交给用户试玩。
+
+### 双项目同步（毕设 + 求职展示）
+
+- 本工程有两份内容几乎相同的 Unity 项目，**任何改动必须两边同步**：
+  - 毕设版：`e:\desktop\UnityXiangMu\BiShe\BiShe`（当前工作区，Unity 工程目录嵌套一层）
+  - 求职展示版：`E:\desktop\UnityXiangMu\StarEco`（Unity 工程目录直接在根下）
+
+> **状态（2026-10-31 实测）**：求职版目录当前**已不存在**——已被改名为
+> `E:\desktop\UnityXiangMu\_已删除_求职版_StarEco_20261030_1658`，工作区里只剩毕设版一份工程。
+> 本节规则在求职版按「求职版」生成规程重新生成后重新生效；在此之前不必再做双份同步。
+- **换行符必须归一后比对**：毕设版是 LF，StarEco 是 CRLF，直接比哈希会把全部 169 个脚本
+  误判成"有差异"。比对前统一 `.Replace("\r\n","\n")`（2026-10-29 实测：原 140+ 个"差异"归一后
+  只剩 8 个）。
+- **已核实的实质差异（改动涉及时逐条确认，不要盲目覆盖）**：
+  | 文件 | 差异 |
+  |---|---|
+  | `Assets/Scenes/Level03.unity` | 毕设版有 `Checkpoint1/2`；求职版换成 `StairsL/StairsR`。**另外求职版右端 x=21.5 的墙是 `BossGateWall`**（`GarbagePile(_targetId=BossGateWall, _blocksPath=1)` + `BossGate` 脚本，做 Boss 登场演出）；毕设版没有这个闸门，同位置是普通净化墙 `GarbageWall_03R`（`_targetId=GarbageWall_03R`）。改动别覆盖掉求职版的 Boss 登场 |
+  | `Assets/Scripts/UI/MainMenuPanel.cs` | 有意不同：毕设副标题 `—— 动作冒险 · 毕业设计 ——`、角标 `Unity 2022.3 · 毕业设计`（代码 112/173 行实测）；求职版 `—— 动作冒险 · 环保教育 ——`、`v1.0 · Unity 2022.3`。**除此之外该文件必须两边一致** |
+  | `Assets/Scripts/Level/RescueTarget.cs`、`UI/DialogueTrigger.cs`、`UI/SignboardTrigger.cs` | 已核对（2026-10-30）两边**完全一致**，历史上那段「毕设多出 `isPlaying` 分支」的差异已被清除 |
+  | `Assets/Prefabs/Player/Player.prefab` | 已核对（2026-10-30）两边**语义完全一致**（`ToolAnchor`、命中盒位置、层、排序号全部相同），只剩各有各的本地 fileID；比对时必须忽略 `fileID`，否则会误判 |
+  | `Assets/Scenes/Level01.unity`、`Level02.unity` | 场景内容有差异（实例覆盖块不同），改动前先确认哪边是基准 |
+- 同步做法：改完一边，立刻把同一处改动应用到另一边（脚本直接同文替换；`.unity` 场景用
+  `git diff --no-index` 定位到具体对象后再操作），改动后归一换行符再比对，确认目标文件两边一致
+  （上表"有意保留的差异"除外）。
+- 求职展示版的 Unity 编辑器通常不打开，**改动无法编译验证**，必须在报告里注明"StarEco 侧未
+  编译验证"，不得宣称已运行通过。
+- **判定标准（用户 2026-10-30 明确）：两份项目只允许「文案」不同，其余必须一致。**
+  也就是说，发现任何代码/配置/预制体的实质差异，都要当成 bug 同步掉，不能当成"各有各的设计"。
+  目前唯一允许的文案差异是 `MainMenuPanel.cs` 的副标题与版本号那一行。
+- 全量核对命令（忽略换行与 fileID）：先 `.Replace("\r\n","\n")` 比文本，再把 `fileID` /
+  `m_CorrespondingSourceObject` / `m_PrefabInstance` / `serializedVersion` 行剔掉再比，
+  这样 169 个脚本 + 全部 `.asset/.json/.shader/.asmdef` 的真实差异只剩 `MainMenuPanel.cs`。
+
+### 多车道并行协作：严格按车道路径隔离，不许越界
+
+多个 AI 车道同时在同一个工程里干活时，**路径归属就是权限边界**，不是"参考范围"。
+
+| 车道 | 认领路径 |
+|---|---|
+| A 场景线 | `Assets/Scenes/**`、`Assets/Prefabs/**`、`Assets/Settings/**`、`Assets/Resources/**`（除 `dialogues.json`）、`ProjectSettings/**` |
+| B 代码线 | `Assets/Scripts/**`（含 `.cs.meta`） |
+| C 美术管线线 | `Assets/Art/**`、`Assets/Animations/**`、`Tools/art-pipeline/**` |
+
+**六条硬规矩：**
+
+1. **只写自己车道内的路径，别人的路径一律只读**——读、Grep、`git diff` 都可以，写一个字节都不行。
+2. **不许以"顺手修一下""这个 bug 我也看见了"为理由跨道写。** 发现问题就在看板登记、交归属人处理；自己动手等于制造冲突。
+3. **要改别人的文件**：看板发 `[CLAIM-REQ]` → 归属人回 `[CLAIM-OK]` → 才可动手。**没有 `[CLAIM-OK]` 一律视为越界**，即使改动本身是对的。
+4. **共享区**（`GraduationProject/**`、`Assets/Resources/Data/dialogues.json`、看板文件本身）改动前先在看板登一行，避免两人写同一段。
+5. **冻结区任何人不得动**（需用户单独点头）：`Assets/Art/Player/**` 角色帧、`Assets/Audio/**`、`PlayerStateMachine` / `PlayerStates` / `PlayerStateBase` 状态机核心。
+6. **美术管线线零编辑器依赖**：不调用 Unity MCP 的任何写操作，不碰 `.unity` / `.prefab` / `.cs`；需要引擎侧落地（挂预制体、改场景、重导入）时交 A。
+
+**自证方式（宣布完成前必做）**：跑一次 `git status`，逐条核对本轮改过的路径是否全在自己车道内。
+
+- 出现不属于本车道的未提交改动 → **不要自行"顺手改回"或"顺手补完"**，先在看板登记：文件路径 + 修改时间 + `git diff` 摘要 + 自己的判断（是否自己所为）。
+- 归属不明的改动**保持原样不动**，由用户裁决，避免二次覆盖。
+
+> 历史事故（2026-10-31）：工作区同时出现 `Level/VentHazard.cs`、`Boss/BossHealthBar.cs`、
+> `Boss/BossGate.cs` 三处未提交改动（三处都属 B 线认领的 `Assets/Scripts/**`），而 B 在板上明确声明
+> 「我未写入任何代码」→ 归属冲突无据可查，只能靠用户裁决。根因就是当时没有成文的越界判定与自证流程。
 
 ### 选项推荐规范（社区主流标记）
 
@@ -107,7 +300,7 @@
 
 ### 收尾询问下一步（必做）
 
-- 触发条件：需求对齐报告输出之后，即本轮任务收尾时。不得在报告结束就沉默等待，也不得擅自开工下一项。
+- 触发条件：需求对齐报告输出之后，即本轮任务收尾时。不得在报告结束就沉默等待，也不得擅自开工下一项。（与 §一.3 第 5、6 条并列执行）
 - 必须主动询问用户"接下来应该做什么"，并给出 **2~4 个具体可执行的候选**，每个候选写清"做什么 + 大致代价/产出"，不用模糊词（如"继续优化""再看看"）。
 - **呈现方式强制用可点击的选择题组件**（如 AskUserQuestion 这类会渲染成按钮卡片的工具），不要用纯文字编号列表：用户要能直接点，而不是手打序号。每个候选填 `label`（≤5 字的短标题）+ `description`（做什么 + 代价/产出）；候选最多 4 个，超过则合并同类项后再问一轮。
 - 候选来源（按优先级）：
@@ -142,3 +335,38 @@
 3. 模式 B 下遇到**不可逆或有破坏性**的操作（删文件、覆盖已有工程资产、发布上线等），仍必须先停下确认，不算违反自动模式。
 4. 模式 B 下每个决策点的选择都要在最终回复里列出清单（决策点 → 采用了什么 → 为什么是主流），方便用户事后复盘。
 5. 用户随时可以在任务进行到一半时插话切换，切换后立即按新模式继续剩余工作，不重跑已完成部分。
+
+### 「求职版」生成规程（口令触发）
+
+**触发词**：用户说「求职版」/「做个求职版」/「出一个求职版」/「生成求职版」时，执行本节。
+
+**核心原则：只改文字，不改功能；不维护第二份副本，不做增量同步。**
+毕设版（`E:/desktop/UnityXiangMu/BiShe/BiShe/`）是唯一开发主线。求职版不是长期并行的分支，
+而是在用户需要时一次性复制出来、只动两行文案的产物。**任何功能/美术/关卡改动都只做在毕设版**，
+做完不需要同步，等用户口令时再整体复制。
+
+> 与「双项目同步（毕设 + 求职展示）」小节并存：那节讲的是**当前已存在的两份工程**如何保持一致，
+> 本节讲的是**重新生成**求职版时怎么复制。两节如有冲突，以「双项目同步」小节的实测差异表为准。
+
+生成步骤：
+
+1. 复制整个毕设工程目录到目标位置（默认 `E:/desktop/UnityXiangMu/StarEco/`），
+   排除 `Library/`、`Temp/`、`Logs/`、`obj/`、`.vs/`、`UserSettings/`。
+2. 改 `Assets/Scripts/UI/MainMenuPanel.cs` 的两处文案 —— **这是两版唯一的代码差异**：
+
+   | 位置 | 毕设版 | 求职版 |
+   | --- | --- | --- |
+   | 主菜单副标题（约 112 行） | `—— 动作冒险 · 毕业设计 ——` | `—— 动作冒险 · 环保教育 ——` |
+   | 右下角版本角标（约 173 行） | `Unity 2022.3 · 毕业设计` | `v1.0 · Unity 2022.3` |
+
+   > 上表已于 2026-10-31 对照 `MainMenuPanel.cs:112` / `:173` 的实际字符串核实（毕设版为
+   > `—— 动作冒险 · 毕业设计 ——` 与 `Unity 2022.3 · 毕业设计`）。此前「双项目同步」小节里
+   > 写的「Unity 2021.3 · M7 原型」是过期值，已同步更正。
+3. 删掉毕设专属材料：`GraduationProject/`、`AGENTS.md`、`docs/`（内部规格、交接文档）。
+4. 补上对外包装：`README.md`、`LICENSE`、`Docs/`（含 `Docs/images/` 截图、`Docs/AI-工作流.md`）。
+   求职版要**突出 AI 协同开发能力**，与毕设版「绝不能出现 AI 表述」的要求相反。
+5. 校验：`diff -w` 两版的 `MainMenuPanel.cs` 必须**只差上面那两行**；其余 `.cs` 文件应全部相同。
+   若发现别处也有差异，说明毕设版被改脏了，先报告再处理。
+
+明确不做：不建第二个仓库来长期维护、不逐次同步改动、不在求职版残留任何「毕业设计」字样。
+是否另外建 git 仓库、推送、打 Release，由用户当场决定，不默认执行。
