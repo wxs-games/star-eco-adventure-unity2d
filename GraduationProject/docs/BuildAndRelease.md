@@ -124,22 +124,24 @@ Builds/<YYYY-MM-DD>/build.log
 
 > 第 5~7 项是**三关回归**，也是 `TestPlan.md` §2.4 的同一份清单。构建后不跑这三关，等于没验。
 
-### 4.1 最近一次实测记录（2026-10-31 00:18，含 P0 修复后重打）
+### 4.1 最近一次实测记录（2026-10-31 00:34，同日第二次：含结算期 UI 修复）
 
 | 项 | 实测值 |
 |---|---|
 | 构建方式 | `manage_build`，target=windows64，options=`clean_build`，development=false |
 | 输出 | `Builds/2026-10-31/StarEco.exe`（按 §3.3 的日期目录约定） |
-| 耗时 | **55.3 s**（其中 `ProducePlayerScriptAssemblies` 33.4s，占大头） |
-| 产物大小 | **330.37 MB** |
+| 耗时 | **55.3 s**（00:18 第一次）/ **57.1 s**（00:34 第二次，同日覆盖重建） |
+| 产物大小 | **330.37 MB**（两次一致） |
 | 结果 | **Result: Success**，控制台 0 error |
 | 场景打包 | ✅ `level0/level1/level2/level3` 四个全在 `StarEco_Data/` 下 |
 | 程序集 | `StarEco.Runtime.dll` + `MCPForUnity.Runtime.dll`（后者不该在，见 §10 B-05） |
-| 无窗口冒烟 | `StarEco.exe -batchmode -nographics -quit` → `Loaded All Assemblies, in 0.132 seconds` ✓ → `[UIUtility] 场景缺少 EventSystem，已自动创建` ✓ → `[UIManager] UI 管理器就绪` ✓ |
+| 无窗口冒烟 | `StarEco.exe -batchmode -nographics -quit` → `Loaded All Assemblies, in 0.193 seconds` ✓ → `[UIUtility] 场景缺少 EventSystem，已自动创建` ✓ → `[UIManager] UI 管理器就绪` ✓（`smoke2.log`） |
 | 冒烟中的 shader error | 5 条 `shader is not supported on this GPU`（Hidden/VoxelizeShader、Sprites/Default、Sprites/Mask、GUI/Text、UI/Default）——**`-nographics` 用 NullGfxDevice 的必然结果，不是打包缺 shader**，真实 GPU 下不会出现 |
 | 上一版 | `Builds/2026-10-30/`（62.4s / 330.43MB，P0 修复前），保留不删，见 §8 |
 
-本轮相对于 v1.0.0（`7ebb3b1`）的代码变化：`VentHazard` 只结算玩家（P0）、`BossHealthBar` 进战区才显示、新增 `UI/ToastLayer`、`EnemyAnimatorDriver` 缺参数不再刷屏。
+本轮相对于 v1.0.0（`7ebb3b1`）的代码变化：`VentHazard` 只结算玩家（P0）、`BossHealthBar` 进战区才显示、新增 `UI/ToastLayer`、`EnemyAnimatorDriver` 缺参数不再刷屏、结算面板弹出时收血条 + 抑制底部 toast。
+
+> 同日被打过两次：00:18 的 v1.0.1 已被 00:34 的 v1.0.2（`+987dc69`）覆盖（`clean_build`），故本文耗时两行并列。要回退到 P0 修复前请用 `Builds/2026-10-30/`。
 
 > 无窗口冒烟只能证明「能启动、能加载场景、能初始化管理器」，**不能替代真机通关**。第 5~7 项仍需人工跑。
 
