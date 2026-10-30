@@ -222,6 +222,8 @@ namespace StarEco.UI
 
         private void OnObjectiveCompleted(ObjectiveCompletedEvent evt)
         {
+            // 目标完成反馈（B1）：一声拾取音，作为目标推进的可听信号
+            AudioManager.Instance?.PlaySfx(SfxId.Pickup);
             // 目标栏已移除（2026-10-30），这里只保留一条调试日志
             Debug.Log($"[HUD] 目标完成：{evt.Label}");
         }

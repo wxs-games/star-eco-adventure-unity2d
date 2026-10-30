@@ -1,4 +1,5 @@
 using UnityEngine;
+using StarEco.Framework;
 using StarEco.Level;
 
 namespace StarEco.Eco
@@ -83,6 +84,10 @@ namespace StarEco.Eco
             {
                 _sprite.enabled = false;
             }
+
+            // 拾取反馈（B2）：统一用拾取音。项目暂无通用 toast 机制
+            // （DialoguePanel 的提示仅服务于对话面板），文字提示留 TODO。
+            AudioManager.Instance?.PlaySfx(SfxId.Pickup);
 
             if (isNew)
             {
