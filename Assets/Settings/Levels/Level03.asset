@@ -17,8 +17,8 @@ MonoBehaviour:
   SpawnPoint: {x: -12, y: 2}
   Objectives:
   - Type: 0
-    Required: 3
-    Label: "\u6E05\u7406\u5DE5\u5382\u6C61\u67D3\u6E90"
+    Required: 4
+    Label: "\u6E05\u7406\u5DE5\u5382\u6C61\u67D3\u6E90\uFF08\u542B\u5C01\u9501\u5899\uFF09"
   - Type: 3
     Required: 1
     Label: "\u51FB\u8D25\u5DE5\u5382\u6C61\u67D3\u6838\u5FC3 Boss01"
@@ -27,6 +27,11 @@ MonoBehaviour:
     Anchors: []
     MaxAlive: 1
     BaseInterval: 10
+    RequiredObjectiveIndex: -1
+  - Prefab: {fileID: 2027564446630586712, guid: a8f25c3ad6182e34e854453f96a46b13, type: 3}
+    Anchors: []
+    MaxAlive: 1
+    BaseInterval: 12
     RequiredObjectiveIndex: -1
   Star3Purity: 100
   Star2Purity: 60

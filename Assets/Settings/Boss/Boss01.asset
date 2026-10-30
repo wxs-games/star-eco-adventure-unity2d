@@ -44,14 +44,25 @@ MonoBehaviour:
   Phase2HpPercent: 60
   Phase3HpPercent: 30
   PhaseTransitionSeconds: 0.8
-  AttackARange: 2.2
+  AttackARange: 2.8
   AttackAInterval: 2
+  AttackAWindupSeconds: 0.2
+  AttackAActiveSeconds: 0.62
+  AttackARecoverSeconds: 0.5
   AttackBInterval: 3
+  AttackBWindupSeconds: 1.1
+  AttackBActiveSeconds: 0.6
+  AttackBRecoverSeconds: 0.5
   ProjectileCount: 3
   ProjectileSpreadDegrees: 24
   SpecialInterval: 6
   SpecialProjectileCount: 5
   SpecialSpreadDegrees: 140
+  SpecialWindupSeconds: 1.4
+  SpecialActiveSeconds: 0.62
+  SpecialRecoverSeconds: 0.35
+  PursueDelaySeconds: 1.8
+  ChaseBurstSeconds: 1.1
   EnrageSpeedMultiplier: 1.3
   Phase2IntervalScale: 0.8
   Phase3IntervalScale: 0.7

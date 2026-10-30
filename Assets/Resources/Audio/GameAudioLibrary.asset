@@ -49,6 +49,14 @@ MonoBehaviour:
     Clip: {fileID: 8300000, guid: 5fc7b16e3a0d16843a1dada26d6af541, type: 3}
   - Id: 17
     Clip: {fileID: 8300000, guid: 98c6bc28da33e894ab2b1c0faafe8275, type: 3}
+  - Id: 18
+    Clip: {fileID: 8300000, guid: 6a53071fbd6960c489213257a6dfe1a0, type: 3}
+  - Id: 19
+    Clip: {fileID: 8300000, guid: a0389920a7a55ef4d9c05270009e2cdb, type: 3}
+  - Id: 20
+    Clip: {fileID: 8300000, guid: f11a950b859498444b7ed90ce569b085, type: 3}
+  - Id: 21
+    Clip: {fileID: 8300000, guid: 330bb30248d5b584bba4f79e8d07dc10, type: 3}
   TitleBgm: {fileID: 8300000, guid: 1ecf34b9ad9e09545b6f63c692724368, type: 3}
   Level01Bgm: {fileID: 8300000, guid: 9f88e1792250f5149845a479efe86c5c, type: 3}
   Level02Bgm: {fileID: 8300000, guid: 781829714af14a84b942c94cdbe36620, type: 3}

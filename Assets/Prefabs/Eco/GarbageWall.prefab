@@ -100,7 +100,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _config: {fileID: 11400000, guid: 000763bf7438471499478357ff388c71, type: 2}
   _fxPurifyPrefab: {fileID: 2503825716971219817, guid: 12ac78a39c003c44192709a11ab7c706, type: 3}
-  _cleanSprite: {fileID: 0}
+  _cleanSprite: {fileID: 21300000, guid: b4f7d2e19c6a4a3f8e5d0c7b9a2f6143, type: 3}
   _purifyRequired: -1
   _purityValue: -1
   _blocksPath: 1

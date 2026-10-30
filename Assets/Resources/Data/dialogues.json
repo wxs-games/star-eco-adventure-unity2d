@@ -1,94 +1,304 @@
 {
-    "Dialogues": [
-        {
-            "Id": "ava_intro",
-            "Once": false,
-            "Entries": [
-                {
-                    "Speaker": "生态守卫者 · 艾娃",
-                    "AvatarTint": "#7CFC98",
-                    "Text": "欢迎来到第一颗需要帮助的星球。这里的空气曾经很清新，直到塑料垃圾堆成了山。",
-                    "EventId": ""
-                },
-                {
-                    "Speaker": "生态守卫者 · 艾娃",
-                    "AvatarTint": "#7CFC98",
-                    "Text": "别担心，你手里这把净化喷壶就是最好的工具。靠近垃圾堆，按住 K 喷洒净化剂就行了。",
-                    "EventId": ""
-                },
-                {
-                    "Speaker": "生态守卫者 · 艾娃",
-                    "AvatarTint": "#7CFC98",
-                    "Text": "看到那些挡路的大家伙了吗？长按 L 蓄力，蓄满后松开，一次净化波能清掉一整片。",
-                    "EventId": ""
-                },
-                {
-                    "Speaker": "生态守卫者 · 艾娃",
-                    "AvatarTint": "#7CFC98",
-                    "Text": "路上发光的卡片是环保知识，捡起来会收录进图鉴。收集它们，你会更懂这颗星球病在哪里。",
-                    "EventId": ""
-                },
-                {
-                    "Speaker": "生态守卫者 · 艾娃",
-                    "AvatarTint": "#7CFC98",
-                    "Text": "污染生物会主动攻击你。按 J 挥动夹钳三连击，把它们打退就行，不必赶尽杀绝。",
-                    "EventId": ""
-                },
-                {
-                    "Speaker": "生态守卫者 · 艾娃",
-                    "AvatarTint": "#7CFC98",
-                    "Text": "顺着亮起的路标走吧。当净化值达到百分之百，这颗星球就会重新呼吸。",
-                    "EventId": ""
-                }
-            ]
-        },
-        {
-            "Id": "ava_intro_repeat",
-            "Once": false,
-            "Entries": [
-                {
-                    "Speaker": "生态守卫者 · 艾娃",
-                    "AvatarTint": "#7CFC98",
-                    "Text": "又见面啦。先继续清理附近的塑料垃圾，净化值涨上去之后，这颗星球的呼吸会慢慢恢复。",
-                    "EventId": ""
-                },
-                {
-                    "Speaker": "生态守卫者 · 艾娃",
-                    "AvatarTint": "#7CFC98",
-                    "Text": "如果前面有大片障碍，就长按 L 蓄力；如果有污染生物靠近，就按 J 先把它们击退。",
-                    "EventId": ""
-                },
-                {
-                    "Speaker": "生态守卫者 · 艾娃",
-                    "AvatarTint": "#7CFC98",
-                    "Text": "准备好了就继续出发吧，我会在这里看着你把这颗星球救回来。",
-                    "EventId": ""
-                }
-            ]
-        },
-        {
-            "Id": "signboard_plastic",
-            "Once": false,
-            "Entries": [
-                {
-                    "Speaker": "提示牌",
-                    "AvatarTint": "#8ECFFF",
-                    "Text": "【星球监测站 · 一号提示牌】塑料污染是这颗星球最大的伤口。一个塑料瓶需要约 450 年才能自然分解，分解成的微塑料会渗入土壤与地下水。监测站建议：任何可辨认材质的塑料制品，请优先使用净化喷壶处理，切勿直接焚烧——焚烧产生的二噁英毒性更强。",
-                    "EventId": ""
-                }
-            ]
-        },
-        {
-            "Id": "signboard_recycle",
-            "Once": false,
-            "Entries": [
-                {
-                    "Speaker": "提示牌",
-                    "AvatarTint": "#8ECFFF",
-                    "Text": "【星球监测站 · 二号提示牌】可回收物识别口诀：一看材质、二看清洁、三看标志。1 号 PET 饮料瓶、5 号 PP 餐盒最常见的回收材质；沾染油污的纸盒与复合软包则难以再生。本监测站设有三个分类投放口，净化完成的物资将运往轨道回收站。",
-                    "EventId": ""
-                }
-            ]
-        }
-    ]
+ "Dialogues": [
+  {
+   "Id": "ava_intro",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "欢迎来到第一颗需要帮助的星球。这里的空气曾经很清新，直到塑料垃圾堆成了山。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "别担心，你手里这把净化喷壶就是最好的工具。靠近垃圾堆，按住 K 喷洒净化剂就行了。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "看到那些挡路的大家伙了吗？长按 L 蓄力，蓄满后松开，一次净化波能清掉一整片。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "路上发光的卡片是环保知识，捡起来会收录进图鉴。收集它们，你会更懂这颗星球病在哪里。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "污染生物会主动攻击你。按 J 挥动夹钳三连击，把它们打退就行，不必赶尽杀绝。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "顺着亮起的路标走吧。当净化值达到百分之百，这颗星球就会重新呼吸。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "ava_intro_repeat",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "又见面啦。先继续清理附近的塑料垃圾，净化值涨上去之后，这颗星球的呼吸会慢慢恢复。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "如果前面有大片障碍，就长按 L 蓄力；如果有污染生物靠近，就按 J 先把它们击退。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "准备好了就继续出发吧，我会在这里看着你把这颗星球救回来。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "signboard_plastic",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "提示牌",
+     "AvatarTint": "#8ECFFF",
+     "Text": "【星球监测站 · 一号提示牌】塑料污染是这颗星球最大的伤口。一个塑料瓶需要约 450 年才能自然分解，分解成的微塑料会渗入土壤与地下水。监测站建议：任何可辨认材质的塑料制品，请优先使用净化喷壶处理，切勿直接焚烧——焚烧产生的二噁英毒性更强。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "signboard_recycle",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "提示牌",
+     "AvatarTint": "#8ECFFF",
+     "Text": "【星球监测站 · 二号提示牌】可回收物识别口诀：一看材质、二看清洁、三看标志。1 号 PET 饮料瓶、5 号 PP 餐盒最常见的回收材质；沾染油污的纸盒与复合软包则难以再生。本监测站设有三个分类投放口，净化完成的物资将运往轨道回收站。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "ava_lever_hint",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "嗡——检测到访客信号。前面那片地刺还竖着，是当年防私闯的老机关，锈成这样都没坏。我盯着它看了几十年了。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "我的处理器里存着旧图纸：铁门有锁就有钥匙。你抬头瞅瞅，高处那根拉杆锈得发亮，像是等着谁去扳它。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "我这履带上不了高台，你年轻腿脚利索，要是够得着就试试——说不定动一动，底下的路就通了。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "ava_lever_hint_repeat",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "目标仍未通过？那根拉杆还挂在高处呢。够得着就去扳一下，别老在原地转悠。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "地刺不会自己缩回去——多半是上面的机关一直没被碰过。我的独眼盯了它几十年，错不了。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "ava_factory_gate",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "前面那排地刺是厂区封锁线，走过去必死。别硬闯，抬头看那块高台——机关都在高处。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "上去扳一下拉杆，地刺就会缩回土里。地上那些碎石和芦苇也别绕着走，蓄力一波能连着清掉。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "再往前就是污染核心的机房了。它有三段形态，别贪刀，看清它落地再出手。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "ava_factory_gate_repeat",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "机关还在那个高台上，别在地刺前面来回试探了。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "过了这一段就是机房，准备好了再进去。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "ava_forest_intro",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "上一颗星球的记录已经归档了。这里的垃圾不是本地攒出来的——它们是顺着河从上冲下来的。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "这里和上一颗不一样。你先听——没有虫鸣，也没有风声，因为水先没了。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "森林的用处是存水。树根把雨水留住，再慢慢放出来。河一旦被堵死，整片林子就开始渴。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "前面那条河是这里唯一的动脉。把堵塞点清掉，水位会涨，木筏就能浮起来。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "ava_forest_intro_repeat",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "堵塞点还在河里。清掉它们，水位才会涨。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "对岸有几只被困住的生物，靠近就能救出来。它们不会攻击你。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "signboard_forest",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "提示牌",
+     "AvatarTint": "#8ECFFF",
+     "Text": "【星球监测站 · 三号提示牌】森林是天然的蓄水池。树冠截留雨水，枯枝落叶层吸收，根系固土，三者共同延缓径流，让水慢慢渗进地下而不是一次冲走。监测记录显示：本区河道堵塞后的三个雨季里，下游土壤含水率下降了约四成。清理堵塞点后水位需要一段时间才能恢复，请不要着急。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "robot_factory_intro",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "嗡——又来了一个。这厂子停了四十年，可我这儿的水泵一直在转，而且转得越来越费劲。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "你们在外面把河清通了，水才流得进来。可这厂子里攒下的东西，比河里的脏得多。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "往里走吧。地刺那边得扳拉杆，拉杆在高处，我这履带上不去。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "robot_factory_intro_repeat",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "拉杆还在高处挂着呢。够得着就去扳一下，别在底下干等。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "机房在最里面。进去之前，把路上该清的都清了。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "ava_ending",
+   "Once": true,
+   "Entries": [
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "浓度降到阈值以下了。它散了——不是被打败，是没东西可以聚起来了。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "三颗星球的数据重新连上了。塑料星球、森林、还有这座工厂，四十年来第一次同时上报。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "生态守卫者 · 艾娃",
+     "AvatarTint": "#7CFC98",
+     "Text": "你的任务完成了。要不要留下来，看看它重新呼吸的样子？",
+     "EventId": ""
+    }
+   ]
+  }
+ ]
 }

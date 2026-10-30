@@ -33,6 +33,20 @@ MonoBehaviour:
   DodgePassThroughLayers:
     serializedVersion: 2
     m_Bits: 512
+  DashDuration: 0.4
+  DashDistance: 2.8
+  DashCooldown: 0.5
+  AirDashCount: 1
+  CrouchSpeedFactor: 0.45
+  CrouchHeightRatio: 0.62
+  WallSlideSpeed: 4
+  WallCheckDistance: 0.1
+  WallJumpVelocity: 12
+  WallJumpPushSpeed: 7
+  WallJumpLockTime: 0.14
+  LedgeMinHeight: 0.35
+  LedgeMaxHeight: 1.7
+  LedgeCooldown: 0.4
   GroundLayer:
     serializedVersion: 2
     m_Bits: 1024
