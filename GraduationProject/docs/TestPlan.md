@@ -208,7 +208,7 @@
 | K-02 | 三关地面用同一张污染土壤 | 生成脚本未按关卡取贴图 | 森林关踩污染地面 | **已修**（A2：L1 `ground_polluted` / L2 `ground_forest` / L3 `ground_factory`） |
 | K-03 | 第二关 17 个物件排序在兜底层 15 | `FixAllLevelSpriteSorting.GuessOrder()` 兜底返回 15 | 玩家可能被树遮挡 | **未修**（2026-10-31 实测：Level02 仍有 17 处 `m_SortingOrder: 15`，与登记完全一致；Level01=2、Level03=4） |
 | K-04 | 打击无命中特效 | 素材已产出但未接入 | 打击感缺视觉火花 | **部分修**（A4 已生成 6 套 prefab：`fx_hit`/`fx_slash`/`fx_explode`/`fx_gas`/`fx_dust_run`/`fx_purify`；但按 GUID 检索，**只有 `fx_purify` 有 1 处引用，其余 5 套引用数均为 0** → 实际游玩时打击仍然无火花） |
-| K-05 | L3 装饰牌全不可读 | 未挂 `SignboardTrigger` | 玩家反复按 E 无反应 | **未修**（2026-10-31 实测：Level03 挂载 **0** 处；Level01=2、Level02=1）。C 已交付 `sign_glow_plastic/recycle` 新素材，仍待摆位与挂载 |
+| K-05 | L3 装饰牌全不可读 | 未挂 `SignboardTrigger` | 玩家反复按 E 无反应 | **设计如此，非缺陷**（依据 `NarrativeDesign.md` §5.1 叙事载体分布表：L3 = 3 对话 + **0 提示牌** + 2 知识卡；`GDD.md` §75 同）。**剩余真问题**是「长得像提示牌但靠近没反应」——正解不是挂触发器，而是给可读牌加发光边框做视觉区分：`sign_glow_plastic` / `sign_glow_recycle` 已由 C 交付，**2026-10-31 由 A 挂到 3 块可读牌下**（`Signboard_Plastic` / `Signboard_Recycle` / `Signboard_Forest`） |
 | K-06 | 无中途检查点 | 未实现 | 死亡即整关重来 | **设计如此**，非缺陷 |
 | K-07 | NPC_Ava 的 12 帧动画未使用 | 场景用静态图 | 艾娃全程不动 | 待修（P2） |
 | K-08 | 环境音 0 资产 | 未制作 | 场景只有 BGM | 待补（P2） |
