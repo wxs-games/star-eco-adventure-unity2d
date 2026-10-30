@@ -1,6 +1,6 @@
 # 构建与发布流程 · BuildAndRelease
 
-> 版本：v1.0 | 2026-10-30 | 维护：主程序
+> 版本：v1.2 | 2026-10-31 | 维护：主程序
 > 定位：**从"代码改完"到"一个能双击运行的 exe"的完整可复现流程**，含环境、定序、命令、验收、版本号、回滚、答辩演示包。
 > 此前这些信息散落在 `docs/Balance/README.md` 与 `INSTALL.md`（位置不对），本文件是唯一权威。
 
@@ -124,18 +124,22 @@ Builds/<YYYY-MM-DD>/build.log
 
 > 第 5~7 项是**三关回归**，也是 `TestPlan.md` §2.4 的同一份清单。构建后不跑这三关，等于没验。
 
-### 4.1 最近一次实测记录（2026-10-30 23:42）
+### 4.1 最近一次实测记录（2026-10-31 00:18，含 P0 修复后重打）
 
 | 项 | 实测值 |
 |---|---|
 | 构建方式 | `manage_build`，target=windows64，options=`clean_build`，development=false |
-| 耗时 | **62.35 s** |
-| 产物大小 | **331 MB**（`total_size_mb: 330.43`） |
-| 编译结果 | **errors: 0**，warnings: 1 |
+| 输出 | `Builds/2026-10-31/StarEco.exe`（按 §3.3 的日期目录约定） |
+| 耗时 | **55.3 s**（其中 `ProducePlayerScriptAssemblies` 33.4s，占大头） |
+| 产物大小 | **330.37 MB** |
+| 结果 | **Result: Success**，控制台 0 error |
 | 场景打包 | ✅ `level0/level1/level2/level3` 四个全在 `StarEco_Data/` 下 |
-| 程序集 | `StarEco.Runtime.dll` + `MCPForUnity.Runtime.dll`（后者不该在，见 §10） |
-| 无窗口冒烟 | `StarEco.exe -batchmode -nographics -quit` → `Loaded All Assemblies` ✓ → `[UIUtility] 场景缺少 EventSystem，已自动创建` ✓ → `[UIManager] UI 管理器就绪` ✓ |
-| 冒烟中的 shader error | 5 条 `shader is not supported on this GPU`——**`-nographics` 用 NullGfxDevice 的必然结果，不是打包缺 shader**，真实 GPU 下不会出现 |
+| 程序集 | `StarEco.Runtime.dll` + `MCPForUnity.Runtime.dll`（后者不该在，见 §10 B-05） |
+| 无窗口冒烟 | `StarEco.exe -batchmode -nographics -quit` → `Loaded All Assemblies, in 0.132 seconds` ✓ → `[UIUtility] 场景缺少 EventSystem，已自动创建` ✓ → `[UIManager] UI 管理器就绪` ✓ |
+| 冒烟中的 shader error | 5 条 `shader is not supported on this GPU`（Hidden/VoxelizeShader、Sprites/Default、Sprites/Mask、GUI/Text、UI/Default）——**`-nographics` 用 NullGfxDevice 的必然结果，不是打包缺 shader**，真实 GPU 下不会出现 |
+| 上一版 | `Builds/2026-10-30/`（62.4s / 330.43MB，P0 修复前），保留不删，见 §8 |
+
+本轮相对于 v1.0.0（`7ebb3b1`）的代码变化：`VentHazard` 只结算玩家（P0）、`BossHealthBar` 进战区才显示、新增 `UI/ToastLayer`、`EnemyAnimatorDriver` 缺参数不再刷屏。
 
 > 无窗口冒烟只能证明「能启动、能加载场景、能初始化管理器」，**不能替代真机通关**。第 5~7 项仍需人工跑。
 
@@ -242,4 +246,5 @@ StarEco_Demo/
 | 版本 | 日期 | 变化 |
 |---|---|---|
 | v1.1 | 2026-10-30 | §4 验收第 7 项删掉「第 4 个是封锁墙 → Boss 破土登场」（BossGate 在毕设版未挂载，见 `11-Level03` §4.3）并标注 T-15 这个 P0；新增 **§4.1 最近一次实测记录**（62.35s / 331MB / 0 error / level0~3 全打包 / 无窗口冒烟通过）；§10 新增 B-05（发布包带 MCPForUnity.Runtime.dll）、B-06（四场景均无 EventSystem） | A6 收口实际跑了一次 clean build，把实测数据落进文档而不是只写在对话里 |
+| v1.2 | 2026-10-31 | **§4.1 换成 P0 修复后的第二次实测**（55.3s / 330.37MB / Result Success / 冒烟三段全过）；输出按 §3.3 的日期目录约定落到 `Builds/2026-10-31/`，上一版 `2026-10-30/` 保留；新增 `version.txt`（v1.0.1+b210562）与「本轮相对 v1.0.0 的代码变化」四项；头部版本号从 v1.0 补到 v1.2（此前 v1.1 只在变更记录里，头部没同步） | P0 喷口伤 Boss 修复 + 三处 B 线改动后必须重打一版，否则答辩演示用的包里 Boss 仍会被自己的喷气口打死 |
 | v1.0 | 2026-10-30 | 首版。环境锁定（2022.3.62f3c1/Mono/.NET Std 2.1）、场景定序不变式与理由、GUI + CLI 两种构建方式、输出目录统一约定、10 项构建后验收、版本号规范、存档路径与清档、回滚策略、提交纪律、答辩演示包与 30 分钟清单 |
