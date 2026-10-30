@@ -14,6 +14,14 @@ namespace StarEco.Boss
     /// 关卡开局把 Boss 隐藏起来；只有当封锁墙被净化（GarbagePurifiedEvent.TargetId 命中）后，
     /// 墙体崩解消失，Boss 才突然窜出、震屏登场，随后立刻进入正常战斗状态。
     /// 这样"墙没净化 → 没有 Boss"，玩家必须先处理封锁墙才会触发 Boss 战。
+    /// <para>
+    /// ⚠️ <b>当前未启用（毕设版）</b>：五个场景均未挂载本脚本，全库无调用点。
+    /// 毕设版第三关右端墙是 <c>GarbageWall_03R</c>（见 <c>Level03ExtendSetup.cs:25</c> 注释），
+    /// 净化它之后玩家直接面对一个开局就激活、已经站在 (68.0, ~2.3) 的 Boss，
+    /// 没有破土震屏的登场演出。本模块保留给<b>求职展示版</b>（那一版右端墙换成 <c>BossGateWall</c>，
+    /// 由本脚本接管登场流程）。毕设版若要接入，需要同时改：右端墙换成带 <c>GarbagePile</c>
+    /// （TargetId = "BossGateWall"）的可净化墙 + 把本脚本挂到该墙上并绑定 Boss。
+    /// </para>
     /// </summary>
     public class BossGate : MonoBehaviour
     {

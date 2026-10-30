@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using StarEco.Framework;
+using StarEco.Player;
 
 namespace StarEco.Boss
 {
@@ -9,6 +10,9 @@ namespace StarEco.Boss
     /// - Boss 名 + HP 数值 + 血条填充（平滑插值）
     /// - 60% / 30% 两条阶段分隔刻度竖线
     /// - 阶段切换时显示"狂暴阶段"/"最终阶段"提示（1.5s 后隐藏）
+    /// - **进入战区才显示**：玩家与 Boss 的距离进入 _engageRange，或已对 Boss 造成伤害时，
+    ///   血条才出现，一旦出现就保持到 Boss 死亡（避免边缘来回闪烁）；Boss 未登场/已死亡则隐藏。
+    ///   这样第 3 关开局（玩家在 x=-22.9、Boss 在 x=68）不会莫名其妙顶着一条满血条。
     /// 非阻断面板，不锁玩家输入。
     /// </summary>
     public class BossHealthBar : MonoBehaviour
@@ -25,6 +29,11 @@ namespace StarEco.Boss
         [Tooltip("阶段提示显示时长（秒）")]
         [SerializeField] private float _phaseHintSeconds = 1.5f;
 
+        [Header("显示时机")]
+        [Tooltip("进入战区的判定距离（世界单位）：玩家与 Boss 距离小于该值才弹出血条。" +
+                 "13u ≈ 1080p 下半个屏幕宽，玩家能看到 Boss 的时候才提示，不看得到时不剧透")]
+        [SerializeField] private float _engageRange = 13f;
+
         private Canvas _canvas;
         private Image _fill;
         private Image _fillGhost;
@@ -33,6 +42,8 @@ namespace StarEco.Boss
         private Text _phaseText;
         private float _targetFill = 1f;
         private float _phaseHintTimer;
+        private PlayerController _player;
+        private bool _engaged;
 
         // 仅在 HP 数值变化时重生成字符串，避免每帧 ToString 分配（GC 优化）
         private int _lastHp = -1;
@@ -63,40 +74,46 @@ namespace StarEco.Boss
         private void Start()
         {
             TryBindBoss();
+            _player = FindObjectOfType<PlayerController>();
         }
 
         private void Update()
         {
-            // Boss 由 BossGate 控制登场：未登场（对象隐藏）时血条保持隐藏
             if (_boss == null)
             {
                 TryBindBoss();
                 return;
             }
 
-            // FIND P1 修复：显示不再依赖 TryBindBoss 里的一次性 Show()——
-            // Inspector 预绑 _boss 时原逻辑直接 return 永不显示。改为每帧按登场状态驱动：
-            // Boss 对象激活（BossGate 演出结束）的瞬间显示血条，隐藏期间保持隐藏。
+            // Boss 由 BossGate 控制登场：未登场（对象隐藏）时血条保持隐藏。
+            // 毕设版没有挂 BossGate，Boss 一进场就是激活的，所以「可见性」不再由对象激活决定，
+            // 改由下面的战区判定决定（见 ShouldEngage）。
             if (!_boss.gameObject.activeInHierarchy)
             {
-                if (_canvas != null && _canvas.gameObject.activeSelf)
-                {
-                    Hide();
-                }
+                _engaged = false;
+                HideIfVisible();
                 return;
-            }
-
-            if (_canvas != null && !_canvas.gameObject.activeSelf)
-            {
-                Show();
             }
 
             if (_boss.IsDead)
             {
-                Hide();
+                HideIfVisible();
                 return;
             }
 
+            // 进入战区的瞬间打开，之后不再收回：血条忽隐忽现比常驻更干扰
+            if (!_engaged && ShouldEngage())
+            {
+                _engaged = true;
+            }
+
+            if (!_engaged)
+            {
+                HideIfVisible();
+                return;
+            }
+
+            ShowIfHidden();
             UpdateFill();
 
             if (_phaseHintTimer > 0f)
@@ -107,6 +124,30 @@ namespace StarEco.Boss
                     _phaseText.gameObject.SetActive(false);
                 }
             }
+        }
+
+        /// <summary>
+        /// 是否已进入 Boss 战：玩家靠近到 _engageRange 内，或 Boss 已经掉过血（远程先手也会弹条）。
+        /// </summary>
+        private bool ShouldEngage()
+        {
+            // 已被打掉血 = 战斗事实上已经开始，与玩家站位无关
+            if (_boss.Config != null && _boss.CurrentHP < _boss.Config.MaxHP)
+            {
+                return true;
+            }
+
+            if (_player == null)
+            {
+                _player = FindObjectOfType<PlayerController>();
+            }
+
+            if (_player == null)
+            {
+                return false;
+            }
+
+            return Vector2.Distance(_player.transform.position, _boss.transform.position) <= _engageRange;
         }
 
         // ===== 数据 =====
@@ -194,6 +235,24 @@ namespace StarEco.Boss
             if (_canvas != null)
             {
                 _canvas.gameObject.SetActive(true);
+            }
+        }
+
+        /// <summary>只在当前可见时调用 Hide，避免每帧对同一对象重复 SetActive。</summary>
+        private void HideIfVisible()
+        {
+            if (_canvas != null && _canvas.gameObject.activeSelf)
+            {
+                Hide();
+            }
+        }
+
+        /// <summary>只在当前隐藏时调用 Show。</summary>
+        private void ShowIfHidden()
+        {
+            if (_canvas != null && !_canvas.gameObject.activeSelf)
+            {
+                Show();
             }
         }
 

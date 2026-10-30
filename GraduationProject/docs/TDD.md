@@ -1,7 +1,7 @@
 # 技术设计文档（TDD）
 
 > 项目：基于Unity2D的"星际环保"动作冒险游戏设计与实现
-> 版本：v0.7（系统总览抽离 + 目录结构全量重写） | 最后更新：2026-10-30
+> 版本：v0.8（BossGate 未启用标注 + P0 喷口自伤修复同步） | 最后更新：2026-10-30
 > 参考模板：rikegames Unity TGDD + KelptheWriter/TechDesignDocument 结构
 > 关联文档：GDD.md（设计愿景）、**SystemOverview.md（系统总览，§2.1/§3.1 的完整版）**、LevelDesign.md（关卡落地）、AudioDesign.md（音频规格）、NarrativeDesign.md（叙事设定）、specs/（逐功能规范三件套）
 
@@ -98,6 +98,7 @@ Assets/
 | 污染度驱动视觉 | 需要后处理/色调插值 | 用简单材质属性插值，避免引入后处理栈 |
 | 对话/图鉴系统 | 内容量大 | JSON 数据驱动，策划表可批量填 |
 | 三个关卡搭建 | 场景工作量 | Tilemap + 预制件复用，MCP 工具辅助批量摆放 |
+| Boss 破土登场（`BossGate.cs`，372 行） | **毕设版未启用**：五个场景零挂载；第三关右端墙是 `GarbageWall_03R`，净化即开路，Boss 开局就是 active 站在 (68.0, ~2.3)，**没有登场演出** | 用户拍板「保留 + 标注未启用」：脚本留给求职展示版（那版右端墙换 `BossGateWall`）；类头注释 / 本文 / `RiskRegister` T-18 三处标注，不把它算作已实现的流程 |
 
 ## 5. 实施计划（与 specs/ 对应）
 
@@ -130,3 +131,4 @@ Assets/
 | v0.5 | 2026-10-19 | 性能：GC=0 达成（Build 版口径）。消除 2 处每帧分配——`DialogueTrigger.Update` 每帧 `FindObjectOfType`（Level01，40 B/帧）、`BossHealthBar` 每帧字符串插值（Level03）；实测证实 Editor 下 ~375 次/帧为编辑器底噪、不可作为 GC 判定口径。详 `性能实测报告.md` |
 | v0.6 | 2026-10-30 | §3.2 存档数据流校正：实为 4 个槽（`settings`/`progress`/`codex`/`level01_result`），原文"检查点触发 → 序列化 LevelState"标为**规划未实现**（无检查点系统，死亡即整关重载）；头部版本号从 v0.2 补到实况；关联文档补 AudioDesign.md / NarrativeDesign.md | 头部版本与变更记录脱节 5 个版本；存档与检查点描述与实现不符（同 GDD v0.8 的检查点修正） |
 | v0.7 | 2026-10-30 | **§2.1 目录结构全量重写**：M1 规划态（"当前仅 SampleScene.unity"、"EnemyAI 规划中"、不存在的 `Dialogue/` `Quest/` `LevelFlow/` 三个目录）→ 实测的 10 目录 151 文件 25,855 行；**§3.1 系统关系图重绘**：删掉不存在的 `GameManager(Facade)` / `SceneManagerEx` / `HealthSystem`，改为真实的三层约束图；新增 `SystemOverview.md` 承接完整版 | TDD 是 M1 时写的，之后 22 次提交从未更新 §2.1/§3.1，导致"工程结构"和"系统关系"两节描述的是**开工前的设想**而非成品。答辩时若按 TDD 讲架构，会讲到三个不存在的类 |
+| v0.8 | 2026-10-30 | **§4 新增 `BossGate` 未启用行**：明确它是求职展示版模块、毕设版零挂载，避免答辩时把它讲成"已实现的 Boss 登场演出"；同步记录 P0 修复——`VentHazard` 增加 `_damagePlayerOnly`（只结算玩家），修掉"Boss 被自己的喷气口顶飞 + 掉血"（实测 96s 游戏时间 80→80）；`BossHealthBar` 显示时机改为进战区（距 13u 或已掉血）才弹 | 用户拍板三件：① 喷口只伤玩家 ② Boss 血条进战区显示 ③ BossGate 保留 + 标注未启用 |
