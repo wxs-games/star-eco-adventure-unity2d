@@ -8,7 +8,7 @@ namespace StarEco.EditorTools
 {
     /// <summary>
     /// 第一关 UI/对话系统一键挂载（M7 T22）：打开 Level01.unity，补齐 M7 组件。
-    /// - 替换 M6 的 LevelResultUI → ResultPanel
+    /// - 结算面板使用 ResultPanel（M7 R7），M6 遗留 LevelResultUI 已移除
     /// - 新增 UIManager/HUDController/PausePanel/DialoguePanel（挂 LevelSystems 子节点）
     /// - 艾娃 NPC 对话触发器 + 提示牌×2 + 知识卡片×2
     /// 菜单：StarEco → Setup → Level01UI（幂等：已挂载则跳过对应项）
@@ -56,20 +56,7 @@ namespace StarEco.EditorTools
 
             var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
 
-            // —— 1. 移除 M6 旧结算 UI（ResultPanel 取代之） ——
-            int removed = 0;
-            foreach (var legacy in Object.FindObjectsOfType<StarEco.Level.LevelResultUI>())
-            {
-                Object.DestroyImmediate(legacy);
-                removed++;
-            }
-
-            if (removed > 0)
-            {
-                log.AppendLine($"已移除旧 LevelResultUI ×{removed}（由 ResultPanel 取代）");
-            }
-
-            // —— 2. UIManager（关卡场景不新建：Title 场景的实例跨场景常驻；
+            // —— 1. UIManager（关卡场景不新建：Title 场景的实例跨场景常驻；
             //        若单独打开 Level01 调试（未经过 Title），则补挂一个根节点实例） ——
             var existingManager = Object.FindObjectOfType<UIManager>();
             if (existingManager == null)
@@ -83,7 +70,7 @@ namespace StarEco.EditorTools
                 log.AppendLine("UIManager 已存在，跳过");
             }
 
-            // —— 3. LevelSystems 下挂 UI 面板 ——
+            // —— 2. LevelSystems 下挂 UI 面板 ——
             var levelSystems = GameObject.Find("LevelSystems");
             if (levelSystems == null)
             {
@@ -100,7 +87,7 @@ namespace StarEco.EditorTools
             AddOnce<CodexPanel>(levelSystems, "Codex", log);
             AddOnce<LevelSelectPanel>(levelSystems, "LevelSelect", log);
 
-            // —— 4. 艾娃 NPC 触发器（出生点右侧的教学对话） ——
+            // —— 3. 艾娃 NPC 触发器（出生点右侧的教学对话） ——
             if (Object.FindObjectOfType<DialogueTrigger>() == null)
             {
                 var npc = CreateTriggerVisual("NPC_Ava", new Vector3(-6f, 1.6f, 0f),
@@ -113,7 +100,7 @@ namespace StarEco.EditorTools
                 log.AppendLine("已放置 NPC_Ava（ava_intro 教学对话，半径 2.6u）");
             }
 
-            // —— 5. 提示牌×2（挡路墙前后各一） ——
+            // —— 4. 提示牌×2（挡路墙前后各一） ——
             if (Object.FindObjectsOfType<SignboardTrigger>().Length == 0)
             {
                 CreateSignboard("Signboard_Plastic", new Vector3(2f, 1.4f, 0f), "signboard_plastic", "sign_plastic_warning.png");
@@ -121,7 +108,7 @@ namespace StarEco.EditorTools
                 log.AppendLine("已放置 Signboard_Plastic / Signboard_Recycle");
             }
 
-            // —— 6. 知识卡片×2（出生点附近 + 塔前） ——
+            // —— 5. 知识卡片×2（出生点附近 + 塔前） ——
             if (Object.FindObjectsOfType<StarEco.Eco.KnowledgeCardPickup>().Length == 0)
             {
                 CreateKnowledgeCard("KnowledgeCard1", new Vector3(-2.5f, 1.0f, 0f), "kc_plastic_bottle", "knowledge_card.png");

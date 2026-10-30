@@ -254,7 +254,6 @@ namespace StarEco.EditorTools
             var tracker = levelGo.AddComponent<StarEco.Level.LevelObjectiveTracker>();
             var spawner = levelGo.AddComponent<StarEco.Level.LevelSpawner>();
             var stats = levelGo.AddComponent<StarEco.Level.LevelStats>();
-            levelGo.AddComponent<StarEco.Level.LevelResultUI>();
 
             // 注入配置（SerializedObject 私有字段）
             var mgrSo = new SerializedObject(manager);
@@ -270,7 +269,7 @@ namespace StarEco.EditorTools
             spnSo.ApplyModifiedPropertiesWithoutUndo();
 
             // 回填刷怪锚点到配置资产（锚点是场景对象，无法序列化进 asset，故运行时由 LevelSpawner 用场景锚点）
-            log.AppendLine("已放置 LevelSystems（Manager/Tracker/Spawner/Stats/ResultUI）");
+            log.AppendLine("已放置 LevelSystems（Manager/Tracker/Spawner/Stats）");
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             log.AppendLine($"已创建场景 {ScenePath}");
