@@ -124,24 +124,28 @@ Builds/<YYYY-MM-DD>/build.log
 
 > 第 5~7 项是**三关回归**，也是 `TestPlan.md` §2.4 的同一份清单。构建后不跑这三关，等于没验。
 
-### 4.1 最近一次实测记录（2026-10-31 00:34，同日第二次：含结算期 UI 修复）
+### 4.1 最近一次实测记录（2026-10-31 01:54，同日第三次：含三关分层 + L3 地面 + SignGlow）
 
 | 项 | 实测值 |
 |---|---|
 | 构建方式 | `manage_build`，target=windows64，options=`clean_build`，development=false |
 | 输出 | `Builds/2026-10-31/StarEco.exe`（按 §3.3 的日期目录约定） |
-| 耗时 | **55.3 s**（00:18 第一次）/ **57.1 s**（00:34 第二次，同日覆盖重建） |
-| 产物大小 | **330.37 MB**（两次一致） |
-| 结果 | **Result: Success**，控制台 0 error |
+| 耗时 | **55.3 s**（00:18 第一次）/ **57.1 s**（00:34 第二次）/ **63.7 s**（01:54 第三次，同日覆盖重建） |
+| 产物大小 | 330.37 MB（前两次）→ **334.29 MB**（第三次，多出 L3 工业地面 1.77MB + 两张 1080p 背景 + 8 组 Props 新素材） |
+| 结果 | **Result: Success**，errors **0**、warnings **0**（前两次各有 1 warning，本次连带修净） |
 | 场景打包 | ✅ `level0/level1/level2/level3` 四个全在 `StarEco_Data/` 下 |
 | 程序集 | `StarEco.Runtime.dll` + `MCPForUnity.Runtime.dll`（后者不该在，见 §10 B-05） |
-| 无窗口冒烟 | `StarEco.exe -batchmode -nographics -quit` → `Loaded All Assemblies, in 0.193 seconds` ✓ → `[UIUtility] 场景缺少 EventSystem，已自动创建` ✓ → `[UIManager] UI 管理器就绪` ✓（`smoke2.log`） |
+| 无窗口冒烟 | `StarEco.exe -batchmode -nographics -quit` → `Loaded All Assemblies, in 4.072 seconds` ✓ → `[UIUtility] 场景缺少 EventSystem，已自动创建` ✓ → `[UIManager] UI 管理器就绪` ✓（`smoke3.log`；前两次为 `smoke.log` / `smoke2.log`） |
 | 冒烟中的 shader error | 5 条 `shader is not supported on this GPU`（Hidden/VoxelizeShader、Sprites/Default、Sprites/Mask、GUI/Text、UI/Default）——**`-nographics` 用 NullGfxDevice 的必然结果，不是打包缺 shader**，真实 GPU 下不会出现 |
 | 上一版 | `Builds/2026-10-30/`（62.4s / 330.43MB，P0 修复前），保留不删，见 §8 |
 
-本轮相对于 v1.0.0（`7ebb3b1`）的代码变化：`VentHazard` 只结算玩家（P0）、`BossHealthBar` 进战区才显示、新增 `UI/ToastLayer`、`EnemyAnimatorDriver` 缺参数不再刷屏、结算面板弹出时收血条 + 抑制底部 toast。
+本轮相对于 v1.0.0（`7ebb3b1`）的变化：
 
-> 同日被打过两次：00:18 的 v1.0.1 已被 00:34 的 v1.0.2（`+987dc69`）覆盖（`clean_build`），故本文耗时两行并列。要回退到 P0 修复前请用 `Builds/2026-10-30/`。
+*代码*：`VentHazard` 只结算玩家（P0）、`BossHealthBar` 进战区才显示、新增 `UI/ToastLayer`、`EnemyAnimatorDriver` 缺参数不再刷屏、结算面板弹出时收血条 + 抑制底部 toast。
+
+*场景与素材*（第三次构建新增）：三关 91 个 `SpriteRenderer` 按 `ArtStyleGuide.md` §5.2 的分层表归位（**K-03**：此前 L2 的树/水/河床/笼/动物与玩家同为 15，走到树后会被整棵挡住）；L3 地面换 `ground_industrial`（`drawMode` Tiled、`m_Size` 96×8 未动，顶面仍在 y=0）；L1 两块可读牌加 `SignGlow` 子对象做「有边框 = 能读」的视觉区分（**K-05** 判为设计如此，剩的是外貌误导）；两张背景超分到 1920×1080 并由素材侧把 PPU 改成 187.5 保持世界尺寸不变。
+
+> 同日被打过三次：00:18 的 v1.0.1、00:34 的 v1.0.2（`+987dc69`）均已被 01:54 的 **v1.0.3（`+80462e3`）** 覆盖（`clean_build`），故耗时三行并列。要回退到 P0 修复前请用 `Builds/2026-10-30/`。
 
 > 无窗口冒烟只能证明「能启动、能加载场景、能初始化管理器」，**不能替代真机通关**。第 5~7 项仍需人工跑。
 
