@@ -126,28 +126,43 @@ Builds/<YYYY-MM-DD>/build.log
 
 > 第 5~7 项是**三关回归**，也是 `TestPlan.md` §2.4 的同一份清单。构建后不跑这三关，等于没验。
 
-### 4.1 最近一次实测记录（2026-10-31 13:55，同日第五次：材质 type 修复 + §5.2 分层统一 + T-19 = **v1.0.5**）
+### 4.1 最近一次实测记录（2026-10-31 15:07，同日第六次：T-28 通关判据修复 + U-03 拾取提示 = **v1.0.6**）
 
 | 项 | 实测值 |
 |---|---|
-| 构建方式 | 命令行 `Unity.exe -quit -batchmode -nographics -buildWindows64Player`（§3.2，Unity 实际路径见上方更正） |
+| 构建方式 | 命令行 `Unity.exe -quit -batchmode -nographics -buildWindows64Player`（§3.2）。⚠️ 本次踩坑：**PowerShell `&` 调 GUI 程序不等待、后台任务结束连带杀子进程** → 构建在 14KB 日志处被腰斩且不报错；改 `Start-Process -PassThru` + `WaitForExit()` 解决。Git Bash 启动方式依旧有效 |
 | 输出 | `Builds/2026-10-31/StarEco.exe` |
-| 耗时 | **81 s**（13:55 第五次） |
-| 产物大小 | **406 MB**（403.5 mb 报告值 + 引擎运行时） |
+| 耗时 | **75 s**（15:07 第六次） |
+| 产物大小 | **403.5 mb**（报告值，与 v1.0.5 持平） |
 | 结果 | 退出码 0，`error CS` **0**、`Build failed` **0**、missing script **0** |
-| 冒烟（带窗口 12s） | `Loaded All Assemblies` ✓ → `EventSystem 自建` ✓ → `UIManager 就绪` ✓，`Exception/NullReference` **0** |
-| 版本标记 | `version.txt` → `v1.0.5+9df6e35` |
-| 上一版 | v1.0.4 已被覆盖；回退用 `Builds/2026-10-30/`，见 §8 |
+| 冒烟（带窗口 12s） | `Loaded All Assemblies` ✓ → `UIManager 就绪` ✓，`Exception/NullReference` **0** |
+| 版本标记 | `version.txt` → `v1.0.6+df4f2eb` |
+| 上一版 | v1.0.5 已被覆盖；回退用 `Builds/2026-10-30/`，见 §8 |
 
-本轮（v1.0.4 → v1.0.5）的变化：
+本轮（v1.0.5 → v1.0.6）的变化：
 
-*关键修复*：六个 FX prefab 的材质引用 `type: 3 → 2`——v1.0.4 里材质被 Unity **静默解析为 NULL**（`.mat` 属原生序列化资源，引用必须 `type: 2`；`.png/.cs/.prefab` 才是 `type: 3`），特效实际没有发光效果。这是「type 字段写错不报错、静默失效」的又一次应验。
+*T-28 通关判据修复（P1，用户回归实测发现）*：v1.0.5 及之前 L3 目标② `Type: 3`（`DefeatEnemies` 击杀任意 1 敌）→ 路上小怪死 1 只即通关、Boss 被整体跳过。修复分两层：B 改代码（`7730421`：`LevelObjectiveType` 加 `DefeatBoss = 6` + `LevelObjectiveTracker` 订阅 `BossDefeatedEvent` 独立计数 + `Editor/BossSetup.cs` 生成器同步防写回）+ A 改配置（`df4f2eb`：`Level03.asset` 目标② `Type: 3 → 6`）。B 侧 Play 实测三条断言全过：小怪死亡不推进 Boss 目标 / 击杀 Boss 才 chainCompleted + 弹结算 / 拾取 toast 实显。
 
-*分层*：三关场景 59 处 + prefab 资产 7 处（Player 10 / ToolAnchor 11 / 敌人与塔 12 / Boss 14）按 `ArtStyleGuide §5.2` 统一口径重刷（`9df6e35`），K-03 支撑面全部闭环。
+*U-03 拾取反馈*：`ToastLayer` 订阅 `PickupCollectedEvent`，捡到净化剂瓶弹「净化剂 +20」（`_pickupToastFormat` 可配字段，文案归 D）；罐满时不弹（免「+0」误导）。
 
-*随包验证*：`LevelManager.cs` 的 T-19 修复（结算前收残留对白）与 Player 素材表归档为非 A 车道改动，随包一并验证。
+*回归重点*：L3 清完 4 个污染源后**不打 Boss 不得通关**；击杀 Boss01 → 落幕对白 → 结算。对应测试记录 D-01 的复验。
 
-> 同日五次：00:18 v1.0.1 → 00:34 v1.0.2 → 01:54 v1.0.3 → 03:04 v1.0.4 均已被 13:55 的 **v1.0.5（`+9df6e35`）** 覆盖。要回退到 P0 修复前请用 `Builds/2026-10-30/`。
+> 同日六次：00:18 v1.0.1 → 00:34 v1.0.2 → 01:54 v1.0.3 → 03:04 v1.0.4 → 13:55 v1.0.5 均已被 15:07 的 **v1.0.6（`+df4f2eb`）** 覆盖。要回退到 P0 修复前请用 `Builds/2026-10-30/`。
+
+### 4.1.0 历史记录：第五次构建 v1.0.5（13:55）
+
+<details><summary>展开 v1.0.5 记录（材质 type 修复 + §5.2 分层统一 + T-19）</summary>
+
+| 项 | 实测值 |
+|---|---|
+| 耗时 / 大小 | 81 s / 406 MB |
+| 结果 | 0 error / 0 missing script，冒烟零异常 |
+| 内容 | FX 材质 `type: 3→2` 修复（v1.0.4 材质静默 NULL）；三关 59 处 + prefab 7 处按 §5.2 重刷（`9df6e35`）；T-19 结算前收残留对白随包验证 |
+| 版本 | `v1.0.5+9df6e35`（13:55） |
+
+</details>
+
+> 同日五次历史：00:18 v1.0.1 → 00:34 v1.0.2 → 01:54 v1.0.3 → 03:04 v1.0.4 → 13:55 v1.0.5，均已被 v1.0.6 覆盖。
 
 > 无窗口冒烟只能证明「能启动、能加载场景、能初始化管理器」，**不能替代真机通关**。第 5~7 项仍需人工跑。
 
