@@ -729,7 +729,10 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 「是否被引用」= 在 `Assets/` 内 113 个非 Art 文本资产（`.anim` / `.prefab` / `.unity` / `.asset` / `.mat` / `.controller` / `.json` 等）里能否搜到该文件的 GUID。
 按路径（`Sheets/`、`_预览/`、`*.xlsx`、`*.meta_keep`）判定中间产物，按 GUID 判定是否在用，两者交叉复核。
 
-**总量**：624 个资产 · 被引用 469 · 未引用 155 · **归档 91** · 保留 533。
+**总量**：624 个资产 · 被引用 469 · 未引用 155 · **归档 139** · 保留 485。
+
+> **归档数变化说明**：初版 C1 归档 91 个；C2 第一轮归档 `ground_factory.png`（+1）；C2 第二轮归档
+> `Player/Sheets/` 的 47 个管线中间产物（+47）。当前归档区实测 **139 个资产**（不含 `.meta`）。
 
 ### A.1 分类汇总
 
@@ -754,7 +757,7 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 移动用 `git mv`，`.png` 与 `.png.meta` 一起移动，**GUID 不变**，因此不存在引用断链。
 复核结果：归档后全库美术资产被引用数仍为 469，**归档区内被引用文件 = 0**。
 
-### A.3 归档清单（91 个资产）
+### A.3 归档清单（91 个资产 · C1；另 C2 两轮 +48，见 A.5 与下方补充）
 
 - `(根)/`（3）
   - 2D游戏动画资源排期表.xlsx
@@ -864,26 +867,62 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
   - Tower01_Fire_raw.png
   - Tower01_Idle_raw.png
 
-### A.4 保留但尚未接入场景的 8 张精灵（交 A 线挂载）
+**C2 两轮补充归档（+48 个资产）**
 
-| 文件 | 位置 | 用途 |
+- **C2 第一轮（+1）· 退役地面图**
+  - `Art/Environment/Tiles/ground_factory.png` → `_archive/Art/Environment/Tiles/`
+    （512×128 旧规格；L3 已换 `ground_industrial`，提交 `80462e3`；GUID `41e80262ccca48cfa7b9d0aada9733c9` 保留可恢复）
+- **C2 第二轮（+47）· `Player/Sheets/` 管线中间产物（117.4 MB）**
+  - `Art/Player/Sheets/*_sheet.png`（21）：`Player_Attack01/02/03/Air/Crouch/Dash/Die/Fall/HeavyAttack/Hurt/Idle02/Idle/Interact/Jump/Land/LedgeGrab/Roll/Turn/Victory/WallJump/WallSlide`
+  - `Art/Player/Sheets/raw/*_raw.png`（23）：含 `Player_Run+Roll_raw.png`（多动作合图）、`Player_Run_raw.png`
+  - `Art/Player/Sheets/raw/*.pre-compose.png`（3）：`Player_Attack01_raw` / `Player_Attack02_raw` / `Player_Interact_raw` 的 compose 备份残留，零引用
+  - **判定依据**：这 47 张实测**被引用数 = 0**（运行时只吃 `Frames/` 下的单帧），且被 Unity 当纹理导入白占导入时间与磁盘。
+    其它角色的 `Sheets/` 早在 C1 已归档完毕，`Player` 是当时唯一漏网的（整区被当作冻结区保留）。
+
+### A.4 保留精灵的接入状态（2026-10-31 C2 实测复核）
+
+> 口径：对每个精灵取其 `.meta` 的 GUID，在 `.unity` / `.prefab` / `.anim` / `.asset` 里搜该 GUID。
+> 命中 = 已接入（并注明挂在哪个场景）；未命中 = 尚未接入。
+
+**已接入（3 张，状态由「待接入」更正）**
+
+| 文件 | 位置 | 实际挂载点 |
 |---|---|---|
-| `checkpoint.png` | `Environment/Props/` | 存档点标记 |
-| `platform_catwalk.png` | `Environment/Props/` | L3 工业栈道 |
-| `platform_stairs.png` | `Environment/Props/` | 楼梯平台（StarEco 版 L3 用作 `StairsL/StairsR`） |
-| `bulkhead_industrial.png` | `Environment/Props/` | 工业舱壁 |
-| `ground_industrial.png` | `Environment/Tiles/` | L3 地面候选 |
-| `ground_polluted_soil.png` | `Environment/Tiles/` | L1 污染土壤（大幅原图，3.4 MB） |
-| `water_river.png` | `Environment/Tiles/` | L2 水面横条 |
-| `Boss01_Lockup_A.png` | `Boss/Boss01/Lockup/` | Boss 定妆图（美术留档，不进运行时） |
-| `raft_deck.png` | `Environment/Props/` | **C3 新增**。木筏甲板，1800×157 @ PPU 400 = 4.50×0.3925u，**与 `Level02` 中 `Raft1/2/3` 的 `BoxCollider2D`（4.41×0.392）齐平**（初版 4.50×0.65 比碰撞盒高 0.13u，角色脚底会陷进甲板，已按碰撞盒重生）；由 A 挂载 |
-| `crate_wood.png` | `Environment/Props/` | **C3 新增**。木箱，440×400 @ PPU 400 = 1.10×1.00u，与 `breakable_rock`（1.57×0.95）同量级；当前**无场景引用**。落位规则：中心 `y=0.50`（底边正好落在 `Ground` 顶面 `y=0`），左右需 **1.2u 净空**。实测空闲区间：L1 约 `x=-8.6 / -4.0 / +4.9`，L3 约 `x=-7.0`——最终摆位由 A 决定 |
+| `bulkhead_industrial.png` | `Environment/Props/` | ✅ `Level03.unity`（L3 真墙，1.5×3u 正合预留位，提交 `c5e5e17`） |
+| `ground_industrial.png` | `Environment/Tiles/` | ✅ `Level03.unity`（L3 地面，2048×1024 @128 = 16×8u，提交 `80462e3`） |
+| `raft_deck.png` | `Environment/Props/` | ✅ `Level02.unity` 的 `Raft1/2/3`（1800×157 @PPU400 = 4.50×0.3925u，与 `BoxCollider2D` 4.41×0.392 齐平；初版 4.50×0.65 高 0.13u 会让角色脚底陷进甲板，已按碰撞盒重生） |
+
+**尚未接入（7 张，交 A 线挂载；美术侧素材已就绪）**
+
+| 文件 | 位置 | 用途 | 落位约束 |
+|---|---|---|---|
+| `checkpoint.png` | `Environment/Props/` | 存档点标记（青蓝布旗，377×746 @481 = 0.78×1.55u） | 触发区 1.2×1.2 |
+| `platform_catwalk.png` | `Environment/Props/` | L3 工业栈道 | — |
+| `platform_stairs.png` | `Environment/Props/` | 楼梯平台（**纯侧视**金属楼梯，1585×938 @355.303 = 4.461×2.640u，5 级格栅踏板 + 黄黑警示条） | 左岸直接摆、右岸 `flipX` 镜像；用作 `StairsL/StairsR` |
+| `ground_polluted_soil.png` | `Environment/Tiles/` | L1 污染土壤（原始大图，3.4 MB，规格正确但主题已无人用） | 备用，L1 地面现用 `ground_polluted` |
+| `water_river.png` | `Environment/Tiles/` | L2 水面横条 | — |
+| `crate_wood.png` | `Environment/Props/` | 木箱（440×400 @400 = 1.10×1.00u，与 `breakable_rock` 1.57×0.95 同量级） | 中心 `y=0.50`（底边落在 `Ground` 顶面 `y=0`），左右需 **1.2u 净空**。实测空闲区间：L1 约 `x=-8.6 / -4.0 / +4.9`，L3 约 `x=-7.0` |
+| `Boss01_Lockup_A.png` | `Boss/Boss01/Lockup/` | Boss 定妆图 | **美术留档，不进运行时**（不需挂载） |
+
+> 另：`Environment/Props/` 下的 `bush_shrub` / `debris_grass` / `debris_rubble` / `debris_scrap` / `tree_dead` / `vine_hanging`
+> 六件同样「已交付但未被场景引用」，属 C 线 P2 交付项（灌木/垂藤/地表杂物/死树），用途见 `LevelArt §4` 与 `§7` 对应行。
+> **均保留不归档**，等 A 线决定落位。
 
 ### A.5 冻结区说明
 
 `Assets/Art/Art/Player/**` 本轮**零动作**：未归档、未改名、未移动。
 该区共 441 项改动（299 修改 / 124 新增 / 18 删除）原样保留，其中 362 个资产被 `.anim` 引用，
 `Sheets/raw`、`Sheets/*_sheet.png`、`align_fist.json` 虽属中间产物，因冻结规则一并原地保留。
+
+> **2026-10-31 更新（C2 第二轮）**：`Player/Sheets/` 的**中间产物部分已解冻并归档**——
+> 47 张 PNG（21 张 `*_sheet.png` + 26 张 `raw/*_raw.png`，含 3 个 `*.pre-compose.png` 残留），
+> 合计 **117.4 MB**，实测**被引用数 = 0**（运行时只吃 `Frames/` 下的单帧）。
+> 已移到 `Assets/Art/_archive/Art/Player/Sheets/`，**GUID 全部保留**（`.png` 与 `.png.meta` 同步移动），
+> 归档后全库 `.unity`/`.prefab`/`.asset`/`.anim`/`.mat`/`.controller` 的 guid **零悬空引用**。
+> **冻结的是 `Player/Frames/`（动画帧，422 个被 `.anim` 引用）与 `Player/Tools/`（工具锚点图），
+> 不包括 `Sheets/` 这类一次性管线中间产物。** 其余角色的 `Sheets/` 早在 C1 就已归档完毕，
+> `Player` 是当时唯一漏网的（因整区被当作冻结区保留）。
+> 归档清单：`.tmp-agentc/c2_sheets_archive_manifest.json`（47 条，含 src/dst/guid 三元组）。
 
 ### A.6 命名与目录的约定例外（2026-10-30 定稿）
 

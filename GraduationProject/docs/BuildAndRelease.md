@@ -126,27 +126,28 @@ Builds/<YYYY-MM-DD>/build.log
 
 > 第 5~7 项是**三关回归**，也是 `TestPlan.md` §2.4 的同一份清单。构建后不跑这三关，等于没验。
 
-### 4.1 最近一次实测记录（2026-10-31 03:04，同日第四次：FX 接入 + 素材超分 + T-20/T-21 修复 = **v1.0.4**）
+### 4.1 最近一次实测记录（2026-10-31 13:55，同日第五次：材质 type 修复 + §5.2 分层统一 + T-19 = **v1.0.5**）
 
 | 项 | 实测值 |
 |---|---|
-| 构建方式 | 命令行 `Unity.exe -quit -batchmode -nographics -buildWindows64Player`（§3.2，本次未走 `manage_build`：编辑器已关闭，直接命令行可复现） |
-| 输出 | `Builds/2026-10-31/StarEco.exe`（按 §3.3 的日期目录约定） |
-| 耗时 | **83 s**（03:04 第四次，含自定义 FXAdditive shader 编译） |
-| 产物大小 | **405 MB**（v1.0.3 为 334 MB，多出的 ~70 MB 主要是 2048×1024 地面与 1080p 背景的超分素材 + FX 材质） |
-| 结果 | 退出码 0，`error CS` **0**、`Build failed` **0**、编译 warning **0**、missing script **0**（编辑器重导入时闪过 ~8 条 missing-script 警告，构建日志判定为临时态噪音） |
-| 场景打包 | ✅ `level0/level1/level2/level3` 四个全在 `StarEco_Data/` 下 |
-| 冒烟（带窗口 12s） | `Loaded All Assemblies` ✓ → `[UIUtility] 场景缺少 EventSystem，已自动创建` ✓ → `[UIManager] UI 管理器就绪` ✓，`Exception/NullReference` 计数 **0** |
-| 版本标记 | `version.txt` → `v1.0.4+847ed2f` |
-| 上一版 | v1.0.3 已被覆盖；回退用 `Builds/2026-10-30/`，见 §8 |
+| 构建方式 | 命令行 `Unity.exe -quit -batchmode -nographics -buildWindows64Player`（§3.2，Unity 实际路径见上方更正） |
+| 输出 | `Builds/2026-10-31/StarEco.exe` |
+| 耗时 | **81 s**（13:55 第五次） |
+| 产物大小 | **406 MB**（403.5 mb 报告值 + 引擎运行时） |
+| 结果 | 退出码 0，`error CS` **0**、`Build failed` **0**、missing script **0** |
+| 冒烟（带窗口 12s） | `Loaded All Assemblies` ✓ → `EventSystem 自建` ✓ → `UIManager 就绪` ✓，`Exception/NullReference` **0** |
+| 版本标记 | `version.txt` → `v1.0.5+9df6e35` |
+| 上一版 | v1.0.4 已被覆盖；回退用 `Builds/2026-10-30/`，见 §8 |
 
-本轮（v1.0.3 → v1.0.4）的变化：
+本轮（v1.0.4 → v1.0.5）的变化：
 
-*代码*：五个打击特效接入（T-07，B 线 `5bc5420`）；结算击杀数延后一帧 + 代次令牌（T-21）；对白冻结不再压死死亡链（T-20，IsDead 分支提前）。
+*关键修复*：六个 FX prefab 的材质引用 `type: 3 → 2`——v1.0.4 里材质被 Unity **静默解析为 NULL**（`.mat` 属原生序列化资源，引用必须 `type: 2`；`.png/.cs/.prefab` 才是 `type: 3`），特效实际没有发光效果。这是「type 字段写错不报错、静默失效」的又一次应验。
 
-*场景与素材*：六个 FX prefab 赋 C 交付材质（`FXAdditive` 自定义 shader ×4 + `Sprites/Default` ×2，order 20/21）；背景 1920×1080 超分落地（T-24 素材侧闭环，PPU 187.5 保世界尺寸）；`ground_forest` 重导出 2048×1024@PPU128；L3 真墙 `SecondFloorRightWall` 换 `bulkhead_industrial`（1.5×3u 正合预留位，位置缩放零改动）。
+*分层*：三关场景 59 处 + prefab 资产 7 处（Player 10 / ToolAnchor 11 / 敌人与塔 12 / Boss 14）按 `ArtStyleGuide §5.2` 统一口径重刷（`9df6e35`），K-03 支撑面全部闭环。
 
-> 同日被打过四次：00:18 v1.0.1、00:34 v1.0.2、01:54 **v1.0.3** 均已被 03:04 的 **v1.0.4（`+847ed2f`）** 覆盖。要回退到 P0 修复前请用 `Builds/2026-10-30/`。
+*随包验证*：`LevelManager.cs` 的 T-19 修复（结算前收残留对白）与 Player 素材表归档为非 A 车道改动，随包一并验证。
+
+> 同日五次：00:18 v1.0.1 → 00:34 v1.0.2 → 01:54 v1.0.3 → 03:04 v1.0.4 均已被 13:55 的 **v1.0.5（`+9df6e35`）** 覆盖。要回退到 P0 修复前请用 `Builds/2026-10-30/`。
 
 > 无窗口冒烟只能证明「能启动、能加载场景、能初始化管理器」，**不能替代真机通关**。第 5~7 项仍需人工跑。
 
