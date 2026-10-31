@@ -15,4 +15,4 @@ MonoBehaviour:
   Entries:
   - Kind: 0
     Count: 1
-    Probability: 1
+    Probability: 0.35

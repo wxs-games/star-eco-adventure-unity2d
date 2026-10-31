@@ -27,7 +27,7 @@ MonoBehaviour:
   TankCapacity: 100
   InitialTank: 100
   TankRechargeDelay: 1.5
-  TankRechargePerSecond: 12
+  TankRechargePerSecond: 2
   PickupTankAmount: 20
   GarbagePurifyRequired: 4
   GarbageWallPurifyRequired: 60
