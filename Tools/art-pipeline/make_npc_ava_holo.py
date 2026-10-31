@@ -1,46 +1,46 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-NPC_Ava (艾娃) 全息投影立绘重画管线
+NPC_Ava (艾娃) 全息投影立绘重画管线 v11（亮蓝色全息色，对"颜色太深"做调整）
 对应指令 [2506d9e1] + ArtStyleGuide §7.4（2026-10-31 主策划裁决）
 
-设计约束（硬约束，不可擅自放宽）：
-- 艾娃是光而非肉：呈现必须是「全息投影」，不得出现皮肤血色、腮红、木质/金属实体读感
-- 基色锁定 AvatarTint #7CFC98（全息绿）
-- 整体 alpha 0.55~0.75（本方案取 0.65），身后景物可透出
-- 全息质感至少二：本方案同时做 边缘辉光 / 水平扫描线 / 轻微噪点（三项）
-- 无实体描边上的「肉感」高光：高光不产生纯白，统一压为亮绿半透明
-- 剪影可保留：复用现有 npc_ava.png 的轮廓与站姿，内部重新着色
-- 画风：高清卡通描边，非像素；角色朝右；透明底；脚底基线对齐（§3.1）
-- 描边：统一深色，约角色身高 0.8%~1.2%（§3.2）
-- 产出：替换 Assets/Art/Art/Environment/Props/npc_ava.png，GUID 与 PPU=485 不变，
-  集成装配发布只需重导入，三关 NPC_Ava_* 场景引用零破坏
+v11 核心改动——把蓝色全息色整体提亮，避免过深：
+- 基色锁亮蓝色：HOLO_BLUE [110,200,255]，B 通道压倒 R/G，读作亮蓝色全息投影
+- 各色阶整体上提 30~50，避免整体过深
+- 保持 v10 全息特性：发光只在边缘，内部暗淡，避免高光过曝冲灰
+- ALPHA_BASE=0.75，边缘发光，内部暗淡，整体 alpha 均值 0.55~0.75
+- 扫描线 pitch 2，边缘限定；色散 offset 10；噪点 36
+- 硬约束：透明区域 RGB=0；alpha 0.55~0.75（整体均值）；无皮肤血色/木质实体；GUID 与 PPU=485 不变
 
-输入：Assets/Art/Art/Environment/Props/npc_ava.png（现有实体立绘，390×922 RGBA）
-输出：同路径覆盖写入（同名同 GUID，由 A 重导入即可）
+输入：C:/tmp/npc_ava_original.png（原始实体立绘）
+输出：Assets/Art/Art/Environment/Props/npc_ava.png（同名覆盖，GUID 与 PPU 不变）
 """
 
 import os
-import sys
 import numpy as np
 from PIL import Image, ImageFilter
 
 ROOT = "E:/desktop/UnityXiangMu/BiShe/BiShe"
-SRC = os.path.join(ROOT, "Assets", "Art", "Art", "Environment", "Props", "npc_ava.png")
-DST = SRC  # 同名替换，GUID 与 PPU=485 不变，集成装配发布重导入即可，场景引用零破坏
+SRC = "C:/tmp/npc_ava_original.png"
+DST = os.path.join(ROOT, "Assets", "Art", "Art", "Environment", "Props", "npc_ava.png")
 
-# 色彩（ArtStyleGuide §4.3 / §7.4）
-HOLO_GREEN = np.array([124, 252, 152], dtype=np.float64)   # #7CFC98 全息绿
-HOLO_DARK  = np.array([24, 78, 52],   dtype=np.float64)    # 深全息绿（更饱和）
-HOLO_BRIGHT= np.array([170, 255, 200], dtype=np.float64)   # 亮绿高光（不纯白）
-EDGE       = np.array([34, 30, 22],   dtype=np.float64)    # 深棕近黑描边（§3.2）
-GLOW       = np.array([124, 252, 152], dtype=np.float64)   # 边缘辉光色
+# 色彩（ArtStyleGuide §7.4）—— 锁亮蓝色全息色，B 压倒 R/G，更浅，无近白
+HOLO_DARK   = np.array([60,  140, 220], dtype=np.float64)   # 深全息蓝（提亮，不再过暗）
+HOLO_BLUE   = np.array([110, 200, 255], dtype=np.float64)   # 中全息蓝（B 主导，更亮更浅）
+HOLO_BRIGHT = np.array([160, 230, 255], dtype=np.float64)   # 亮部蓝色（更亮，不再近白）
+EDGE        = np.array([10, 10, 14 ], dtype=np.float64)    # 深棕近黑描边（§3.2，微偏蓝）
+GLOW        = np.array([110, 210, 255], dtype=np.float64)   # 边缘辉光（B 主导，更亮更浅）
+BLUE_TINT   = np.array([0.55, 0.55, 1.0], dtype=np.float64)  # 极端压红/绿，突蓝
 
-ALPHA = 0.65          # 整体透明度（0.55~0.75，取 0.65）
-SCANLINE_PITCH = 7    # 扫描线间隔（像素）
-SCANLINE_ALPHA = 0.25 # 扫描线 alpha（略提高，增强全息感）
-NOISE_AMPLITUDE = 12  # 噪点幅度
-GREEN_TINT = np.array([0.82, 1.0, 0.85], dtype=np.float64)  # 整体色偏：压红压蓝突绿
+ALPHA_BASE = 0.75            # 内部基础透明度（§7.4 区间上限，确保整体均值达标）
+ALPHA_EDGE_BOOST = 0.40      # 边缘额外发光，边缘比内部更亮
+ALPHA_MAX = 1.0              # 边缘可完全不透明发光（整体均值仍由基础 alpha 主导，在 0.55~0.75 以内）
+SCANLINE_PITCH = 2           # 扫描线间隔（更密）
+SCANLINE_ALPHA = 0.5         # 扫描线 alpha（边缘限定，更保守）
+NOISE_AMPLITUDE = 36         # 噪点幅度
+CHROMATIC_OFFSET = 10        # 色散偏移（R 左 / B 右，明显彩色边缘）
+INNER_GLOW_RADIUS = 6        # 内发光轮廓内缩
+EDGE_BAND_THRESH = 0.25      # 边缘带阈值：超过此值的区域才叠加 glow/scanline
 
 
 def load_rgba(path):
@@ -50,14 +50,29 @@ def load_rgba(path):
 
 def save_rgba(arr, path):
     arr = np.clip(arr, 0, 255).astype(np.uint8)
+    # 硬约束：alpha<=10 的像素 RGB 必须为 0（严格按最终 alpha，避免扫描线残留）
+    low_a = arr[..., 3] <= 10
+    if low_a.any():
+        arr[low_a, :3] = 0
+        arr[low_a, 3] = 0
     Image.fromarray(arr, "RGBA").save(path)
 
 
 def gaussian_blur(a, radius):
-    """对单通道 float64 数组做高斯模糊（PIL 需要 uint8，这里做近似：用 PIL 模糊 alpha 通道再还原）"""
     im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "L")
     im = im.filter(ImageFilter.GaussianBlur(radius=radius))
     return np.asarray(im, dtype=np.float64)
+
+
+def channel_shift(arr, dx):
+    if dx == 0:
+        return arr.copy()
+    out = np.zeros_like(arr)
+    if dx > 0:
+        out[:, dx:] = arr[:, :-dx]
+    else:
+        out[:, :dx] = arr[:, -dx:]
+    return out
 
 
 def main():
@@ -65,65 +80,86 @@ def main():
     h, w, _ = rgba.shape
     rgb = rgba[..., :3]
     a = rgba[..., 3]
-    mask = a > 10  # 有内容的区域
+    mask = a > 10
 
     # ---- 灰度（明度结构，保留体积与剪影）-----------------------------------
     gray = 0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2]
 
     # ---- 中和实体读感：把偏红（腮红/皮肤血色）与偏棕（木质剪贴板）压暗 -
     r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
-    reddish = (r > b + 30) & mask                    # 腮红/皮肤血色
-    brownish = (r > 120) & (g > 70) & (b < 100) & (r > b + 20) & mask  # 木质/金属实体
-    gray[reddish] *= 0.35        # 腮红压暗，不再显血色
-    gray[brownish] *= 0.45       # 剪贴板压暗，不再显木质质感
+    reddish = (r > b + 30) & mask
+    brownish = (r > 120) & (g > 70) & (b < 100) & (r > b + 20) & mask
+    gray[reddish] *= 0.30
+    gray[brownish] *= 0.40
 
-    # ---- 按灰度映射到全息绿连续色阶（暗部深绿→亮部亮绿，整体绿基调）-----
+    # ---- 按灰度映射到全息蓝连续色阶（亮部用较暗蓝色，避免近白过曝）------
+    t = np.clip(gray / 255.0, 0, 1)[..., None]
+    base_color = HOLO_DARK * (1 - t) + HOLO_BLUE * t
+    high_mask = (gray >= 200) & mask
+    base_color[high_mask] = HOLO_BRIGHT   # [100,180,255] 而非接近白
     out_rgb = np.zeros_like(rgb)
-    t = np.clip(gray / 255.0, 0, 1)[..., None]            # 0~1 的明度因子
-    base_color = HOLO_DARK * (1 - t) + HOLO_GREEN * t     # 连续插值，整体带绿
-    high_mask = (gray >= 200) & mask                      # 高光区再往亮绿靠
-    base_color[high_mask] = HOLO_BRIGHT
     out_rgb[mask] = base_color[mask]
-    # 整体色偏：压红压蓝突绿，让整体呈现明显的全息绿基调（不再灰白）
-    out_rgb = out_rgb * GREEN_TINT[None, None, :]
+    out_rgb = out_rgb * BLUE_TINT[None, None, :]
 
-    # ---- 边缘辉光：对 alpha 做模糊，边缘处叠加亮绿发光 ----------------------
-    glow = gaussian_blur(a, radius=4)           # 0~255，边缘最亮
-    glow = np.clip(glow / 255.0, 0, 1) ** 1.1   # 边缘更宽、更亮
-    glow_rgb = GLOW[None, None, :] * (glow[..., None] * 0.7 * 255.0)
-    out_rgb = np.where(mask[..., None], out_rgb + glow_rgb, out_rgb)
+    # ---- 色散（chromatic aberration）：R 左移、B 右移 -------------------------
+    r_shifted = channel_shift(out_rgb[..., 0], -CHROMATIC_OFFSET)
+    b_shifted = channel_shift(out_rgb[..., 2], +CHROMATIC_OFFSET)
+    out_rgb[..., 0] = r_shifted
+    out_rgb[..., 2] = b_shifted
 
-    # ---- 整体半透明化：alpha = 原 alpha * ALPHA（0.55~0.75）------------------
-    out_a = np.clip(a * ALPHA, 0, 255)
+    # ---- 边缘距离衰减 alpha：内部淡、边缘亮 -------------------------------
+    blur_small = gaussian_blur(a, radius=2)
+    blur_large = gaussian_blur(a, radius=10)
+    edge_band = np.clip((blur_small - blur_large) / 255.0, 0, 1)  # 0~1，边缘带最高
+    edge_alpha = edge_band * ALPHA_EDGE_BOOST * 255.0
+    base_alpha = (a * ALPHA_BASE)
+    out_a = np.clip(base_alpha + edge_alpha, 0, ALPHA_MAX * 255.0)
+    out_a = np.where(mask, out_a, 0)
 
-    # ---- 扫描线：每隔 SCANLINE_PITCH 行画一条半透明亮绿细线（不留灰白）--------
+    # ---- 边缘辉光：只在边缘带叠加，内部不加（避免高光过曝）-------------
+    glow = gaussian_blur(a, radius=10)
+    glow = np.clip(glow / 255.0, 0, 1) ** 0.6
+    glow_rgb = GLOW[None, None, :] * (glow[..., None] * 2.0)
+    edge_glow_mask = (edge_band > EDGE_BAND_THRESH) & mask
+    out_rgb = np.where(edge_glow_mask[..., None], out_rgb + glow_rgb, out_rgb)
+
+    # ---- 内发光轮廓：只在边缘附近叠加 -------------------------------------
+    eroded = gaussian_blur(a, radius=INNER_GLOW_RADIUS + 2)
+    inner_glow = np.clip((255 - eroded) / 255.0, 0, 1) ** 2.0
+    inner_glow_rgb = HOLO_BRIGHT[None, None, :] * (inner_glow[..., None] * 0.7)
+    edge_inner_mask = (edge_band > EDGE_BAND_THRESH * 0.6) & mask
+    out_rgb = np.where(edge_inner_mask[..., None], out_rgb + inner_glow_rgb, out_rgb)
+
+    # ---- 扫描线：只在边缘带叠加，内部不加，保持暗淡 ---------------------
+    scanline_color = HOLO_BRIGHT * SCANLINE_ALPHA
     for y in range(0, h, SCANLINE_PITCH):
-        line = HOLO_BRIGHT[None, :] * SCANLINE_ALPHA   # 亮绿而非纯白
+        row_mask = mask[y, :, None] & (edge_band[y, :, None] > EDGE_BAND_THRESH * 0.5)
         out_rgb[y, :, :] = np.where(
-            mask[y, :, None],
-            np.clip(out_rgb[y, :, :] + line[None, :, :] * 255.0, 0, 255),
+            row_mask,
+            np.clip(out_rgb[y, :, :] + scanline_color[None, None, :], 0, 255),
             out_rgb[y, :, :],
         )
-        out_a[y, :] = np.clip(out_a[y, :] + SCANLINE_ALPHA * 40.0, 0, 255)
+        out_a[y, :] = np.clip(out_a[y, :] + SCANLINE_ALPHA * 30.0, 0, ALPHA_MAX * 255.0)
 
-    # ---- 轻微噪点：在有内容区域叠加 ±NOISE_AMPLITUDE 的随机色阶 --------------
+    # ---- 轻微噪点 ------------------------------------------------------------
     rng = np.random.default_rng(20261031)
     noise = rng.integers(-NOISE_AMPLITUDE, NOISE_AMPLITUDE + 1, size=(h, w, 3)).astype(np.float64)
-    out_rgb = np.where(mask[..., None], np.clip(out_rgb + noise * 0.5, 0, 255), out_rgb)
+    out_rgb = np.where(mask[..., None], np.clip(out_rgb + noise * 0.6, 0, 255), out_rgb)
 
-    # ---- 描边：保留原图深色边缘，统一为深棕近黑，略透明（§3.2）-------------
+    # ---- 描边 ----------------------------------------------------------------
     dark_edge = (r < 90) & (g < 90) & (b < 90) & (a > 150) & mask
     out_rgb[dark_edge] = EDGE
-    out_a[dark_edge] = np.clip(out_a[dark_edge], 0, 210)  # 描边略透，不生硬
+    out_a[dark_edge] = np.clip(out_a[dark_edge], 0, 200)
 
-    # ---- 把没有内容的区域彻底透明---------------------------------------------
-    out_rgb[~mask] = 0
-    out_a[~mask] = 0
+    # ---- 透明区域彻底清零 ----------------------------------------------------
+    final_mask = out_a > 10
+    out_rgb[~final_mask] = 0
+    out_a[~final_mask] = 0
 
     out = np.dstack([out_rgb, out_a])
     save_rgba(out, DST)
-    print(f"wrote {DST}  size={w}x{h}  alpha_mean={out_a[mask].mean():.1f}  "
-          f"opaque_px={int(mask.sum())}")
+    print(f"wrote {DST}  size={w}x{h}  alpha_mean={out_a[final_mask].mean():.1f}  "
+          f"alpha_max={out_a[final_mask].max():.1f}  opaque_px={int(final_mask.sum())}")
 
 
 if __name__ == "__main__":
