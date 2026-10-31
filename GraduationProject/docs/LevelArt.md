@@ -486,6 +486,7 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 | `sign_plastic_warning.png` | — | L1/L3 | ⚠️ 与可读牌混用 |
 | `sign_recycle.png` | — | L1/L2/L3 | ⚠️ 同上 |
 | `knowledge_card.png` | — | 三关 | ✅ |
+| `purify_bottle.png` | — | L3×1（`Puzzle_Pickup`） | ✅ **已交付并接入**（2026-10-31）——`PurifyPickup.prefab` 已换实物图 + tint 改白 + scale 1.0 + radius 0.45 + order 7，玩家看到的是**灰白瓶身 + 亮绿液体的瓶子**；接入规格见 `ArtStyleGuide.md` §6.5 |
 | `npc_ava.png` | — | L1/L2/L3 | ✅ |
 | `npc_guard_robot.png` | — | L3×2 | ⚠️ 其中一个是"艾娃"命名 |
 | `animal_otter.png` | — | L2×2 | ✅ |
@@ -519,6 +520,15 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 | `debris_grass.png` | 460×320 @400 | 1.15×0.80 | 0 | **0.40** | 草丛，L2 优先（L1 可当"残存杂草"）；同上摆法 |
 | `bush_shrub.png` | 720×480 @400 | 1.80×1.20 | 0 | **0.60** | 灌木丛，底边贴 y=0；L2 左右岸与树之间填空，与 `debris_grass` 混摆；单株间距 **≥ 2.0u**，不要排成一条直线 |
 | `vine_hanging.png` | 220×800 @400 | 0.55×2.00 | 0 | **挂点 y − 1.00** | 垂藤，**顶端贴住挂点**（画布顶行 22px 有像素、底行全透明），所以中心 y = 平台/横梁顶面 **− 1.00**；挂在 L2 平台边缘或树干上，不要落地 |
+| `purify_bottle.png` | 128×176 @**420** | 0.305×0.419 | 0 | **3.25** | ✅ **已交付并接入**（2026-10-31 主美交付、主策划验收通过、集成装配发布完成接入）。灰白瓶身 + 亮绿液体 + 深色描边 + 透明底，画质与剪影**不需重做**。prefab 5 项全改完：sprite 换图 / tint 改白 / scale 8.75→1.0 / radius→0.45 / order 3→7，详见 `ArtStyleGuide.md` §6.5 |
+
+**拾取物实物的特别说明（2026-10-31）**：
+
+> `purify_pickup` 与本表其它条目性质不同——其它是「图有了，找个位置摆」，它是「**位置与图都有了，等接入**」。
+> **图**：主美已交付 `purify_bottle.png`（128×176），出图脚本 `Tools/art-pipeline/make_purify_bottle.py`，按 `ArtStyleGuide.md` §6.5 规格。
+> **位置**：`Puzzle_Pickup` 挂在 L3 高台 (44.0, **3.25**)，支撑面是 `Puzzle_Floor`（顶面 y=2.800，非 `SecondFloor`），collider 实际半径 0.45u（scale 1.0 下）。⚠️ 挂点高度在 2026-10-31 改过三轮（3.25 贴地正确 → 误判 3.8 悬空 → 一度推成 3.50 → **最终 3.25**），详见 `LevelDesign.md` §6.5 注。
+> **待接入**：`PurifyPickup.prefab` 的 `m_Sprite` 换图 + `m_Color` tint 改白色（否则亮绿液体被蓝 tint 压成墨绿）。
+> **接入后本条要转正**，并同步 `ArtStyleGuide.md` §6.5 与 `LevelDesign.md` §6.5。
 
 **两条换算规则（后续摆任何环境精灵都直接用）**：
 

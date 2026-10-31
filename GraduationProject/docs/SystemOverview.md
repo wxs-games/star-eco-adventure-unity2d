@@ -71,7 +71,7 @@ L5 Editor ──► L4 UI ──► L3 Level ──► L2 玩法域 ──► L1
 | | `PoolManager` | 同上 | **0** |
 | **场景单例** | `UIManager` | 手工挂在场景根 | Title/L01/L02/L03 各 **1** |
 | | `LevelManager` | 同上 | L01/L02/L03 各 **1**，Title **0** |
-| **自举对象**（`RuntimeInitializeOnLoadMethod`） | `FrameworkSelfTest` | 进游戏自动跑一次自检 | 不挂场景 |
+| **自举对象**（`RuntimeInitializeOnLoadMethod`） | ~~`FrameworkSelfTest`~~ | ~~进游戏自动跑一次自检~~ → **已改手动菜单** `StarEco/Tools/框架自检`（2026-10-31） | 不挂场景 |
 | | `DamageNumberLayer` | 自动创建飘字 Canvas | 不挂场景 |
 | | `EnemyHealthBarLayer` | 自动创建敌人血条层 | 不挂场景 |
 
@@ -162,18 +162,18 @@ L5 Editor ──► L4 UI ──► L3 Level ──► L2 玩法域 ──► L1
 |---|---:|:-:|---|---|
 | `GarbagePurifiedEvent` | 3 | 5 | 垃圾堆/堵塞物/净化塔 → 目标链、HUD、净化值、氛围 | ✅ 主干 |
 | `EnemyDeathEvent` | 1 | 4 | 敌人 → 目标链、统计、生成器、掉落 | ✅ 主干 |
-| `PurityChangedEvent` | 1 | 2 | 净化值 → 氛围、目标链 | ✅ 主干（HUD 净化值面板 2026-10-30 移除后 −1） |
+| `PurityChangedEvent` | 1 | **3** | 净化值 → `AtmosphereController`（氛围）、`LevelObjectiveTracker`（目标链）、`LevelSpawner` | ✅ 主干（**2026-10-31 实测校正**：原写 2，实为 3） |
 | `EnemyDamagedEvent` | 2 | 2 | 敌人 → 血条、飘字 | ✅ |
-| `LevelCompletedEvent` | 1 | 2 | 关卡 → `ResultPanel`、`LevelResultUI`（后者未挂载，见 §10 债 2） | ⚠️ 双订阅者 |
-| `LevelFailedEvent` | 1 | 2 | 关卡 → `ResultPanel`、`LevelResultUI`（后者未挂载） | ⚠️ 双订阅者 |
-| `ObjectiveCompletedEvent` | 1 | 1 | 目标链 → HUD（**只剩一条 Debug.Log**，目标栏已移除） | ⚠️ 事实空订阅 |
+| `LevelCompletedEvent` | 1 | **3** | 关卡 → `ResultPanel`（结算面板）、`ToastLayer`（Toast）、`BossHealthBar`（收尾） | ✅（**2026-10-31 实测校正**：`LevelResultUI` 类已删除，见 §10 债 1 已关闭；原写的「双订阅者」已过时） |
+| `LevelFailedEvent` | 1 | **3** | 关卡 → `ResultPanel`、`ToastLayer`、`BossHealthBar` | ✅（**2026-10-31 实测校正**，同上） |
+| `ObjectiveCompletedEvent` | 1 | **2** | 目标链 → `HUDController`（播 `Pickup` 音效）、`BossGate`（Boss 战开启门） | ✅（**2026-10-31 实测校正**：原写 1 订阅者且标「事实空订阅」，实为 2） |
 | `AnimalRescuedEvent` | 1 | 1 | 解救点 → 目标链 | ✅ |
 | `TowerDisableEvent` | 1 | 1 | 净化塔 → 目标链 | ✅ |
 | `LevelPurifiedEvent` | 1 | 1 | 净化值 → 关卡 | ✅ |
-| `PickupCollectedEvent` | 1 | 1 | 拾取 → 图鉴 | ✅ |
-| `BossDefeatedEvent` | 1 | **0** | Boss → （无） | ⚠️ 孤儿（血条走 `HpPercent` 轮询 + `BossPhaseChangedEvent`） |
+| `PickupCollectedEvent` | 1 | **2** | 拾取 → `LevelStats`（统计）、`ToastLayer`（「净化剂 +{0}」提示） | ✅（**2026-10-31 实测校正**：原写「拾取 → 图鉴」有误——**图鉴不走事件总线**，是 `CodexService.CollectCard()` 直连） |
+| `BossDefeatedEvent` | 1 | **2** | Boss → `BossHealthBar`（隐藏血条）、`LevelObjectiveTracker`（T-28「击败 Boss」目标） | ✅ **不是孤儿**（**2026-10-31 实测校正**：原写 0 订阅者、判为孤儿，实为 2） |
 | `BossPhaseChangedEvent` | 1 | 1 | Boss → 血条 | ✅ |
-| `RestartLevelEvent` | 3 | 1 | 结算/暂停/UI → 关卡 | ✅ |
+| `RestartLevelEvent` | **2** | 1 | `PausePanel`（暂停菜单）、`ResultPanel`（结算面板）→ `LevelManager` | ✅（**2026-10-31 实测校正**：原写发布 3，实为 2） |
 | `PurifyTankChangedEvent` | 1 | **0** | 净化罐 → （无） | ⚠️ 孤儿 |
 | `LevelObjectiveChangedEvent` | 1 | **0** | 目标链 → （无） | ⚠️ 孤儿 |
 | `LevelStateChangedEvent` | 1 | **0** | 关卡 → （无） | ⚠️ 孤儿 |
@@ -181,13 +181,13 @@ L5 Editor ──► L4 UI ──► L3 Level ──► L2 玩法域 ──► L1
 | `PuzzleSolvedEvent` | 1 | **0** | 水解谜 → （无） | ⚠️ 孤儿 |
 | `ReturnToTitleEvent` | **0** | **0** | — | ⚠️ 完全未用 |
 
-**6 个孤儿事件的成因而非"漏接线"**：
+**孤儿事件的成因（2026-10-31 实测校正后：实为 5 个孤儿，不是 6 个）**：
 - `PuzzleSolvedEvent`：`Level02` 的水解谜计数**不走事件**，而是 `LevelObjectiveTracker` 数 `WaterBlock` 前缀的 `GarbagePurifiedEvent`（`LevelObjectiveTracker.cs:140` 注释明写）。这个事件是给未来"解谜演出"预留的。
 - `LevelObjectiveChangedEvent` / `LevelStateChangedEvent` / `PurifyTankChangedEvent` / `DialogueEventIdEvent`：HUD 与各面板改为**直接轮询/持有引用**（`HUDController` 每帧读 `LevelObjectiveTracker.Current`），事件版本发布后无人订阅。
-- `BossDefeatedEvent`：第三关通关实际走 `EnemyDeathEvent` → 目标链（Boss 也是 `EnemyControllerBase`，死亡会广播通用死亡事件）；血条走 `HpPercent` 轮询。它纯粹是"将来做 Boss 战计时/成就"的预留。
+- ~~`BossDefeatedEvent`~~ **（2026-10-31 已关闭此误判）**：原判为「0 订阅者孤儿」，**实测有 2 个订阅者**——`BossHealthBar`（收尾隐藏）与 `LevelObjectiveTracker`（T-28「击败 Boss」目标判定）。**它现在是有实际用途的事件**，不再是预留。
 - `ReturnToTitleEvent`：定义了但返回主菜单是直接 `SceneManager.LoadScene`，没用事件。
 
-> **架构债**：这 6 个事件是"设计时想用事件、实现时图快直接引用"的残留。它们**不影响功能**，但会让读代码的人误以为有订阅方。已在 §10 列为 P2 清理项。
+> **架构债**：这 5 个事件是"设计时想用事件、实现时图快直接引用"的残留。它们**不影响功能**，但会让读代码的人误以为有订阅方。已在 §10 列为 P2 清理项。
 
 ---
 
@@ -198,7 +198,7 @@ L5 Editor ──► L4 UI ──► L3 Level ──► L2 玩法域 ──► L1
 ```
 Unity 引擎初始化
   └─ RuntimeInitializeOnLoadMethod(AfterSceneLoad)
-       ├─ FrameworkSelfTest    → 跑一次自检（事件/池/存档/音频），结果打 Console
+       ├─ FrameworkSelfTest    → ~~跑一次自检~~ → **改为手动菜单触发**（`StarEco/Tools/框架自检`，2026-10-31）
        ├─ DamageNumberLayer    → 建 Canvas（order 100）
        └─ EnemyHealthBarLayer  → 建 Canvas（order 90）
   └─ 加载 BuildSettings[0] = Title.unity
@@ -333,11 +333,11 @@ FinishLevel(success)
 
 | # | 问题 | 影响 | 优先级 |
 |---|---|---|---|
-| 1 | **`LevelResultUI` 是死代码**：`StarEco.Level` 下有一套程序化结算 UI（订阅 `LevelCompletedEvent`），但**四个场景里一个都没挂**；实际生效的是 `UI/ResultPanel`（UIManager 栈式面板）。两套并存，`LevelCompletedEvent` 有 2 个订阅者，其中 1 个永远不触发 | 读代码误判结算在哪实现 | P2 删除 |
+| ~~1~~ | ~~**`LevelResultUI` 是死代码**~~ —— **✅ 已关闭（2026-10-31 实测）**：该类**已从代码库删除**（`grep "class LevelResultUI"` 零命中）。`Editor/LevelUISetup.cs:11` 注释明写「M6 遗留 LevelResultUI 已移除」，`UI/UIUtility.cs:9` 说明结算相关私有代码已抽到 `UIUtility` 复用。**无残留，无债可还** | —— | ✅ 已关闭 |
 | 2 | **6 个孤儿事件 + 1 个完全未用事件**（§6） | 误以为有订阅方 | P2 清理；其中 `LevelObjectiveChangedEvent` 是 2026-10-30 HUD 目标栏移除后才变孤儿的，需在恢复面板时优先启用 |
 | ~~3~~ | ~~`DropSpawner` 三关配置全空~~ | — | ✅ **已修 2026-10-30**：三关已挂 `TestDrop` + `PurifyPickup`（`_dropTable`/`_pickupPrefab` 均非 null），运行时实测生效 |
 | **8** | **`BossGate` 372 行是死代码**：五场景零挂载、零代码引用。它是**求职展示版**的 Boss 破土登场演出，毕设版走的是「净化 `GarbageWall_03R` 开路 + Boss 已 active」 | 照代码读结论、没验场景挂载 → 两份 SDD 曾把它写成实际功能 | P2：若要启用，只需在 `GarbageWall_03R` 上加组件并设 `_gateTargetId` |
-| **9** | **`FrameworkSelfTest` 无开关**：`[RuntimeInitializeOnLoadMethod(AfterSceneLoad)]` 每次进场景都跑，其中 `TestAudioManager` 把 `sfxVolume` 设 0.5 再恢复**硬编码 1f** → 玩家音量每次启动被重置；且故意损坏存档产生的 error 会污染控制台 | 答辩演示一启动就见到红字 error | **P1**：加 `#if UNITY_EDITOR` 或 `Development` 判断 |
+| ~~**9**~~ | ~~**`FrameworkSelfTest` 无开关**~~ —— **✅ 已关闭（2026-10-31 实测）**：已改为**手动菜单入口** `StarEco/Tools/框架自检`（`Editor/FrameworkSelfTestMenu.cs:14` `[MenuItem]`），原 `[RuntimeInitializeOnLoadMethod]` 已移除（`Assets/Scripts/Framework/FrameworkSelfTest.cs:7` 注释确认）。**进场景不再自动跑，不再污染控制台** | ~~答辩演示一启动就见到红字 error~~ | ✅ 已关闭 |
 | **10** | **`BossHealthBar` 预绑导致血条永不显示**：`_boss` 在 Inspector 预绑 → `TryBindBoss()` 首行 `if(_boss!=null) return;` 永不 `Show()`；`Build()` 末尾已 `Hide()` | 打 Boss 全程无血条 | **P1（B 修）**：把 `Show()` 提到预绑分支之前 |
 | 4 | **`TDD.md` §2.1 目录结构与 §3.1 系统关系图停留在 M1 规划态** | 与实际严重不符（写着"当前仅 SampleScene.unity"） | **P0 已在本轮修正** |
 | 5 | **`specs/01~03` 的 SDD 是 M1~M3 时期写的**，其中 03 描述的"原地攻击 + 移动可取消"已被 10-27/10-28 两次改动推翻 | SDD 与实现不符 | **P0 已在本轮修正** |
