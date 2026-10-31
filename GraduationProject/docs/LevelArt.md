@@ -474,7 +474,8 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 | `ground_forest.png` | **2048×1024 @128**（原 512×128 @32） | **L2×3** | ✅ 在用；2026-10-31 升级到 16×8u、平均亮度 36.8%、左右无缝（拼缝 1.75） |
 | `ground_factory.png` | 512×128 @32 | **0（已退役）** | ⚠️ 规格过小；2026-10-31 被 `ground_industrial` 替换后移入 `Assets/Art/_archive/` |
 | `ground_industrial.png` | 2048×1024 @128 | **L3** | ✅ 规格合格，已提亮至 30.8%（2026-10-31），**已由 A 换入 L3**（提交 `80462e3`） |
-| `water_river.png` | 512×128 @32 | **0**（序列 `water_river_00~` 被 L2 `Water` 用） | ⚠️ 母图闲置，真正在用的是序列帧 |
+| `water_river.png` | 512×128 @32 | **0**（母图闲置） | ⚠️ 母图闲置；**且它本身是「静帧错版」**——U-0011 曾以为「它的调性是对的，只是没被用」，但实测它是**被裁切过的绿调静帧**（画面里有石头与倒影），与 6 帧序列**不是同一套画**，不可直接当序列帧用 |
+| `water_river_00~05.png` | 1024×256 @64 | **L2 `Water`**（`m_DrawMode=2` Tiled） | 🔴 **2026-10-31 整批作废待重出**：① 6 帧是**同一 prompt 的 6 个独立变体**（相邻帧像素差全为 25.95、瓶子位置每帧不同）→ 播放必然跳变 ② `m_DrawMode=2` Tiled → **正方形拼贴** ③ 像素密度 64 vs 地面 128 → **与环境接不上** ④ 图面含背景墙/瓶子/垃圾/石头 → 违反 U-0011。**动画管线（controller/clip/帧序/12FPS）已就绪无需重做**，出图规格见 `ArtStyleGuide.md` §6.7 |
 | `garbage_wall.png` | — | L2 三个堵塞物 | ✅ |
 | `platform_flat.png` | — | L1 | ✅ |
 | `platform_log.png` | — | L2 | ✅ |
@@ -494,7 +495,8 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 
 ### 8.2 结论
 
-- **闲置环境资产 3 个**：`ground_polluted_soil`（2048 大图）、`water_river`（母图，序列帧在用）；`ground_industrial` 已转为**待用**（L3 地面替换素材已就绪，2026-10-31 提亮至 30.8%）。
+- **闲置环境资产 3 个**：`ground_polluted_soil`（2048 大图）、`water_river`（母图，**且是错版静帧**，不可当序列用）；`ground_industrial` 已转为**在用**（2026-10-31 已换入 L3，提交 `80462e3`）。
+- **🔴 规格不合格 1 个（新增）**：`WaterAnim/water_river_00~05`（1024×256 @PPU64）—— 与三关地面（2048×1024 @PPU128）**密度差一倍**，且 6 帧非相位序列、含异物，**2026-10-31 整批作废待重出**（规格见 `ArtStyleGuide.md` §6.7）。
 - **规格不合格 1 个**：`ground_factory` 512×128（本轮被 `ground_industrial` 替换后即可退役）。~~`ground_forest`~~ 已于 2026-10-31 升级为 2048×1024 @PPU128；~~`ground_polluted`~~ 同日由 760×190 @PPU190 升级为 2048×1024 @PPU128（16×8u、顶排 51%~55%、拼缝 1.22）。
 - **错配 4 处**（L3 用 512 小图当地面、L3 真墙（另 2 个是机械底部横条，非墙体）、L1 森林树、L2 提示牌贴图）。
 - **另有 15 个精灵从未挂载**（既有道具 5 + 地面大图 2 + 本轮新增 8），尺寸合格、规则已给出，见 §8.3。
@@ -910,7 +912,8 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 | `platform_catwalk.png` | `Environment/Props/` | L3 工业栈道 | — |
 | `platform_stairs.png` | `Environment/Props/` | 楼梯平台（**纯侧视**金属楼梯，1585×938 @355.303 = 4.461×2.640u，5 级格栅踏板 + 黄黑警示条） | 左岸直接摆、右岸 `flipX` 镜像；用作 `StairsL/StairsR` |
 | `ground_polluted_soil.png` | `Environment/Tiles/` | L1 污染土壤（原始大图，3.4 MB，规格正确但主题已无人用） | 备用，L1 地面现用 `ground_polluted` |
-| `water_river.png` | `Environment/Tiles/` | L2 水面横条 | — |
+| `water_river.png` | `Environment/Tiles/` | L2 水面横条（**母图，闲置且为错版静帧**） | — |
+| `water_river_00~05.png` | `Environment/Tiles/WaterAnim/` | L2 水面动画 6 帧（`Water` 对象，Animator `water_river_flow`） | 🔴 **整批作废待重出**（2026-10-31，见 `ArtStyleGuide.md` §6.7）；**动画管线已就绪**，出图后只需改 `m_DrawMode` |
 | `crate_wood.png` | `Environment/Props/` | 木箱（440×400 @400 = 1.10×1.00u，与 `breakable_rock` 1.57×0.95 同量级） | 中心 `y=0.50`（底边落在 `Ground` 顶面 `y=0`），左右需 **1.2u 净空**。实测空闲区间：L1 约 `x=-8.6 / -4.0 / +4.9`，L3 约 `x=-7.0` |
 | `Boss01_Lockup_A.png` | `Boss/Boss01/Lockup/` | Boss 定妆图 | **美术留档，不进运行时**（不需挂载） |
 
