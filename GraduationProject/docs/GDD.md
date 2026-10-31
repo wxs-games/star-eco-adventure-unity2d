@@ -78,7 +78,7 @@
 
 | 道具 | 作用 | 落地状态（2026-10-31 核） |
 |---|---|---|
-| 可回收垃圾桶 | 净化剂补给 | ✅ 组件 `PurifyPickup` 已实现；**Level03 摆 1 个**（`Puzzle_Pickup` @(44.0, 3.25)，高台顶，**已接入实物图**）。另有**敌人掉落**一路：三关 `DropSpawner` 均已挂 `TestDrop.asset`（`PurifyBottle` ×1，**概率 1.0**）+ `PurifyPickup.prefab`，即**每只敌人死亡必掉 1 瓶** |
+| 可回收垃圾桶 | 净化剂补给 | ✅ 组件 `PurifyPickup` 已实现；**Level03 摆 1 个**（`Puzzle_Pickup` @(44.0, **3.01**)，高台顶，**已接入实物图**）。另有**敌人掉落**一路：三关 `DropSpawner` 均已挂 `TestDrop.asset`（`PurifyBottle` ×1，**概率 1.0**）+ `PurifyPickup.prefab`，即**每只敌人死亡必掉 1 瓶** |
 | 空气净化装置 | 区域减速敌人 | ❌ 未实现 |
 | 能量核心 | HP 补给 | ❌ 未实现（`TestDrop.asset` 掉落表仅 `PurifyBottle` 一种） |
 | 剧情收集品 | 环保知识卡片 | ✅ `KnowledgeCardPickup` + `CodexService`；卡片数据 **8 张**（`Resources/Data/knowledge_cards.json`），**已摆 7 张**（L1 2 张 / L2 3 张 / L3 2 张），仅 `kc_plastic_bag` 未摆放 |

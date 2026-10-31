@@ -475,7 +475,7 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 | `ground_factory.png` | 512×128 @32 | **0（已退役）** | ⚠️ 规格过小；2026-10-31 被 `ground_industrial` 替换后移入 `Assets/Art/_archive/` |
 | `ground_industrial.png` | 2048×1024 @128 | **L3** | ✅ 规格合格，已提亮至 30.8%（2026-10-31），**已由 A 换入 L3**（提交 `80462e3`） |
 | `water_river.png` | 512×128 @32 | **0**（母图闲置） | ⚠️ 母图闲置；**且它本身是「静帧错版」**——U-0011 曾以为「它的调性是对的，只是没被用」，但实测它是**被裁切过的绿调静帧**（画面里有石头与倒影），与 6 帧序列**不是同一套画**，不可直接当序列帧用 |
-| `water_river_00~05.png` | 1024×256 @64 | **L2 `Water`**（`m_DrawMode=2` Tiled） | 🔴 **2026-10-31 整批作废待重出**：① 6 帧是**同一 prompt 的 6 个独立变体**（相邻帧像素差全为 25.95、瓶子位置每帧不同）→ 播放必然跳变 ② `m_DrawMode=2` Tiled → **正方形拼贴** ③ 像素密度 64 vs 地面 128 → **与环境接不上** ④ 图面含背景墙/瓶子/垃圾/石头 → 违反 U-0011。**动画管线（controller/clip/帧序/12FPS）已就绪无需重做**，出图规格见 `ArtStyleGuide.md` §6.7 |
+| `water_river_00~05.png` | **1920×640 @128** | **L2 `Water`**（待 `m_DrawMode` 2→0 Simple） | ✅ **2026-10-31 已重出并验收通过**（主美 `a0f2511`，相位连续程序化生成）。实测：相邻帧像素差 **1.59~1.61**（旧批 25.95，降到 1/16）｜首尾闭合 1.61 ✅｜左右接缝 0.05~0.19 无缝 ✅｜**纯水面无异物** ✅｜平均色 (60,82,62) 与地面 (73,112,55) 同属森林绿调族 ✅。画布 1920×640@128 = **15×5u 正好等于池区**（2048×1024@128 = 16×8u 会上下各溢出 1.5u 盖住河床与岸）。**动画管线（controller/clip/帧序/12FPS）全程未动** |
 | `garbage_wall.png` | — | L2 三个堵塞物 | ✅ |
 | `platform_flat.png` | — | L1 | ✅ |
 | `platform_log.png` | — | L2 | ✅ |
@@ -496,7 +496,7 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 ### 8.2 结论
 
 - **闲置环境资产 3 个**：`ground_polluted_soil`（2048 大图）、`water_river`（母图，**且是错版静帧**，不可当序列用）；`ground_industrial` 已转为**在用**（2026-10-31 已换入 L3，提交 `80462e3`）。
-- **🔴 规格不合格 1 个（新增）**：`WaterAnim/water_river_00~05`（1024×256 @PPU64）—— 与三关地面（2048×1024 @PPU128）**密度差一倍**，且 6 帧非相位序列、含异物，**2026-10-31 整批作废待重出**（规格见 `ArtStyleGuide.md` §6.7）。
+- ~~**🔴 规格不合格 1 个**~~ → **✅ 已关闭（2026-10-31）**：`WaterAnim/water_river_00~05` 已重出为 **1920×640 @PPU128**（主美 `a0f2511`），相位差从 25.95 降到 1.6、左右无缝、纯水面、色调同族，主策划实测验收通过。
 - **规格不合格 1 个**：`ground_factory` 512×128（本轮被 `ground_industrial` 替换后即可退役）。~~`ground_forest`~~ 已于 2026-10-31 升级为 2048×1024 @PPU128；~~`ground_polluted`~~ 同日由 760×190 @PPU190 升级为 2048×1024 @PPU128（16×8u、顶排 51%~55%、拼缝 1.22）。
 - **错配 4 处**（L3 用 512 小图当地面、L3 真墙（另 2 个是机械底部横条，非墙体）、L1 森林树、L2 提示牌贴图）。
 - **另有 15 个精灵从未挂载**（既有道具 5 + 地面大图 2 + 本轮新增 8），尺寸合格、规则已给出，见 §8.3。
@@ -522,13 +522,15 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 | `debris_grass.png` | 460×320 @400 | 1.15×0.80 | 0 | **0.40** | 草丛，L2 优先（L1 可当"残存杂草"）；同上摆法 |
 | `bush_shrub.png` | 720×480 @400 | 1.80×1.20 | 0 | **0.60** | 灌木丛，底边贴 y=0；L2 左右岸与树之间填空，与 `debris_grass` 混摆；单株间距 **≥ 2.0u**，不要排成一条直线 |
 | `vine_hanging.png` | 220×800 @400 | 0.55×2.00 | 0 | **挂点 y − 1.00** | 垂藤，**顶端贴住挂点**（画布顶行 22px 有像素、底行全透明），所以中心 y = 平台/横梁顶面 **− 1.00**；挂在 L2 平台边缘或树干上，不要落地 |
-| `purify_bottle.png` | 128×176 @**420** | 0.305×0.419 | 0 | **3.25** | ✅ **已交付并接入**（2026-10-31 主美交付、主策划验收通过、集成装配发布完成接入）。灰白瓶身 + 亮绿液体 + 深色描边 + 透明底，画质与剪影**不需重做**。prefab 5 项全改完：sprite 换图 / tint 改白 / scale 8.75→1.0 / radius→0.45 / order 3→7，详见 `ArtStyleGuide.md` §6.5 |
+| `purify_bottle.png` | 128×176 @**420** | 0.305×0.419 | 0 | **3.01** | ✅ **已交付并接入**（2026-10-31 主美交付、主策划验收通过、集成装配发布完成接入）。灰白瓶身 + 亮绿液体 + 深色描边 + 透明底，画质与剪影**不需重做**。prefab 5 项全改完：sprite 换图 / tint 改白 / scale 8.75→1.0 / radius→0.45 / order 3→7，详见 `ArtStyleGuide.md` §6.5 |
 
 **拾取物实物的特别说明（2026-10-31）**：
 
 > `purify_pickup` 与本表其它条目性质不同——其它是「图有了，找个位置摆」，它是「**位置与图都有了，等接入**」。
 > **图**：主美已交付 `purify_bottle.png`（128×176），出图脚本 `Tools/art-pipeline/make_purify_bottle.py`，按 `ArtStyleGuide.md` §6.5 规格。
-> **位置**：`Puzzle_Pickup` 挂在 L3 高台 (44.0, **3.25**)，支撑面是 `Puzzle_Floor`（顶面 y=2.800，非 `SecondFloor`），collider 实际半径 0.45u（scale 1.0 下）。⚠️ 挂点高度在 2026-10-31 改过三轮（3.25 贴地正确 → 误判 3.8 悬空 → 一度推成 3.50 → **最终 3.25**），详见 `LevelDesign.md` §6.5 注。
+> **位置**：`Puzzle_Pickup` 挂在 L3 高台 (44.0, **3.01**)，支撑面是 `Puzzle_Floor`（顶面 y=2.800，非 `SecondFloor`），collider 实际半径 0.45u（scale 1.0 下）。
+> ⚠️ **挂点高度在 2026-10-31 改过四轮**：3.25（贴地正确）→ 3.8（误判，悬空 0.297u）→ 3.50（按旧半径推）→ **3.01（最终）**。
+> **最终口径：贴地以「精灵底」为准**（不是碰撞体底）→ 圆心 = 顶面 2.800 + 精灵高 0.419/2 = 3.01。旧值 3.25 按「碰撞体圆底贴地」算 → **精灵浮空 0.24u**。详见 `UXDesign.md` §4.2.4 与 `LevelDesign.md` §6.5 注。
 > **待接入**：`PurifyPickup.prefab` 的 `m_Sprite` 换图 + `m_Color` tint 改白色（否则亮绿液体被蓝 tint 压成墨绿）。
 > **接入后本条要转正**，并同步 `ArtStyleGuide.md` §6.5 与 `LevelDesign.md` §6.5。
 
@@ -913,7 +915,7 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 | `platform_stairs.png` | `Environment/Props/` | 楼梯平台（**纯侧视**金属楼梯，1585×938 @355.303 = 4.461×2.640u，5 级格栅踏板 + 黄黑警示条） | 左岸直接摆、右岸 `flipX` 镜像；用作 `StairsL/StairsR` |
 | `ground_polluted_soil.png` | `Environment/Tiles/` | L1 污染土壤（原始大图，3.4 MB，规格正确但主题已无人用） | 备用，L1 地面现用 `ground_polluted` |
 | `water_river.png` | `Environment/Tiles/` | L2 水面横条（**母图，闲置且为错版静帧**） | — |
-| `water_river_00~05.png` | `Environment/Tiles/WaterAnim/` | L2 水面动画 6 帧（`Water` 对象，Animator `water_river_flow`） | 🔴 **整批作废待重出**（2026-10-31，见 `ArtStyleGuide.md` §6.7）；**动画管线已就绪**，出图后只需改 `m_DrawMode` |
+| `water_river_00~05.png` | `Environment/Tiles/WaterAnim/` | L2 水面动画 6 帧（`Water` 对象，Animator `water_river_flow`） | ✅ **已重出并验收通过**（1920×640 @PPU128，主美 `a0f2511`）；**接入只需改 `m_DrawMode` 2→0** |
 | `crate_wood.png` | `Environment/Props/` | 木箱（440×400 @400 = 1.10×1.00u，与 `breakable_rock` 1.57×0.95 同量级） | 中心 `y=0.50`（底边落在 `Ground` 顶面 `y=0`），左右需 **1.2u 净空**。实测空闲区间：L1 约 `x=-8.6 / -4.0 / +4.9`，L3 约 `x=-7.0` |
 | `Boss01_Lockup_A.png` | `Boss/Boss01/Lockup/` | Boss 定妆图 | **美术留档，不进运行时**（不需挂载） |
 
