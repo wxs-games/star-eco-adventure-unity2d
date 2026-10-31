@@ -214,15 +214,15 @@
 |---|---|---|---|
 | `ground_polluted.png` | **2048×1024 @PPU 128**（= 16×8u） | **L1** `Ground` | ✅ 2026-10-31 升级（原 760×190@190 = 4×1u，Tiled 40×8 下被重复 80 次；现平均亮度 29.7%、顶排 51%~55%、左右拼缝 1.22） |
 | `ground_forest.png` | **2048×1024 @PPU 128**（= 16×8u） | **L2** ×3（`GroundL`/`GroundR`/`Riverbed`） | ✅ 2026-10-31 升级（原 512×128@32，平均亮度 36.8%、左右拼缝 1.75） |
-| `ground_factory.png` | 512×128 | L3（待换出） | ⚠️ 规格过小，待退役 |
-| `ground_industrial.png` | 2048×1024 | **0（待换入 L3）** | ✅ 规格正确，只差 A 换 sprite |
+| `ground_factory.png` | 512×128 | **0（已退役）** | ⚠️ 规格过小；2026-10-31 已由 `ground_industrial` 替换并移入 `Assets/Art/_archive/` |
+| `ground_industrial.png` | 2048×1024 @PPU128（= 16×8u） | **L3** `Ground` | ✅ 2026-10-31 已由 A 换入 L3（提交 `80462e3`） |
 | `ground_polluted_soil.png` | 2048×1024 | **0** | ❌ 全库闲置（原始大图，规格正确但主题已无人用） |
 
 **规范**：
 
 - 地形贴图统一 **2048×1024**、RGB、可水平平铺（左右边缘必须无缝）。
 - 512×128 是老规格，**不作为标准**。`ground_forest` / `ground_polluted` 均已升级完毕（2048×1024 @PPU128），
-  目前只剩 `ground_factory` 一张待重画/退役（L3 应换用已就绪的 `ground_industrial`）。
+  `ground_industrial` 已换入 L3，**三关地面全部达标**；`ground_factory` 已退役归档。
 - 换贴图属于纯视觉替换，**不改碰撞体、不改坐标**，`Ground` 对象的 `SpriteRenderer.sprite` 一换即可。
   `ground_forest` / `ground_polluted` 因 GUID 未变，A 侧**连 `m_Sprite` 都不用改**，只需重导入 `Assets/Art`；
   但 PPU 变了，tile 的世界尺寸随之变化（4×1u → 16×8u），`m_Size` 仍是世界单位、无需改。
