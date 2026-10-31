@@ -176,13 +176,28 @@ HUD (10)              ← 最低（常驻，不参与 Esc）
 |---|---|---|---|
 | 解救动物 | `RescueTarget` | ✅ `RescueTarget.cs:112` | 面板开着不响应 E |
 | 拉杆 | `LeverSwitch` | ✅ `LeverSwitch.cs:102` | 面板开着不响应 E |
-| NPC 对话 | `DialogueTrigger` | ❌ **缺** | 面板开着仍会开对话 |
+| NPC 对话 | `DialogueTrigger` | ❌ **缺**（**两条触发路径都缺**） | 面板开着仍会开对话 |
 | 提示牌阅读 | `SignboardTrigger` | ❌ **缺**，且**根因不同**（见 3.1.3） | 面板开着仍会开阅读界面 |
 
-**`DialogueTrigger` 的修法（主程序执行）**：在 `Update()` 里 `Input.GetKeyDown(_interactKey)` **之前**加判定。
-⚠️ **不能加在 `Update()` 最开头** —— 那里已有 `_playing` 状态机负责「对话播放中不重复触发」和「等 E 键抬起才允许重触发」，
-提前 return 会让 `_playing` 永远无法复位（对话面板关闭后 `_playing` 卡在 true，NPC 气泡再也回不来、
-朝向再也转不回去）。**正确落点是「读 E 键之前」，不是「函数开头」。**
+**`DialogueTrigger` 的修法（主程序执行）**：**有两条路径会开对话，两条都要判 `IsBlocking`** —— 只判一条等于没修。
+
+| # | 触发路径 | 代码位置 | 现状 |
+|---|---|---|---|
+| ① | **首次靠近自动开场**（不按 E，走近就自动说） | `DialogueTrigger.cs:96` `if (_autoTalkOnFirstApproach && !_hasTalkedOnce && !_playing && !DialoguePanel.IsDialogueActive)` → `BeginDialogue()` | ❌ 无 `IsBlocking` 判定 |
+| ② | **按 E 触发**（`_autoTalkOnFirstApproach=false` 的 NPC 与二次对话） | `DialogueTrigger.cs:133` `if (!_playing && Input.GetKeyDown(_interactKey))` → `BeginDialogue()` | ❌ 无 `IsBlocking` 判定 |
+
+⚠️ **路径① 是上一版派单漏掉的一条**，且它比路径② 危害更大：
+路径① 的守卫只有 `!DialoguePanel.IsDialogueActive`（只挡「对话面板正开着」），
+**挡不住「暂停菜单 / 设置 / 图鉴开着」** → 玩家在暂停菜单开着时走近 NPC，会**自动弹出对话面板盖在暂停菜单之上**。
+更糟的是 `BeginDialogue()` 会把 `_hasTalkedOnce` 置 true → **这次「首次见面自动交代」被白白消耗掉**，
+玩家下次再走近这个 NPC 就不会自动说话了。
+
+⚠️ **不能把判定加在 `Update()` 最开头** —— `DialogueTrigger` 的 `_playing` 状态机（`DialogueTrigger.cs:112-131`）
+负责「对话播放中不重复触发」和「等 E 键完全抬起才允许重触发」，并在此复位 `_playing` → `RestoreFacing()` → 恢复气泡。
+提前 return 会让 `_playing` **永远无法复位**（对话面板关掉后 `_playing` 卡在 true，NPC 气泡再也回不来、朝向再也转不回去）。
+
+**正确落点 = 两处 `BeginDialogue()` 调用之前**（路径① 的条件里加、路径② 的 `GetKeyDown` 前加）；
+`_playing` 复位分支**必须保持不受阻断影响**（它是状态清理，不是「触发互动」）。
 
 #### 3.1.3 提示牌阅读：根因不是「少一个 if」，而是「阅读界面根本不是面板」
 
@@ -201,6 +216,33 @@ HUD (10)              ← 最低（常驻，不参与 Esc）
 由 `SignboardTrigger` 负责「请求打开 + 传数据」，由面板负责「翻页 + 关闭」。
 **不做这一步，光加 `IsBlocking` 判定无效** —— 因为读牌时那个信号根本不会变真。
 
+##### ⚠️ 升格方案的两个实现约束（上一版派单漏了，现补齐）
+
+| # | 约束 | 原因 | 证据 |
+|---|---|---|---|
+| **①** | **`SignboardPanel` 必须做成「全局单例」**，不能每个 `SignboardTrigger` 各建一个 | `UIManager._panels` 是 `Dictionary<string, UIPanel>`，**按 `PanelName` 寻址**。三个提示牌（`signboard_plastic` / `signboard_recycle` / `signboard_forest`）若各建一个同名面板，第 2、3 个 `Register` 会被 `ContainsKey` 静默丢弃 → **后两块牌永远打不开** | `UIManager.cs:57-68` `Register()`：`if (!_panels.ContainsKey(panel.PanelName)) _panels.Add(...)` |
+| **②** | 面板的 `PanelName` 用**唯一**值（如 `"Signboard"` 单例）或**按牌区分**（如 `"Signboard_signboard_plastic"`） | 同上。若采用单例，则「当前读哪块牌」由 `SignboardTrigger` 打开时传入数据解决（与 `DialoguePanel.Play(data)` 同款） | `UIPanel.cs:12` `PanelName` 为 `abstract string`，由实现方给 |
+
+> **推荐做法**：**单例 + 数据传入**（复用 `DialoguePanel` 的成熟范式）。
+> `DialoguePanel` 就是「全局单例面板 + `Play(data)` 注入内容」：`LevelManager.cs:302-306` 与 `DialogueTrigger.cs:154-156` 都是 `SafeOpen(PanelId)` 紧跟 `panel.Play(data)`。
+> `SignboardPanel` 照抄这个形状即可：**静态 `Instance` + `Play(data)` + `UIManager.SafeOpen("Signboard")`**。
+> ⚠️ **但 `DialoguePanel` 的注册方式不可照抄**：它是**场景里挂好的**（三关各一个 `m_Script` 引用），
+> `SignboardPanel` 若也走场景挂载，则**三关都要加组件（A 车道工作量 ×3）**；
+> 走**运行时自建 + `Register`** 则零场景改动（B 车道单干）。
+
+##### ⚠️ 读牌期间「敌人会不会打你」——这是升格方案**必须一并解决**的副作用
+
+**问题**：升格后读牌会冻结玩家移动（`IsBlocking` → `InputLocked`）。
+但**敌人定住的判据是 `DialoguePanel.IsDialogueActive`**（`EnemyControllerBase.cs:126,141`、`EnemyAttackHitbox.cs:77`、`EnemyProjectile.cs:142`、`PlayerCombat.cs:71`），
+**读牌时 `IsDialogueActive` 是 false** → **敌人照常移动、照常攻击，玩家却站着不能动** = **站着被白打**。
+
+**裁决**：读牌期间**敌人必须与对话期间一样定住**（停移动 + 停攻击 + 玩家免伤）。
+实现方式（**主程序定，不越界**）：把「玩家正在读东西」纳入现有判据 ——
+要么让 `SignboardPanel` 也提供 `IsDialogueActive` 同款静态开关，要么把判据改为「有阻断面板在栈顶」。
+
+> ⚠️ **这是上一版派单完全没提到的一层**：只做「读牌冻结移动」而不处理敌人，会**引入一个比原 bug 更糟的新 bug**。
+> 验收清单里已列为必测项。
+
 #### 3.1.4 「读牌时按 E」的行为规格（升格入栈后必须成立）
 
 | 时机 | 按 E 的唯一结果 | 禁止发生 |
@@ -213,7 +255,7 @@ HUD (10)              ← 最低（常驻，不参与 Esc）
 
 > **末页关、开不重开的实现要点**：与 `DialogueTrigger` 同款 —— 关面板后必须等 E 键**完全抬起**
 > 才允许下一次 `GetKeyDown` 生效，否则同一帧内 `GetKeyDown` 与 `GetKey` 的组合会让读牌界面反复自开。
-> `DialogueTrigger.cs:119` 的 `Input.GetKey(_interactKey)` 判定就是现成范式，照抄即可。
+> `DialogueTrigger.cs:120` 的 `Input.GetKey(_interactKey)` 判定就是现成范式，照抄即可。
 
 #### 3.1.5 「读牌时不能动」——这是设计意图，不是副作用
 
@@ -221,21 +263,27 @@ HUD (10)              ← 最低（常驻，不参与 Esc）
 但**不冻结 `Time.timeScale`**（与对话一致，见 §2.2 末段：只有暂停冻结时间）。
 
 理由：① 读牌是**专注阅读**场景，与对话同属「剧情/信息」类交互，玩家的注意力应当被独占；
-② 读牌界面是**全屏遮罩 + 1100×560 面板**（`SignboardTrigger.cs:186`），背景画面已被压暗 72%，
+② 读牌界面是**全屏遮罩 + 1100×560 面板**（`SignboardTrigger.cs:191`），背景画面已被压暗 72%（`UIUtility.Overlay`），
 玩家在这层遮罩下移动是**视觉噪声**，且会让玩家以为提示牌是"世界里的牌"而非"正在读的界面"；
 ③ 与对话保持一致 —— 玩家不需要在两种阅读场景里学两套规则。
+
+> ⚠️ **连带必须解决的问题**：冻结移动 → 敌人却不受冻结约束 → **站着被白打**。见 3.1.3 末节，已列为必测项。
+> **结论：读牌升格与「敌人定住」必须同一个改动里一起落地，不许拆成两批。**
 
 #### 3.1.6 验收清单（主程序执行后逐条实测）
 
 - [ ] 面板开着（暂停/设置/图鉴/结算）时，站在 NPC 旁按 E → **不开对话**
+- [ ] 面板开着时，走到 NPC 旁**不按 E**（首次靠近自动说话）→ **不开对话**（`DialogueTrigger.cs:96` 那条路径）
 - [ ] 面板开着时，站在提示牌旁按 E → **不开阅读界面**
 - [ ] 读牌界面开着时按 E → **只翻页**，范围内 NPC/笼子/拉杆**均不响应**
 - [ ] 读牌界面在末页时按 E → **关闭**，且**不重新打开**
 - [ ] 读牌界面开着时**玩家不能移动**（位置不变）
+- [ ] **读牌界面开着时，敌人不动、不攻击，玩家不受伤**（连站 10 秒不被白打）
 - [ ] 读牌界面开着时按 Esc → **关闭读牌界面**
 - [ ] 读牌关闭后，再按 E → **正常重新打开**
 - [ ] 对话面板开着时按 E → **对话正常推进**（对话自己的 E 键不受影响）
 - [ ] 对话播放结束后 NPC 气泡**能重新出现**、朝向**能转回去**（`_playing` 状态机未卡死）
+- [ ] **三块牌都能打开**（`signboard_plastic` / `signboard_recycle` / `signboard_forest`）—— 防「同名面板注册被丢弃」
 
 ---
 

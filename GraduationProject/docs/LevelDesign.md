@@ -265,7 +265,7 @@
 | `PlatformR1` | 20.5 | 顶面 2.89 | 3.0 × 0.18 | — | 右一台阶 |
 | `PlatformR2` | 24.5 | 顶面 4.29 | 2.08 × 0.18 | — | 右二台阶 |
 | `AnimalCage01` | −22.0 | 1.30 | 1.3 × 1.3 触发 | `RescueTarget` | 笼 1，E 键解救（半径 2.2） |
-| `AnimalCage02` | −18.0 | 1.30 | 1.3 × 1.3 触发 | `RescueTarget` | 笼 2 |
+| `AnimalCage02` | **−17.0**（原 −18.0，已裁决待 A 落地） | 1.30 | 1.3 × 1.3 触发 | `RescueTarget` | 笼 2 |
 | `WaterBlock1` | −10.0 | 0.0 | 1.32 × 0.88 | `WaterBlockage` | 堵塞点 1（需 8 点净化） |
 | `WaterBlock2` | −12.5 | 0.0 | 1.32 × 0.88 | `WaterBlockage` | 堵塞点 2 |
 | `WaterBlock3` | −15.0 | 0.0 | 1.32 × 0.88 | `WaterBlockage` | 堵塞点 3 |
@@ -273,6 +273,25 @@
 | `WaterRoot` | 0 | −1.6 | — | 容器 | 水位参考点，木筏为其子物体 |
 | `RaftPath` | 0 | −1.6 | — | 容器（**初始 inactive**） | 木筏通路组，解谜后激活 |
 | `Raft1/2/3` | −4.5 / 0 / +4.5 | 顶面 −1.26 | 4.41 × 0.39 | — | 3 段木筏，间距 4.5u |
+
+> **⚠️ 互动点间距铁律（`UXDesign.md` §3 规则 4）**：同类互动点中心间距 **≥ 4.8u**（= NPC 半径 2.6 + 笼子半径 2.2）。
+> 原因：每个触发器都在自己的 `Update` 里直读 `Input.GetKeyDown(E)`，**没有互斥机制** → 半径重叠就会**一键两用**。
+>
+> **2026-10-31 全量扫描三关 11 个互动点后的结果**：
+>
+> | 关卡 | 互动点（x 坐标 / 半径） | 同类最小间距 | 结论 |
+> |---|---|---|---|
+> | L1 | `NPC_Ava` −6.0 / 2.6；`Signboard_Plastic` 2.0 / 2.2；`Signboard_Recycle` 9.0 / 2.2 | 牌↔牌 7.0u | ✅ 合规 |
+> | L2 | `NPC_Ava_Forest` −27.4 / 2.6；`AnimalCage01` −22.0 / 2.2；`AnimalCage02` −18.0 / 2.2；`Signboard_Forest` 10.5 / 2.5 | **笼↔笼 4.0u** | ❌ **违规（已裁决修）** |
+> | L3 | `NPC_Ava_LeverHint` −20.08 / 2.6；`NPC_Robot_FactoryIntro` −12.0 / 2.6；`LeverSwitch_03` −1.21；`Puzzle_Lever` 47.0；`Puzzle_NPC` 60.8 / 2.6 | NPC↔NPC 8.08u | ✅ 合规 |
+>
+> **违规详情与裁决**：`AnimalCage01` 与 `AnimalCage02` 间距 **4.0u**，而两笼 `RescueTarget._radius` 均为 **2.2**
+> → 半径实际重叠 **0.4u**（2.2+2.2=4.4 > 4.0）→ **站在两笼之间按一次 E 会同时开两个笼**。
+> **裁决**：`AnimalCage02` x **−18.0 → −17.0**（笼↔笼 4.0 → **5.0u** ≥ 4.8 ✅；NPC↔笼 5.4u 不受影响）。
+> 落地安全性已核对：`GroundL` 覆盖 x ∈ [−28, −7]（**x=−17.0 稳稳落在其上**）、与 `WaterBlock3`（覆盖 [−15.69, −14.31]）间距 1.31u、
+> 与 `KnowledgeCard_Forest_Chain`（−11.5）间距 5.5u、与 `PlatformL2`（−20.5，高台 y=3.66）不同高度层。
+> **未选「Cage01 移到 −23.0」**：那样 NPC↔笼会变成 4.4u < 4.8u —— 修一个违规换一个违规。
+> **未选「半径缩到 1.9」**：牺牲「资源不该白捡」原则，且 4.0 vs 3.8 只余 0.2u 浮点余量。
 | `Garbage1` | 12.0 | — | — | `GarbagePile` | 右岸污染源 1 |
 | `Garbage2` | 17.0 | — | — | `GarbagePile` | 污染源 2 |
 | `Garbage3` | 22.0 | — | — | `GarbagePile` | 污染源 3 |
