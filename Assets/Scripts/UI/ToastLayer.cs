@@ -34,6 +34,15 @@ namespace StarEco.UI
         [Tooltip("队列上限，超出则丢弃新消息（防极端情况积压）")]
         [SerializeField] private int _maxQueue = 4;
 
+        [Header("拾取提示")]
+        [Tooltip("净化剂拾取时的提示文案（{0} = 实际回复量）。文案属策划域，策划可在此调整")]
+        [SerializeField] private string _pickupToastFormat = "净化剂 +{0}";
+
+        /// <summary>
+        /// 净化主题色：与 HUDController.TankFillColor 同值（复用项目既有配色，不新增色板决策）。
+        /// </summary>
+        private static readonly Color PurifyTint = new Color(0.35f, 0.75f, 1f);
+
         private Canvas _canvas;
         private CanvasGroup _group;
         private Text _label;
@@ -121,6 +130,7 @@ namespace StarEco.UI
 
             EventCenter.Subscribe<StarEco.Level.Events.LevelFailedEvent>(OnLevelEnded);
             EventCenter.Subscribe<StarEco.Level.Events.LevelCompletedEvent>(OnLevelCompleted);
+            EventCenter.Subscribe<StarEco.Eco.Events.PickupCollectedEvent>(OnPickupCollected);
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
@@ -128,6 +138,7 @@ namespace StarEco.UI
         {
             EventCenter.Unsubscribe<StarEco.Level.Events.LevelFailedEvent>(OnLevelEnded);
             EventCenter.Unsubscribe<StarEco.Level.Events.LevelCompletedEvent>(OnLevelCompleted);
+            EventCenter.Unsubscribe<StarEco.Eco.Events.PickupCollectedEvent>(OnPickupCollected);
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
@@ -146,6 +157,31 @@ namespace StarEco.UI
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             _suppressed = false;
+        }
+
+        /// <summary>
+        /// 净化剂拾取反馈（U-03）：瓶子被捡起时原本只有 HUD 的净化剂条在变，
+        /// 罐子接近满时数值看不出变化，玩家不知道刚才那瓶到底有没有喝上——补一条短提示。
+        /// </summary>
+        private void OnPickupCollected(StarEco.Eco.Events.PickupCollectedEvent evt)
+        {
+            if (evt.Kind != StarEco.Eco.PickupKind.PurifyBottle)
+            {
+                return;
+            }
+
+            // evt.Amount 是「实际回复量」：罐子已满时为 0，此时不弹 "+0"，免得误导玩家以为加了量。
+            if (evt.Amount <= 0)
+            {
+                return;
+            }
+
+            // 文案可能缺 {0} 占位（策划改文案时），此时直接原样显示，不抛格式化异常。
+            string text = !string.IsNullOrEmpty(_pickupToastFormat) && _pickupToastFormat.Contains("{0}")
+                ? string.Format(_pickupToastFormat, evt.Amount)
+                : _pickupToastFormat;
+
+            Show(text, PurifyTint);
         }
 
         /// <summary>清空待播队列并立刻收起当前条（不等待淡出，避免残影留在结算面板上）。</summary>

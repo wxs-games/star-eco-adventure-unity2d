@@ -24,7 +24,14 @@ namespace StarEco.Level
         RescueTargets = 4,
 
         /// <summary>疏通河道（M9 水流解谜：清理 N 处堵塞点，GarbagePurifiedEvent 的 WaterBlock 前缀计数）。</summary>
-        PuzzleSolved = 5
+        PuzzleSolved = 5,
+
+        /// <summary>
+        /// 击败 Boss（BossDefeatedEvent 计数）。
+        /// 与 DefeatEnemies 严格区分：后者数"任意敌人"，路上小怪死一只即达标，
+        /// 会导致 L3 跳过 Boss 战直接通关（T-28）。
+        /// </summary>
+        DefeatBoss = 6
     }
 
     /// <summary>

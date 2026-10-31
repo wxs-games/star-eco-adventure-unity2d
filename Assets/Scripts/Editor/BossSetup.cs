@@ -75,7 +75,7 @@ namespace StarEco.EditorTools
                 new LevelConfig.LevelObjective(
                     LevelObjectiveType.PurifyTargets, 3, "清理工厂污染源"),
                 new LevelConfig.LevelObjective(
-                    LevelObjectiveType.DefeatEnemies, 1, "击败工厂污染核心 Boss01")
+                    LevelObjectiveType.DefeatBoss, 1, "击败工厂污染核心 Boss01")
             };
 
             // 第三关小怪：Enemy03 追击型 1 条（Boss 战前施压）

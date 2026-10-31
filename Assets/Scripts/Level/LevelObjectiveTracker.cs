@@ -35,6 +35,7 @@ namespace StarEco.Level
         private int _purifiedTowers;
         private int _defeatedEnemies;
         private int _rescuedAnimals;   // M9 R2：AnimalRescuedEvent 计数
+        private int _defeatedBoss;     // T-28：BossDefeatedEvent 计数（与"击杀任意敌人"严格区分）
         private int _waterCleared;     // M9 R3：WaterBlock 前缀 GarbagePurifiedEvent 计数
 
         // 运行时夹取后的 Required（不修改 LevelConfig 资产本身，避免 Editor 下资产被标脏持久化）
@@ -78,6 +79,7 @@ namespace StarEco.Level
             EventCenter.Subscribe<PurityChangedEvent>(OnPurityChanged);
             EventCenter.Subscribe<AnimalRescuedEvent>(OnAnimalRescued);   // M9 R2
             EventCenter.Subscribe<TowerDisableEvent>(OnTowerDestroyed);   // 炮塔改为攻击击毁后由此计数
+            EventCenter.Subscribe<StarEco.Boss.Events.BossDefeatedEvent>(OnBossDefeated);   // T-28：击败 Boss 目标
         }
 
         private void OnDisable()
@@ -87,6 +89,7 @@ namespace StarEco.Level
             EventCenter.Unsubscribe<PurityChangedEvent>(OnPurityChanged);
             EventCenter.Unsubscribe<AnimalRescuedEvent>(OnAnimalRescued);
             EventCenter.Unsubscribe<TowerDisableEvent>(OnTowerDestroyed);
+            EventCenter.Unsubscribe<StarEco.Boss.Events.BossDefeatedEvent>(OnBossDefeated);   // T-28：与 OnEnable 配对
         }
 
         /// <summary>
@@ -109,6 +112,7 @@ namespace StarEco.Level
             _defeatedEnemies = 0;
             _rescuedAnimals = 0;
             _waterCleared = 0;
+            _defeatedBoss = 0;   // T-28
             ChainCompleted = false;
             _chainVersion++;   // 作废上一局遗留的延迟完成回调
 
@@ -127,6 +131,7 @@ namespace StarEco.Level
             _defeatedEnemies = 0;
             _rescuedAnimals = 0;
             _waterCleared = 0;
+            _defeatedBoss = 0;   // T-28
             ChainCompleted = false;
             _initialized = false;
             _chainVersion++;   // 作废上一局遗留的延迟完成回调
@@ -185,6 +190,17 @@ namespace StarEco.Level
         private void OnAnimalRescued(AnimalRescuedEvent evt)
         {
             _rescuedAnimals++;
+            Evaluate();
+        }
+
+        /// <summary>
+        /// T-28：击败 Boss 计数。
+        /// 走独立的 BossDefeatedEvent，而不是复用 EnemyDeathEvent 的"任意敌人"计数——
+        /// 后者会让 L3 路上死一只小怪就通关，跳过 Boss 战。
+        /// </summary>
+        private void OnBossDefeated(StarEco.Boss.Events.BossDefeatedEvent evt)
+        {
+            _defeatedBoss++;
             Evaluate();
         }
 
@@ -273,6 +289,8 @@ namespace StarEco.Level
                     return _purifiedTowers;
                 case LevelObjectiveType.DefeatEnemies:
                     return _defeatedEnemies;
+                case LevelObjectiveType.DefeatBoss:
+                    return _defeatedBoss;   // T-28
                 case LevelObjectiveType.RescueTargets:
                     return _rescuedAnimals;
                 case LevelObjectiveType.PuzzleSolved:

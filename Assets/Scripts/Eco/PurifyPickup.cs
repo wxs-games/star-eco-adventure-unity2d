@@ -52,15 +52,18 @@ namespace StarEco.Eco
                 return;
             }
 
-            int amount = _config != null ? _config.PickupTankAmount : 20;
-            tank.Restore(amount);
+            int requested = _config != null ? _config.PickupTankAmount : 20;
+
+            // 用「实际回复量」而非请求量：罐子接近满时 Restore 只加得上差额，
+            // 广播请求量会让 HUD 提示与真实增量对不上（U-03 反馈失真）。
+            int applied = tank.Restore(requested);
 
             AudioManager.Instance?.PlaySfx(SfxId.Pickup);   // M10
 
             EventCenter.Publish(new Events.PickupCollectedEvent
             {
                 Kind = PickupKind.PurifyBottle,
-                Amount = amount
+                Amount = applied
             });
 
             ReturnToPool();
