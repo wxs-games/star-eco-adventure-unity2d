@@ -30,8 +30,8 @@ MonoBehaviour:
     RequiredObjectiveIndex: -1
   - Prefab: {fileID: 743422200972414136, guid: 56d6108c5156f3f42a02d45835485656, type: 3}
     Anchors: []
-    MaxAlive: 1
-    BaseInterval: 14
+    MaxAlive: 2
+    BaseInterval: 10
     RequiredObjectiveIndex: 0
   Star3Purity: 100
   Star2Purity: 60

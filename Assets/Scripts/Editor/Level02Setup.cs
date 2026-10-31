@@ -98,7 +98,11 @@ namespace StarEco.EditorTools
                     LevelObjectiveType.DefeatEnemies, 4, "击败 4 只变异怪物")
             };
 
-            // 刷怪表：远程毒植物只保留 1 只；另加近战怪 Enemy01（无远程攻击）
+            // 刷怪表（v1.1 重做）：不允许两类敌人在 L2 全程同时无限循环刷新。
+            // 第一条：远程毒植物 Enemy02，左岸救援 + 清堵阶段压制，RequiredObjectiveIndex=-1
+            // 即关卡开始就可刷新，用于“先处理敌人还是冒险开笼/清堵”的选择。
+            // 第二条：近战怪 Enemy01，清堵主线完成（目标②达成）后才开始刷新，
+            // 对应右岸登陆 → 污染源 → 守关三波收尾，避免前段被常驻战斗稀释。
             config.SpawnEntries = new[]
             {
                 new LevelConfig.SpawnEntry
@@ -114,8 +118,8 @@ namespace StarEco.EditorTools
                     Prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Enemy01Prefab),
                     Anchors = new Transform[0],
                     MaxAlive = 2,
-                    BaseInterval = 8f,
-                    RequiredObjectiveIndex = -1
+                    BaseInterval = 10f,
+                    RequiredObjectiveIndex = 1
                 }
             };
 
@@ -192,15 +196,25 @@ namespace StarEco.EditorTools
             log.AppendLine($"已创建 WaterRoot（水位 {WaterLowY}→{WaterHighY}）+ RaftPath（3 段连通，初始禁用）");
 
             // —— 河道堵塞点 ×3（左岸，喷雾可及）——
+            // v1.1 分区口径：近岸两个低风险（WaterBlock1 x=-10、WaterBlock2 x=-12.5），
+            // 远端一个高风险（WaterBlock3 x=-15，靠近河沿，承受 Enemy02 远程毒气压迫）。
+            // 三个堵塞点都是主线必须清理；远端堵塞可由过河后从木筏返回左岸回收，
+            // 形成“先过河拿安全空间，再回头完成生态修复”的选择。
             var blockages = new List<StarEco.Eco.WaterBlockage>();
             MakeBlockage(white, "WaterBlock1", new Vector3(-10f, 0.5f, 0f), 8, blockages);
             MakeBlockage(white, "WaterBlock2", new Vector3(-12.5f, 0.5f, 0f), 8, blockages);
             MakeBlockage(white, "WaterBlock3", new Vector3(-15f, 0.5f, 0f), 8, blockages);
-            log.AppendLine("已放置 WaterBlock1~3（左岸堵塞点，各需 8 点净化）");
+            log.AppendLine("已放置 WaterBlock1~3（近岸两低+远端一高；远端可过河后回收）");
 
             // —— 陷阱笼 ×2（E 键解救）——
-            MakeCage("AnimalCage01", "Animal01", new Vector3(-22f, 1.3f, 0f));
-            MakeCage("AnimalCage02", "Animal02", new Vector3(-18f, 1.3f, 0f));
+            // 笼底贴左岸地面顶面 y=0；合成图高度约 1.29u，中心 y=0.65。
+            // v1.1 重做：笼↔笼间距 4.0u < 4.8u 互动半径铁律，且当前运行时保存为 -18，导致
+            // 两只笼在空间上过于接近，按一次 E 可能同时触发两个 RescueTarget。
+            // AnimalCage01(-22) 与 NPC_Ava_Forest(-27.4) 间距 5.4u，不动；
+            // AnimalCage02 由 -18 改到 -17，笼↔笼间距 5.0u，满足 ≥4.8u；同时仍落在 GroundL
+            // 覆盖区 [−28, −7] 上，非段落缝隙，与 WaterBlock3(-15) 间距 2.0u，不重叠。
+            MakeCage("AnimalCage01", "Animal01", new Vector3(-22f, 0.65f, 0f));
+            MakeCage("AnimalCage02", "Animal02", new Vector3(-17f, 0.65f, 0f));
             log.AppendLine("已放置 AnimalCage01/02（RescueTarget，E 键解救）");
 
             // —— 右岸污染源 ×3（GarbagePile 预制体）——
@@ -228,9 +242,12 @@ namespace StarEco.EditorTools
             // 左岸两级台阶（地面顶面 y=0，跳跃上限约 2.45u；素材为侧视平顶木板，厚 0.41u）：
             // L1 可站立顶面 1.40，从地面可稳定跳上；L2 顶面 2.60，相对 L1 升高 1.2u，可连跳。
             // L1 是碎裂机关：踩上约 0.5s 后碎掉，犹豫就掉下去；L2/R1/R2 保持普通单向木板
+            // v1.1 知识卡落点：PlatformL1(-24, 1.40)=左岸高台观察线，放一张森林知识卡（可提前看清右岸刷新分布）；
+            // PlatformL2(-20.3, 2.60)=左岸第二高台，放一张森林知识卡（可选探索，失败落回地面不致命）。
             MakePlatform(white, "PlatformL1", new Vector3(-24f, 1.40f, 0f), 2f, groundLayer, crumble: true);
             MakePlatform(white, "PlatformL2", new Vector3(-20.3f, 2.60f, 0f), 2f, groundLayer);
             // 右岸镜像两级台阶（朝河道方向上升）：R1 顶面 1.40，R2 顶面 2.60，与左岸同规格。
+            // PlatformR2(18.3, 2.60)=右岸高台，放第三张森林知识卡（支线探索收益）。
             MakePlatform(white, "PlatformR1", new Vector3(22f, 1.40f, 0f), 2f, groundLayer);
             MakePlatform(white, "PlatformR2", new Vector3(18.3f, 2.60f, 0f), 2f, groundLayer);
             log.AppendLine("已放置 8 棵树 + 4 个跳跃平台");
@@ -477,23 +494,16 @@ namespace StarEco.EditorTools
             var cage = new GameObject(name);
             cage.transform.position = pos;
 
-            // 笼体（真素材 animal_cage.png，缺失才退灰盒）
-            var bars = MakeWorldBox("Bars", white, 1.3f, 1.3f, Vector3.zero,
-                new Color(0.55f, 0.55f, 0.60f, 1f), 1);
-            bars.transform.SetParent(cage.transform, false);
-            bars.transform.localPosition = Vector3.zero;
-            ApplyProp(bars.GetComponent<SpriteRenderer>(), bars.transform,
-                "animal_cage.png", Vector3.zero, 1.3f, 0f, true);
-
-            // 笼中动物（真素材 animal_otter.png：站在笼内底部）
-            var animal = MakeWorldBox("Animal", white, 0.7f, 0.7f, Vector3.zero,
-                new Color(0.80f, 0.62f, 0.42f, 1f), 2);
-            animal.transform.SetParent(cage.transform, false);
-            animal.transform.localPosition = new Vector3(0f, 0.05f, 0f);
-            ApplyProp(animal.GetComponent<SpriteRenderer>(), animal.transform,
-                "animal_otter.png", Vector3.zero, 0f, -0.31f, false);
-            UnityEngine.Object.DestroyImmediate(animal.GetComponent<BoxCollider2D>());
-            UnityEngine.Object.DestroyImmediate(bars.GetComponent<BoxCollider2D>());
+            // 笼子与动物使用一张合成透明图，避免两张 SpriteRenderer 互相遮挡。
+            // animal_in_cage.png 已把栏杆绘制在动物前面，视觉关系由单张精灵固定。
+            var visual = MakeWorldBox("AnimalVisual", white, 1.3f, 1.3f,
+                Vector3.zero, Color.white, 5);
+            visual.transform.SetParent(cage.transform, false);
+            ApplyProp(visual.GetComponent<SpriteRenderer>(), visual.transform,
+                "animal_in_cage.png", Vector3.zero, 0f, 0f, true);
+            visual.transform.localPosition = Vector3.zero;
+            visual.GetComponent<SpriteRenderer>().sortingOrder = 5;
+            UnityEngine.Object.DestroyImmediate(visual.GetComponent<BoxCollider2D>());
 
             var col = cage.AddComponent<BoxCollider2D>();
             col.size = new Vector2(1.3f, 1.3f);
@@ -506,6 +516,7 @@ namespace StarEco.EditorTools
             var so = new SerializedObject(rescue);
             so.FindProperty("_targetId").stringValue = targetId;
             so.FindProperty("_radius").floatValue = 2.2f;
+            so.FindProperty("_cageVisual").objectReferenceValue = visual;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 

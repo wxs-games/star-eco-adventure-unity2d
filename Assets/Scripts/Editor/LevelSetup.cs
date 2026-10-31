@@ -69,18 +69,23 @@ namespace StarEco.EditorTools
             config.TimeLimit = 0f;
             config.IntroText = "这颗星球已经被垃圾污染了。用喷壶把污染源清理干净，让天空重新变绿。";
 
-            // 目标链：3 个污染源 → 1 座塔（攻击击毁）→ 净化度 100%
+            // 目标链（v1.1 重做）：
+            // ① 3 个垃圾堆净化（主线，必经）
+            // ② 净化度 100%（主线，必经）
+            // 污染监控塔改为可选战斗支线，不再作为净化目标。击毁塔可解除射线、提升评级，
+            // 但不作为通关判据，避免与净化度 100% 形成并联通关。
             config.Objectives = new[]
             {
                 new StarEco.Level.LevelConfig.LevelObjective(
                     StarEco.Level.LevelObjectiveType.PurifyTargets, 3, "清理散落的垃圾堆"),
                 new StarEco.Level.LevelConfig.LevelObjective(
-                    StarEco.Level.LevelObjectiveType.PurifyTowers, 1, "击毁污染监控塔"),
-                new StarEco.Level.LevelConfig.LevelObjective(
                     StarEco.Level.LevelObjectiveType.ReachPurity, 100, "把关卡净化值推到 100%")
             };
 
-            // 刷怪表：两条 Enemy01 条目，锚点在 LevelSetup 场景构建后由 FixAnchors 回填
+            // 刷怪表（v1.1 重做）：敌人不再全程无限循环刷。
+            // 第一条：缓慢近战压制，贯穿全关但数量少，保持教学关前段低压力。
+            // 第二条：垃圾堆清理完成（目标①达成）后才开始刷新，对应塔区收尾阶段的轻度战斗压力。
+            // 塔为可选支线，不与刷怪阶段绑定，避免玩家被迫击塔才能推进。
             config.SpawnEntries = new[]
             {
                 new StarEco.Level.LevelConfig.SpawnEntry
@@ -88,16 +93,16 @@ namespace StarEco.EditorTools
                     Prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Enemy01Prefab),
                     Anchors = new Transform[0],
                     MaxAlive = 2,
-                    BaseInterval = 5f,
+                    BaseInterval = 12f,
                     RequiredObjectiveIndex = -1
                 },
                 new StarEco.Level.LevelConfig.SpawnEntry
                 {
                     Prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Enemy01Prefab),
                     Anchors = new Transform[0],
-                    MaxAlive = 3,
-                    BaseInterval = 6f,
-                    RequiredObjectiveIndex = 1
+                    MaxAlive = 2,
+                    BaseInterval = 10f,
+                    RequiredObjectiveIndex = 0
                 }
             };
 
@@ -145,6 +150,8 @@ namespace StarEco.EditorTools
             // 放在两侧空地（x=±12.8 / ±15.6），避开中段 -7~11 的污染源 / 牌板 / 知识卡 / NPC。
             int groundLayer = LayerMask.NameToLayer("Ground");
             // L1 是碎裂机关：踩上约 0.5s 后碎掉，犹豫就掉下去；L2/R1/R2 保持普通单向木板
+            // PlatformL1 左台阶为独占知识卡 kc_plastic_bag 的落点（补齐图鉴缺失卡），
+            // 跳上去有明确收益，失败落回地面不直接死亡。
             MakePlatform("PlatformL1", new Vector3(-12.8f, 1.40f, 0f), 2f, groundLayer, crumble: true);
             MakePlatform("PlatformL2", new Vector3(-15.6f, 2.60f, 0f), 2f, groundLayer);
             MakePlatform("PlatformR1", new Vector3(12.8f, 1.40f, 0f), 2f, groundLayer);
