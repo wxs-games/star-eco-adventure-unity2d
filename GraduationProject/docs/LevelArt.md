@@ -904,7 +904,7 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 |---|---|---|
 | `bulkhead_industrial.png` | `Environment/Props/` | ✅ `Level03.unity`（L3 真墙，1.5×3u 正合预留位，提交 `c5e5e17`） |
 | `ground_industrial.png` | `Environment/Tiles/` | ✅ `Level03.unity`（L3 地面，2048×1024 @128 = 16×8u，提交 `80462e3`） |
-| `raft_deck.png` | `Environment/Props/` | ✅ `Level02.unity` 的 `Raft1/2/3`（1800×157 @PPU400 = 4.50×0.3925u，与 `BoxCollider2D` 4.41×0.392 齐平；初版 4.50×0.65 高 0.13u 会让角色脚底陷进甲板，已按碰撞盒重生） |
+| `raft_deck.png` | `Environment/Props/` | ✅ `Level02.unity` 的 `Raft1/2/3`（1800×157 @PPU400 = 4.50×0.3925u，与 `BoxCollider2D` 4.41×0.392 齐平；初版 4.50×0.65 高 0.13u 会让角色脚底陷进甲板，已按碰撞盒重生）。⚠️ **2026-10-31 发现 `m_Size` 遗留**：`SpriteRenderer.m_Size` 仍是 **{0.04, 0.04}**（旧白方块时代）→ **木筏只渲染 0.04u，玩家看不见自己站的木筏**。应改为 **{4.5, 0.393}**（与精灵世界尺寸一致）。**这是 `m_Size` 遗留的第 3 处**（前两处：拾取物瓶、L2 分类统计）。属集成装配发布车道 |
 
 **尚未接入（7 张，交 A 线挂载；美术侧素材已就绪）**
 
