@@ -58,6 +58,20 @@ namespace StarEco.Eco
             // 广播请求量会让 HUD 提示与真实增量对不上（U-03 反馈失真）。
             int applied = tank.Restore(requested);
 
+            // T-22 缺口①③（主策划裁决）：罐已满时**不消耗瓶子**。
+            // 原行为：无论 Restore 加了多少都 ReturnToPool() → 瓶子凭空消失、罐量不动，
+            // 玩家看到的是「反馈失真」（与 U-03 同类问题）。
+            // 现行为：applied == 0（罐满，一滴都加不上）→ 瓶子留在原地，可再次拾取；
+            // 玩家从「瓶子还在、罐子没动」读出满罐状态——世界内的自解释反馈，不需文案。
+            //
+            // 不广播 PickupCollectedEvent：LevelStats 订阅它统计拾取数，
+            // 若此处广播会把「没捡到东西」计成拾取一次。
+            if (applied <= 0)
+            {
+                Debug.Log("[PurifyPickup] 净化罐已满，瓶子保留在原地（未消耗）。");
+                return;
+            }
+
             AudioManager.Instance?.PlaySfx(SfxId.Pickup);   // M10
 
             EventCenter.Publish(new Events.PickupCollectedEvent

@@ -377,15 +377,33 @@ namespace StarEco.Level
 
         private void OnLevelPurified(LevelPurifiedEvent evt)
         {
-            if (State == LevelState.Playing)
+            if (State != LevelState.Playing)
             {
-                FinishLevel(true, "净化值达到 100%");
+                return;
             }
+
+            // T-22：净化值 100% 不是独立通关条件（GDD §3.1「净化 100% **且**击败守关敌人」是合取）。
+            //
+            // 原实现在此直接 FinishLevel(true)，与目标链并联（析取），后果：
+            //   L2：清完 3 堵塞物(15) + 3 污染源(15) = 30/30 必然 100%
+            //       → 此刻 LevelPurifiedEvent 触发、提前结算 → 目标④「击杀 4 只变异怪物」永远轮不到
+            //   L3：全清 5 个污染源 → 100% → 提前结算 → 跳过 Boss 战
+            // 改这一处即同时覆盖 L2/L3（L3 的 DefeatBoss 也不免疫这条并联通路）。
+            //
+            // 现在：目标链未完成时**不结算**，统一由 OnObjectiveChainCompleted 判定。
+            //
+            // 这里刻意**不做**「链已完成就地结算」的兜底：CompleteChain 里的完成回调
+            // 刻意延后一帧（见 LevelObjectiveTracker.NotifyChainCompletedNextFrame），
+            // 那是 T-21「结算面板显示击杀：0」的修复——等同一事件的其他订阅者
+            // （LevelStats 记 KillCount）跑完再取快照。就地结算会绕过这个保护。
+            // 链回调由 StartCoroutine 保证一定送达（除关卡重开），无需兜底。
+            Debug.Log("[LevelManager] 净化值达到 100%，但目标链尚未全部完成 —— 不结算，继续推进剩余目标。");
         }
 
         private void OnObjectiveChainCompleted()
         {
-            // 关卡完成判据：目标链全完成或净化值 100%，先到者为准（R3）
+            // T-22：关卡完成判据 = 目标链全部完成（唯一通路）。
+            // 净化值 100% 只是目标链完成时的必然结果/副产物，不是并联的第二个通关条件。
             if (State == LevelState.Playing)
             {
                 FinishLevel(true, "全部关卡目标完成");
