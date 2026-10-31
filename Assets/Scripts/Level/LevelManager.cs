@@ -209,6 +209,11 @@ namespace StarEco.Level
 
             _spawner?.Stop();
 
+            // 收掉玩家可能正在看的对白。必须排在 _player.InputLocked = true 之前：
+            // UIManager.ApplyInputLock 会按当前栈顶重算并写回 InputLocked / ExternalInputLock，
+            // 在锁定之后再关面板会把锁清成 false，直到结算面板入栈才补回来。
+            CloseResidualDialogue();
+
             if (_player != null)
             {
                 _player.InputLocked = true;
@@ -222,6 +227,45 @@ namespace StarEco.Level
             }
 
             CommitFinish(success, reason);
+        }
+
+        /// <summary>
+        /// 关闭仍在播放的对话面板（T-19）。幂等：没有残留对白时什么都不做。
+        ///
+        /// 为什么必须关：玩家可能在读艾娃对白/提示牌的半途完成关卡（或在对话中被 Boss 打死）。
+        /// 此时 DialoguePanel 仍在 UIManager 栈里，DialogueCanvas(sortingOrder 70) 位于
+        /// ResultCanvas(100) 之下，而结算遮罩 UIUtility.Overlay 只有 72% 不透明
+        /// → 对白框从遮罩下透出来，结算按钮白字直接压在艾娃台词上，文字糊成一团。
+        /// 这违反 UXDesign §2.3「结算面板 ← 最高（一出现就压住一切）」。
+        ///
+        /// 顺带修掉一个同源问题：同一个 DialoguePanel 不能同时播两段，
+        /// 所以原先若正好有对白在播，L3 的落幕对白 ava_ending 会被整段跳过
+        /// （违反 GDD §40「最后一关先播落幕对白再弹结算」）。
+        /// 先关残留对白、再播落幕对白，收尾顺序就回到策划规定的轨道。
+        /// </summary>
+        private void CloseResidualDialogue()
+        {
+            if (!DialoguePanel.IsDialogueActive)
+            {
+                return;
+            }
+
+            UIManager.SafeClose(DialoguePanel.PanelId);
+
+            // 兜底：面板未注册进 UIManager 时 SafeClose 找不到它，OnClose 不会触发，
+            // 静态开关 IsDialogueActive 会残留 true（敌人被永久冻结，见 T-20）。
+            if (DialoguePanel.IsDialogueActive)
+            {
+                var panel = FindObjectOfType<DialoguePanel>();
+                if (panel != null)
+                {
+                    panel.Close();
+                }
+                else
+                {
+                    Debug.LogWarning("[LevelManager] 残留对白无法关闭（面板已不存在），继续结算。");
+                }
+            }
         }
 
         /// <summary>
@@ -241,7 +285,8 @@ namespace StarEco.Level
                 return false;
             }
 
-            // 已有对话在播就不抢（例如玩家正站在艾娃面前打完 Boss）
+            // 防御性检查：残留对白正常已在 FinishLevel 里被 CloseResidualDialogue 收掉，
+            // 走到这里说明是别的路径直接调的。同一时刻只能播一段，不能抢。
             if (DialoguePanel.IsDialogueActive)
             {
                 return false;
@@ -290,6 +335,10 @@ namespace StarEco.Level
         /// <summary>终态后半段：生成结算数据 → 写档 → 播提示音 → 切状态 → 广播（结算面板据此弹出）。</summary>
         private void CommitFinish(bool success, string reason)
         {
+            // 结算面板要独占屏幕（UXDesign §2.3）。这里再兜一次，
+            // 保证无论从哪条路径进来，结算弹出那一瞬对白都不在栈里。
+            CloseResidualDialogue();
+
             var result = BuildResult(success);
             LevelSaveService.CommitResult(result);
 
