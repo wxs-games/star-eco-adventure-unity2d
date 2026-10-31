@@ -268,16 +268,24 @@ python .../compose_sheet.py --frames ... --name Player_Run --dry       # 只看�
 
 | 车道 | 认领路径 |
 |---|---|
-| A 场景线 | `Assets/Scenes/**`、`Assets/Prefabs/**`、`Assets/Settings/**`、`Assets/Resources/**`（除 `dialogues.json`）、`ProjectSettings/**` |
-| B 代码线 | `Assets/Scripts/**`（含 `.cs.meta`） |
-| C 美术管线线 | `Assets/Art/**`、`Assets/Animations/**`、`Tools/art-pipeline/**` |
+| A 场景线（集成/装配/发布） | `Assets/Scenes/**`、`Assets/Prefabs/**`、`Assets/Settings/**`、`Assets/Resources/**`（除 `dialogues.json`）、`ProjectSettings/**`、构建打包与发布 |
+| B 代码线（主程） | `Assets/Scripts/**`（含 `.cs.meta`） |
+| C 美术管线线（主美） | `Assets/Art/**`、`Assets/Animations/**`、`Tools/art-pipeline/**` |
+| D 策划线（主策划，2026-10-31 新设） | `GraduationProject/docs/` 下的**策划文档主责**：`GDD.md`、`LevelDesign.md`、`NarrativeDesign.md`、`AudioDesign.md`、`ArtStyleGuide.md`、`UXDesign.md` 及 `specs/**`——D 拥有这些文档的解释权与修订权；**不碰** `.cs` / `.unity` / `.prefab` / `.asset` / 美术源文件 |
+
+**策划裁决权（2026-10-31 起，D 专属）**：目标顺序、数值、玩法规则、验收标准的分歧由 D 拍板。**制衡四条**：
+
+1. D 的裁决必须**先写进 `docs/` 并提交**再执行——留痕，可否决。
+2. A/B/C 对裁决有异议 → 看板提异议 → **用户仲裁**，D 不一锤定音。
+3. 主观资产红线不变：美术风格/文案/手感数值，用户点名才动，D 的裁决不能越过这条。
+4. 选项推荐的「策划缺口」由 D 补齐（此前 A 只能报缺口等用户，现移交 D）。
 
 **六条硬规矩：**
 
 1. **只写自己车道内的路径，别人的路径一律只读**——读、Grep、`git diff` 都可以，写一个字节都不行。
 2. **不许以"顺手修一下""这个 bug 我也看见了"为理由跨道写。** 发现问题就在看板登记、交归属人处理；自己动手等于制造冲突。
 3. **要改别人的文件**：看板发 `[CLAIM-REQ]` → 归属人回 `[CLAIM-OK]` → 才可动手。**没有 `[CLAIM-OK]` 一律视为越界**，即使改动本身是对的。
-4. **共享区**（`GraduationProject/**`、`Assets/Resources/Data/dialogues.json`、看板文件本身）改动前先在看板登一行，避免两人写同一段。
+4. **共享区**（`Assets/Resources/Data/dialogues.json`、看板文件本身、`GraduationProject/docs/` 中**非 D 主责**的台账文档：`RiskRegister.md`、`TestPlan.md`、`BuildAndRelease.md`、`README.md` 等）改动前先在看板登一行，避免两人写同一段。**D 主责的策划文档**（上表所列）其他车道要改需走 `[CLAIM-REQ]`。
 5. **冻结区任何人不得动**（需用户单独点头）：`Assets/Art/Player/**` 角色帧、`Assets/Audio/**`、`PlayerStateMachine` / `PlayerStates` / `PlayerStateBase` 状态机核心。
 6. **美术管线线零编辑器依赖**：不调用 Unity MCP 的任何写操作，不碰 `.unity` / `.prefab` / `.cs`；需要引擎侧落地（挂预制体、改场景、重导入）时交 A。
 
