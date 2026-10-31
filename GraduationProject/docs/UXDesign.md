@@ -174,10 +174,18 @@ HUD (10)              ← 最低（常驻，不参与 Esc）
 
 | 互动 | 组件 | 是否已判 `IsBlocking` | 阻断行为 |
 |---|---|---|---|
-| 解救动物 | `RescueTarget` | ✅ `RescueTarget.cs:112` | 面板开着不响应 E |
-| 拉杆 | `LeverSwitch` | ✅ `LeverSwitch.cs:102` | 面板开着不响应 E |
+| 解救动物 | `RescueTarget` | ✅ `RescueTarget.cs:112` | 面板开着不响应 E（落点在**距离判定之前**，`FindObjectOfType<PlayerController>` 之后） |
+| 拉杆 | `LeverSwitch` | ✅ `LeverSwitch.cs:102` | 面板开着不响应 E（落点同上） |
 | NPC 对话 | `DialogueTrigger` | ❌ **缺**（**两条触发路径都缺**） | 面板开着仍会开对话 |
 | 提示牌阅读 | `SignboardTrigger` | ❌ **缺**，且**根因不同**（见 3.1.3） | 面板开着仍会开阅读界面 |
+
+> **可复制的范式**：前两者的写法就是标准答案 ——
+> `if (UIManager.HasInstance && UIManager.Instance.IsBlocking) { return; }`
+> 放在「拿到玩家引用之后、距离判定之前」。`HasInstance` 判断不能省（`UIManager` 可能尚未实例化）。
+> ⚠️ 注意这**不是**「放在 `Update()` 最开头」—— 拿到玩家引用的那段不能被跳过。
+
+> ⚠️ **但 `DialogueTrigger` 不能照抄这个落点**：它的 `Update()` 里有 `_playing` 状态机负责复位
+> （见下方警告），提前 return 会让状态机卡死。**这是 `DialogueTrigger` 与另两类的唯一结构差异**。
 
 **`DialogueTrigger` 的修法（主程序执行）**：**有两条路径会开对话，两条都要判 `IsBlocking`** —— 只判一条等于没修。
 
@@ -216,29 +224,41 @@ HUD (10)              ← 最低（常驻，不参与 Esc）
 由 `SignboardTrigger` 负责「请求打开 + 传数据」，由面板负责「翻页 + 关闭」。
 **不做这一步，光加 `IsBlocking` 判定无效** —— 因为读牌时那个信号根本不会变真。
 
-##### ⚠️ 升格方案的两个实现约束（上一版派单漏了，现补齐）
+##### ⚠️ 升格方案的四个实现约束（上一版派单漏了，现补齐）
 
 | # | 约束 | 原因 | 证据 |
 |---|---|---|---|
 | **①** | **`SignboardPanel` 必须做成「全局单例」**，不能每个 `SignboardTrigger` 各建一个 | `UIManager._panels` 是 `Dictionary<string, UIPanel>`，**按 `PanelName` 寻址**。三个提示牌（`signboard_plastic` / `signboard_recycle` / `signboard_forest`）若各建一个同名面板，第 2、3 个 `Register` 会被 `ContainsKey` 静默丢弃 → **后两块牌永远打不开** | `UIManager.cs:57-68` `Register()`：`if (!_panels.ContainsKey(panel.PanelName)) _panels.Add(...)` |
 | **②** | 面板的 `PanelName` 用**唯一**值（如 `"Signboard"` 单例）或**按牌区分**（如 `"Signboard_signboard_plastic"`） | 同上。若采用单例，则「当前读哪块牌」由 `SignboardTrigger` 打开时传入数据解决（与 `DialoguePanel.Play(data)` 同款） | `UIPanel.cs:12` `PanelName` 为 `abstract string`，由实现方给 |
+| **③** | **运行时自建的面板必须自己调 `Register`**，不能指望 `UIManager.Start()` 的兜底扫描 | `UIManager` 是**跨场景常驻**（`MonoSingleton` → `DontDestroyOnLoad`），它的 `Start()` **只在首次运行时执行一次**，兜底扫描 `FindObjectsOfType<UIPanel>()` 也只扫那一刻。运行时才建的面板永远扫不到 → **面板建了但 `Open()` 找不到它，按 E 无反应** | `UIManager.cs:32-42` `Start()` 兜底注册；`UIManager.cs:89-91` `Open()` 找不到时 `Debug.LogWarning("面板未注册")` 后直接 return |
+| **④** | **面板的静态开关（读牌进行中）必须在 `OnDestroy` 里复位**，与 `DialoguePanel` 同款 | `DialoguePanel.IsDialogueActive` 曾在 `OnDestroy` 复位（`DialoguePanel.cs:52`）—— 因为 T-20 的教训：**静态开关残留 true 会让敌人被永久冻结**。新面板若漏了复位，退出关卡后敌人会一直定住 | `DialoguePanel.cs:50-57` `OnDestroy()` 复位 `IsDialogueActive = false`；`LevelManager.cs:256-257` 注释记载了 T-20 事故 |
 
 > **推荐做法**：**单例 + 数据传入**（复用 `DialoguePanel` 的成熟范式）。
 > `DialoguePanel` 就是「全局单例面板 + `Play(data)` 注入内容」：`LevelManager.cs:302-306` 与 `DialogueTrigger.cs:154-156` 都是 `SafeOpen(PanelId)` 紧跟 `panel.Play(data)`。
 > `SignboardPanel` 照抄这个形状即可：**静态 `Instance` + `Play(data)` + `UIManager.SafeOpen("Signboard")`**。
 > ⚠️ **但 `DialoguePanel` 的注册方式不可照抄**：它是**场景里挂好的**（三关各一个 `m_Script` 引用），
 > `SignboardPanel` 若也走场景挂载，则**三关都要加组件（A 车道工作量 ×3）**；
-> 走**运行时自建 + `Register`** 则零场景改动（B 车道单干）。
+> 走**运行时自建 + 自己 `Register`** 则零场景改动（B 车道单干）—— 见上方约束③。
 
-##### ⚠️ 读牌期间「敌人会不会打你」——这是升格方案**必须一并解决**的副作用
+##### ⚠️ 敌人定住的判据清单（改一处不够，逐条列全）
 
-**问题**：升格后读牌会冻结玩家移动（`IsBlocking` → `InputLocked`）。
-但**敌人定住的判据是 `DialoguePanel.IsDialogueActive`**（`EnemyControllerBase.cs:126,141`、`EnemyAttackHitbox.cs:77`、`EnemyProjectile.cs:142`、`PlayerCombat.cs:71`），
-**读牌时 `IsDialogueActive` 是 false** → **敌人照常移动、照常攻击，玩家却站着不能动** = **站着被白打**。
+「读牌期间敌人定住」听着像一个开关，实际是**五处判据**。主程序若只改其中一处，会留下漏网的攻击路径：
+
+| # | 判据位置 | 管住什么 | 漏了会怎样 |
+|---|---|---|---|
+| 1 | `EnemyControllerBase.cs:126`（`Update`） | 敌人整体定住：停移动、停状态机、停感知与计时 | 敌人继续追着玩家走 |
+| 2 | `EnemyControllerBase.cs:141`（`FixedUpdate`） | 刚体速度归零 | 敌人靠物理滑行继续位移 |
+| 3 | `EnemyStateBase.cs:19`（`DialogueActive` 属性） | **8 个敌人状态**的追击/攻击/塔攻击决策（`EnemyStates.cs:18,25,73,181,248,285` + `Tower01States.cs:18,62`） | 状态机仍在跑攻击决策，攻击欲望不被掐断 |
+| 4 | `EnemyAttackHitbox.cs:77` | 近战判定盒不结算伤害 | 近战敌人贴脸打掉血 |
+| 5 | `EnemyProjectile.cs:142` | 已飞出的弹体不结算伤害 | 远程敌人的子弹继续命中 |
+| 6 | `PlayerCombat.cs:71` | 玩家受击入口兜底 | 环境伤害等漏网来源仍能扣血 |
 
 **裁决**：读牌期间**敌人必须与对话期间一样定住**（停移动 + 停攻击 + 玩家免伤）。
 实现方式（**主程序定，不越界**）：把「玩家正在读东西」纳入现有判据 ——
 要么让 `SignboardPanel` 也提供 `IsDialogueActive` 同款静态开关，要么把判据改为「有阻断面板在栈顶」。
+
+> ⚠️ **判据③ 特别容易漏**：它在 `EnemyStateBase` 里，**一处属性、8 个调用点**，
+> 表面上只看到一个 `DialogueActive`，实际牵着 8 个状态决策。改的时候要意识到这一点。
 
 > ⚠️ **这是上一版派单完全没提到的一层**：只做「读牌冻结移动」而不处理敌人，会**引入一个比原 bug 更糟的新 bug**。
 > 验收清单里已列为必测项。
@@ -256,6 +276,21 @@ HUD (10)              ← 最低（常驻，不参与 Esc）
 > **末页关、开不重开的实现要点**：与 `DialogueTrigger` 同款 —— 关面板后必须等 E 键**完全抬起**
 > 才允许下一次 `GetKeyDown` 生效，否则同一帧内 `GetKeyDown` 与 `GetKey` 的组合会让读牌界面反复自开。
 > `DialogueTrigger.cs:120` 的 `Input.GetKey(_interactKey)` 判定就是现成范式，照抄即可。
+
+> ⚠️ **翻页/关闭逻辑必须写在面板的 `OnUpdate` 里，不能写在 `SignboardTrigger.Update` 里**：
+> `UIManager.Update` 只对**在栈里**的面板调 `UpdatePanel`（`UIManager.cs:42-54`），
+> 而 `UIPanel.UpdatePanel` 又只在 `_isOpen` 时才调 `OnUpdate`（`UIPanel.cs:84-90`）。
+> 写在触发器里 = 面板关了输入还在响应；写在面板 `OnUpdate` 里 = 关闭后自动失效，**天然满足「关了就停」**。
+
+> ⚠️ **面板必须调 `SetRoot(root)`**：否则 `UIPanel.Open/Close` 里的 `Root.SetActive(true/false)` 全部落空
+> （`Root` 为 null 时被跳过，`UIPanel.cs:26-42` / `:55-77`）→ 表现为**界面关不掉**。
+> `SetRoot` 默认 `visibleByDefault=false` 会把根节点隐藏，正好符合「默认关闭、打开才显示」。
+
+> ⚠️ **「栈顶独占 E」的判据用 `UIManager.Instance.TopPanelName`**（`UIManager.cs:21`），
+> 不要自己维护第二套「当前是否被面板挡住」的标志 —— 见 §3.1.1「只有 `UIManager` 能改阻断信号」。
+> ⚠️ **`DialoguePanel` 目前没做栈顶独占检查**（它的 `OnUpdate` 直接读 E，`DialoguePanel.cs:96-107`），
+> 所以「读牌界面在栈顶时按 E 不该触发对话」这条，**由 `SignboardPanel` 自己守**（读 E 前先判栈顶是自己）。
+> 这是**读牌侧的额外要求**，不是让 B 去改 `DialoguePanel`。
 
 #### 3.1.5 「读牌时不能动」——这是设计意图，不是副作用
 
@@ -279,11 +314,18 @@ HUD (10)              ← 最低（常驻，不参与 Esc）
 - [ ] 读牌界面在末页时按 E → **关闭**，且**不重新打开**
 - [ ] 读牌界面开着时**玩家不能移动**（位置不变）
 - [ ] **读牌界面开着时，敌人不动、不攻击，玩家不受伤**（连站 10 秒不被白打）
+  - 子项：**近战敌人**（`EnemyAttackHitbox`）不结算伤害
+  - 子项：**远程敌人已飞出的弹体**（`EnemyProjectile`）不结算伤害
+  - 子项：**炮塔**（`Tower01States`）不进入攻击决策
+  - 子项：**环境伤害**（`PlayerCombat` 兜底）不扣血
 - [ ] 读牌界面开着时按 Esc → **关闭读牌界面**
 - [ ] 读牌关闭后，再按 E → **正常重新打开**
 - [ ] 对话面板开着时按 E → **对话正常推进**（对话自己的 E 键不受影响）
 - [ ] 对话播放结束后 NPC 气泡**能重新出现**、朝向**能转回去**（`_playing` 状态机未卡死）
 - [ ] **三块牌都能打开**（`signboard_plastic` / `signboard_recycle` / `signboard_forest`）—— 防「同名面板注册被丢弃」
+- [ ] **从 L1 走到 L2 再走到 L3，每关的提示牌都能打开**（防「跨场景后 UIManager 兜底扫描不再执行 → 面板未注册」）
+- [ ] **退出关卡重进，敌人没有被永久定住**（防「静态开关残留 true」，T-20 同型事故）
+- [ ] 读牌界面**能被关掉**（根节点隐藏，不是关不掉的残影）—— 防「漏调 `SetRoot`」
 
 ---
 
@@ -579,3 +621,5 @@ HUD (10)              ← 最低（常驻，不参与 Esc）
 | 版本 | 日期 | 变化 |
 |---|---|---|
 | v1.0 | 2026-10-30 | 首版。键位全表（实测）+ 2 条冲突登记、8 个面板的流转与冻结规格、E 键统一互动范式 4 条铁律（含 4.8u 间距）、反馈时序与延迟红线、按钮顺序、首次 5 分钟教学路径、8 项无障碍缺口、10 条一致性检查清单 |
+| v1.1 | 2026-10-31 | 新增 §3.1「面板栈与互动的阻断关系」（主程序提请后补）：阻断信号唯一来源、四类互动阻断责任实测、提示牌阅读真实根因、读牌时按 E 行为规格、读牌时不能动的设计意图、验收清单 |
+| v1.2 | 2026-10-31 | **§3.1 三次修正**（自查发现前两版派单与草稿有缺陷）：①`DialogueTrigger` 两条触发路径（`cs:96` 自动说话 / `cs:133` 按 E）都要判 ②升格方案的实现约束从 2 条补到 **4 条**（新增「运行时自建必须自己 `Register`」「静态开关必须 `OnDestroy` 复位」）③新增**敌人定住的六处判据清单**（含 `EnemyStateBase.DialogueActive` 一处属性牵 8 个状态决策）④新增「翻页逻辑必须写在面板 `OnUpdate`」「必须调 `SetRoot`」「栈顶独占用 `TopPanelName`」三条实现要点 ⑤验收清单 9 → **15 条**。§3.1.2 补「可复制的范式」与 `DialogueTrigger` 的结构差异说明 |
