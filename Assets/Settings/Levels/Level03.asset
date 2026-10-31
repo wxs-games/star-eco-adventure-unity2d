@@ -19,7 +19,7 @@ MonoBehaviour:
   - Type: 0
     Required: 4
     Label: "\u6E05\u7406\u5DE5\u5382\u6C61\u67D3\u6E90\uFF08\u542B\u5C01\u9501\u5899\uFF09"
-  - Type: 3
+  - Type: 6
     Required: 1
     Label: "\u51FB\u8D25\u5DE5\u5382\u6C61\u67D3\u6838\u5FC3 Boss01"
   SpawnEntries:
