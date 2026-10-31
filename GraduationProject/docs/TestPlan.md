@@ -207,7 +207,7 @@
 | K-01 | ~~第二关木筏看不见~~ | 原记「`SpriteRenderer.sprite` 为 null」→ **该结论已证伪**：实为可序列化的 `WhiteSquare` 纯色块，从来不是 null | 玩家踩看不见的板过河 | **已修**（A3：换 `raft_deck.png` 真贴图，同步把 `localScale` 112.5×10→1×1、`BoxCollider2D.size` 0.0392→4.41×0.39，世界尺寸不变；C 后续重生为 1800×157@PPU400 使甲板面与碰撞盒齐平） |
 | K-02 | 三关地面用同一张污染土壤 | 生成脚本未按关卡取贴图 | 森林关踩污染地面 | **已修**（A2：L1 `ground_polluted` / L2 `ground_forest` / L3 `ground_industrial`） |
 | K-03 | 第二关 17 个物件排序在兜底层 15 | `FixAllLevelSpriteSorting.GuessOrder()` 兜底返回 15 | 玩家可能被树遮挡 | **已修（2026-10-31 `42f4f55`）**：三关 **91 个** SpriteRenderer 全部按 `ArtStyleGuide.md` §5.2 的分层表写入（L1 19 / L2 35 / L3 37，与目标表逐项复核一致），背景 −100 … 可读交互物 6，全部压在玩家之下。**注意**：仍有 24 个**预制体实例**（值存在 prefab 资产里，场景 grep 不到）未覆盖——见 `RiskRegister` T-25 |
-| K-04 | 打击无命中特效 | 素材已产出但未接入 | 打击感缺视觉火花 | **部分修**（A4 已生成 6 套 prefab：`fx_hit`/`fx_slash`/`fx_explode`/`fx_gas`/`fx_dust_run`/`fx_purify`；但按 GUID 检索，**只有 `fx_purify` 有 1 处引用，其余 5 套引用数均为 0** → 实际游玩时打击仍然无火花） |
+| K-04 | 打击无命中特效 | 素材已产出但未接入 | 打击感缺视觉火花 | **已修（2026-10-31 凌晨）**：B 已把五个特效接入代码层（`RiskRegister` T-07 闭环，提交 `5bc5420`），六个 prefab 的 FX 引用已灌入（`85ab66a`）、C 的 6 套材质已赋（`3743abb`）。**v1.0.4 起打击应有火花**；若实测仍无则按新缺陷登记 |
 | K-05 | L3 装饰牌全不可读 | 未挂 `SignboardTrigger` | 玩家反复按 E 无反应 | **设计如此，非缺陷**（依据 `NarrativeDesign.md` §5.1 叙事载体分布表：L3 = 3 对话 + **0 提示牌** + 2 知识卡；`GDD.md` §75 同）。**剩余真问题**是「长得像提示牌但靠近没反应」——正解不是挂触发器，而是给可读牌加发光边框做视觉区分：`sign_glow_plastic` / `sign_glow_recycle` 已由 C 交付，**2026-10-31 由 A 挂到 3 块可读牌下**（`Signboard_Plastic` / `Signboard_Recycle` / `Signboard_Forest`） |
 | K-06 | 无中途检查点 | 未实现 | 死亡即整关重来 | **设计如此**，非缺陷 |
 | K-07 | NPC_Ava 的 12 帧动画未使用 | 场景用静态图 | 艾娃全程不动 | 待修（P2） |
