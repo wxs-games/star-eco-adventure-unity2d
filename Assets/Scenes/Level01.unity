@@ -951,7 +951,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _dropTable: {fileID: 11400000, guid: f4ac1aa1667501f42934628a040d3ccf, type: 2}
   _pickupPrefab: {fileID: 6964301870739548421, guid: f1bb97db40d191b45894cccbe15cb77c, type: 3}
-  _healingPickupPrefab: {fileID: 6964301870739548421, guid: 6f48cf160b924f1380dffb9a788c632c, type: 3}
 --- !u!114 &277094360
 MonoBehaviour:
   m_ObjectHideFlags: 0
