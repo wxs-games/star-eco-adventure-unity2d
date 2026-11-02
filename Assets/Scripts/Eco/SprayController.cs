@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using StarEco.Combat;
 using StarEco.Framework;
@@ -24,6 +25,17 @@ namespace StarEco.Eco
 
         // 净化波复用静态数组（零每帧 GC）
         private static readonly Collider2D[] WaveOverlaps = new Collider2D[24];
+
+        // 喷洒直接范围检测缓冲（兜底触发回调漏检：判定盒启用时已重叠、偏移导致 Enter 未触发）
+        private static readonly Collider2D[] SprayOverlapBuf = new Collider2D[16];
+
+        // 兜底检测盒向下扩展量（u）：玩家贴地站立时判定盒底 ≈0.52，而低矮目标
+        // （如水面 scale0.55 的 WaterBlockage，碰撞体顶 ≈0.45）在判定盒下方 ——
+        // 垂直差 0.066u 导致触发回调与几何检测全部漏检。向下扩展覆盖贴地目标。
+        private const float OverlapDownExtend = 0.6f;
+
+        // 本 tick 已净化目标的碰撞体记录（避免触发列表 + OverlapBox 重复净化同一目标）
+        private readonly List<Collider2D> _seenThisTick = new List<Collider2D>(8);
 
         private PlayerController _player;
         private PurifyTank _tank;
@@ -169,18 +181,48 @@ namespace StarEco.Eco
 
             int purifyAmount = Mathf.CeilToInt((_config != null ? _config.SprayDPS : 2) * tick);
 
+            _seenThisTick.Clear();
+
+            // 通道一：通过触发列表净化（正常路径，缓存了接口引用，零 GetComponent 开销）
             for (int i = 0; i < targets.Count; i++)
             {
                 var target = targets[i];
 
-                // 通道一：净化（垃圾/塔适配器）
-                if (target.Purifiable != null)
+                if (target.Purifiable != null && target.Collider != null)
                 {
+                    _seenThisTick.Add(target.Collider);
                     target.Purifiable.ReceivePurify(purifyAmount, gameObject);
-                    continue;
                 }
+            }
 
-                // 喷壶只负责净化场景目标，不再直接击杀敌人。
+            // 兜底：直接 OverlapBox 范围检测。解决以下情况：
+            // ① BeginSpray() 时判定盒已与目标重叠，OnTriggerEnter2D 不会触发（只在"进入"重叠时发）；
+            // ② SprayHitbox 偏移导致判定盒未覆盖到近距离垃圾堆，Enter/Stay 都未触发；
+            // ③ 玩家贴地站立时判定盒够不到脚下低矮目标（垂直间隙漏检，见 OverlapDownExtend 注释）。
+            // 扩展只作用于本兜底查询，不改判定盒本体与触发回调行为。
+            var box = _hitbox.GetComponent<BoxCollider2D>();
+            if (box != null)
+            {
+                Vector2 center = _hitbox.transform.position;
+                center.y -= OverlapDownExtend * 0.5f;
+                Vector2 size = box.size;
+                size.y += OverlapDownExtend;
+                int count = Physics2D.OverlapBoxNonAlloc(center, size, 0f, SprayOverlapBuf);
+                for (int i = 0; i < count; i++)
+                {
+                    var col = SprayOverlapBuf[i];
+                    if (col == null || col == box || _seenThisTick.Contains(col))
+                    {
+                        continue;
+                    }
+
+                    var purifiable = col.GetComponentInParent<IPurifiable>();
+                    if (purifiable != null)
+                    {
+                        _seenThisTick.Add(col);
+                        purifiable.ReceivePurify(purifyAmount, gameObject);
+                    }
+                }
             }
 
             // 净化剂消耗：按基础速率持续扣除。

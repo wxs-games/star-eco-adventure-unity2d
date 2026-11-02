@@ -28,6 +28,15 @@ namespace StarEco.Level
         private int[] _aliveCounts;
         private int[] _spawnedTotals;   // 每条目累计生成数（含重生），用于限制重生次数
         private int[] _anchorCursor;
+        private int[][] _waveRemaining;
+        private float[][] _waveTimers;
+        private Transform[][] _waveAnchors;
+        private bool[] _waveTriggered;
+        private bool _rightBankReached;
+        private bool _rightBankTargetPurified;
+        private float _rightBankPurifiedX;
+        private bool _isLevel02;
+        private StarEco.Player.PlayerController _player;
         private float _pollution = 1f;
         private bool _running;
 
@@ -35,12 +44,16 @@ namespace StarEco.Level
         {
             EventCenter.Subscribe<PurityChangedEvent>(OnPurityChanged);
             EventCenter.Subscribe<EnemyDeathEvent>(OnEnemyDied);
+            EventCenter.Subscribe<StarEco.Eco.Events.GarbagePurifiedEvent>(OnGarbagePurified);
+            EventCenter.Subscribe<StarEco.Level.Events.ObjectiveCompletedEvent>(OnObjectiveCompleted);
         }
 
         private void OnDisable()
         {
             EventCenter.Unsubscribe<PurityChangedEvent>(OnPurityChanged);
             EventCenter.Unsubscribe<EnemyDeathEvent>(OnEnemyDied);
+            EventCenter.Unsubscribe<StarEco.Eco.Events.GarbagePurifiedEvent>(OnGarbagePurified);
+            EventCenter.Unsubscribe<StarEco.Level.Events.ObjectiveCompletedEvent>(OnObjectiveCompleted);
         }
 
         /// <summary>启动刷怪（LevelManager 进入 Playing 时调用）。</summary>
@@ -48,6 +61,8 @@ namespace StarEco.Level
         {
             _config = config;
             _tracker = tracker;
+            _isLevel02 = _config != null && _config.LevelIndex == 2;
+            _player = FindObjectOfType<StarEco.Player.PlayerController>();
             _pollution = 1f;
 
             int count = Entries?.Length ?? 0;
@@ -57,12 +72,47 @@ namespace StarEco.Level
             _aliveCounts = new int[count];
             _spawnedTotals = new int[count];
             _anchorCursor = new int[count];
+            _rightBankReached = false;
+            _rightBankTargetPurified = false;
+            _rightBankPurifiedX = float.NegativeInfinity;
+
+            var waves = _config != null ? _config.SpawnWaves : null;
+            _waveRemaining = waves != null ? new int[waves.Length][] : null;
+            _waveTimers = waves != null ? new float[waves.Length][] : null;
+            _waveAnchors = waves != null ? new Transform[waves.Length][] : null;
+            _waveTriggered = waves != null ? new bool[waves.Length] : null;
+            if (waves != null)
+            {
+                for (int waveIndex = 0; waveIndex < waves.Length; waveIndex++)
+                {
+                    _waveRemaining[waveIndex] = waves[waveIndex]?.Counts != null
+                        ? (int[])waves[waveIndex].Counts.Clone()
+                        : System.Array.Empty<int>();
+                    _waveTimers[waveIndex] = new float[_waveRemaining[waveIndex].Length];
+                    var wave = waves[waveIndex];
+                    _waveAnchors[waveIndex] = wave != null && !string.IsNullOrEmpty(wave.AnchorNamePrefix)
+                        ? ResolveAnchorPrefix(wave.AnchorNamePrefix)
+                        : null;
+                    if (_waveAnchors[waveIndex] != null && _waveAnchors[waveIndex].Length == 0)
+                    {
+                        _waveAnchors[waveIndex] = null;
+                    }
+                }
+            }
+
             _running = count > 0;
 
             for (int i = 0; i < count; i++)
             {
                 _prefabComponents[i] = ResolvePrefabComponent(i);
                 ResolveAnchors(i);
+            }
+
+            if (_isLevel02 && waves != null && waves.Length > 0)
+            {
+                _running = count > 0;
+                TriggerWaves(LevelConfig.SpawnWaveTrigger.GameStart, null, -1, 0f);
+                return;
             }
 
             if (count == 0)
@@ -89,6 +139,25 @@ namespace StarEco.Level
             var entries = Entries;
             if (entries == null)
             {
+                return;
+            }
+
+            var waves = _config != null ? _config.SpawnWaves : null;
+            if (_isLevel02 && waves != null && waves.Length > 0)
+            {
+                if (!_rightBankReached && _player != null && _player.IsGrounded)
+                {
+                    var rightBankWave = System.Array.Find(waves, wave =>
+                        wave != null && wave.Trigger == LevelConfig.SpawnWaveTrigger.RightBankReached);
+                    if (rightBankWave != null && _player.transform.position.x >= rightBankWave.TriggerX)
+                    {
+                        _rightBankReached = true;
+                        TriggerWaves(LevelConfig.SpawnWaveTrigger.RightBankReached, null, -1, 0f);
+                        TryTriggerRightBankPurifiedWave();
+                    }
+                }
+
+                UpdateWaves();
                 return;
             }
 
@@ -151,16 +220,15 @@ namespace StarEco.Level
                 return false;
             }
 
-            var prefabComponent = _prefabComponents[index];
-            if (prefabComponent == null)
-            {
-                return false;
-            }
-
             var anchor = anchors[_anchorCursor[index] % anchors.Length];
             _anchorCursor[index]++;
+            return TrySpawnAt(index, anchor);
+        }
 
-            if (anchor == null)
+        private bool TrySpawnAt(int index, Transform anchor)
+        {
+            var prefabComponent = _prefabComponents[index];
+            if (prefabComponent == null || anchor == null || PoolManager.Instance == null)
             {
                 return false;
             }
@@ -203,11 +271,14 @@ namespace StarEco.Level
                 return;   // 配置里已指定
             }
 
+            string prefix = !string.IsNullOrEmpty(entry.AnchorNamePrefix)
+                ? entry.AnchorNamePrefix
+                : _anchorNamePrefix;
             var found = FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             System.Collections.Generic.List<Transform> matched = null;
             for (int i = 0; i < found.Length; i++)
             {
-                if (found[i] != null && found[i].name.StartsWith(_anchorNamePrefix, System.StringComparison.Ordinal))
+                if (found[i] != null && found[i].name.StartsWith(prefix, System.StringComparison.Ordinal))
                 {
                     matched ??= new System.Collections.Generic.List<Transform>();
                     matched.Add(found[i]);
@@ -223,8 +294,14 @@ namespace StarEco.Level
             // 否则条目 0/1 每次会话可能取到不同锚点，出生位置随机漂移。
             matched.Sort((a, b) => string.Compare(a.name, b.name, System.StringComparison.Ordinal));
 
-            // 按条目序号取模分配锚点：条目 0 用 0,2,4…；条目 1 用 1,3,5…
-            // 存运行时数组，绝不回写 LevelConfig 资产（避免 Editor 下资产被标脏持久化场景对象引用）
+            // 未指定专属前缀时沿用旧的奇偶分配；专属前缀则使用全部匹配锚点。
+            // 存运行时数组，绝不回写 LevelConfig 资产（避免 Editor 下资产被标脏持久化场景对象引用）。
+            if (!string.IsNullOrEmpty(entry.AnchorNamePrefix))
+            {
+                _anchors[index] = matched.ToArray();
+                return;
+            }
+
             var subset = new System.Collections.Generic.List<Transform>();
             for (int i = index % 2; i < matched.Count; i += 2)
             {
@@ -232,6 +309,27 @@ namespace StarEco.Level
             }
 
             _anchors[index] = subset.ToArray();
+        }
+
+        private Transform[] ResolveAnchorPrefix(string prefix)
+        {
+            var found = FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            System.Array.Sort(found, (a, b) => string.Compare(a.name, b.name, System.StringComparison.Ordinal));
+            var matches = new System.Collections.Generic.List<Transform>();
+            for (int i = 0; i < found.Length; i++)
+            {
+                if (found[i] != null && found[i].name.StartsWith(prefix, System.StringComparison.Ordinal))
+                {
+                    matches.Add(found[i]);
+                }
+            }
+
+            if (matches.Count == 0)
+            {
+                Debug.LogError($"[LevelSpawner] 波次锚点前缀 {prefix} 未匹配到场景对象。");
+            }
+
+            return matches.ToArray();
         }
 
         /// <summary>该条目的运行时锚点（配置优先，其次运行时解析）。</summary>
@@ -272,6 +370,158 @@ namespace StarEco.Level
         private void OnPurityChanged(PurityChangedEvent evt)
         {
             _pollution = evt.Pollution;
+        }
+
+        private void OnGarbagePurified(StarEco.Eco.Events.GarbagePurifiedEvent evt)
+        {
+            if (!string.IsNullOrEmpty(evt.TargetId))
+            {
+                TriggerWaves(LevelConfig.SpawnWaveTrigger.TargetPurified, evt.TargetId, -1, evt.Position.x);
+            }
+
+            var waves = _config != null ? _config.SpawnWaves : null;
+            if (waves == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < waves.Length; i++)
+            {
+                var wave = waves[i];
+                if (wave != null && wave.Trigger == LevelConfig.SpawnWaveTrigger.PurifiedInRegion &&
+                    evt.Position.x >= wave.MinTargetX)
+                {
+                    _rightBankTargetPurified = true;
+                    _rightBankPurifiedX = Mathf.Max(_rightBankPurifiedX, evt.Position.x);
+                    break;
+                }
+            }
+
+            TryTriggerRightBankPurifiedWave();
+        }
+
+        private void TryTriggerRightBankPurifiedWave()
+        {
+            if (_rightBankReached && _rightBankTargetPurified)
+            {
+                TriggerWaves(LevelConfig.SpawnWaveTrigger.PurifiedInRegion, null, -1, _rightBankPurifiedX);
+            }
+        }
+
+        private void OnObjectiveCompleted(StarEco.Level.Events.ObjectiveCompletedEvent evt)
+        {
+            TriggerWaves(LevelConfig.SpawnWaveTrigger.ObjectiveCompleted, null, evt.Index, 0f);
+        }
+
+        private void TriggerWaves(LevelConfig.SpawnWaveTrigger trigger, string targetId, int objectiveIndex, float targetX)
+        {
+            var waves = _config != null ? _config.SpawnWaves : null;
+            if (!_isLevel02 || waves == null || _waveTriggered == null)
+            {
+                return;
+            }
+
+            for (int waveIndex = 0; waveIndex < waves.Length; waveIndex++)
+            {
+                var wave = waves[waveIndex];
+                if (_waveTriggered[waveIndex] || wave == null || wave.Trigger != trigger)
+                {
+                    continue;
+                }
+
+                if (trigger == LevelConfig.SpawnWaveTrigger.TargetPurified && wave.TargetId != targetId)
+                {
+                    continue;
+                }
+
+                if (trigger == LevelConfig.SpawnWaveTrigger.PurifiedInRegion && targetX < wave.MinTargetX)
+                {
+                    continue;
+                }
+
+                if (trigger == LevelConfig.SpawnWaveTrigger.RightBankReached &&
+                    (_player == null || _player.transform.position.x < wave.TriggerX))
+                {
+                    continue;
+                }
+
+                if (trigger == LevelConfig.SpawnWaveTrigger.ObjectiveCompleted &&
+                    wave.ObjectiveIndex != objectiveIndex)
+                {
+                    continue;
+                }
+
+                _waveTriggered[waveIndex] = true;
+                var indices = wave.EntryIndices ?? System.Array.Empty<int>();
+                var counts = _waveRemaining[waveIndex];
+                if (indices.Length != counts.Length)
+                {
+                    Debug.LogError($"[LevelSpawner] 波次 {waveIndex} 的 EntryIndices/Counts 长度不一致。");
+                    continue;
+                }
+
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    int entryIndex = indices[i];
+                    if (entryIndex < 0 || entryIndex >= (Entries?.Length ?? 0) || counts[i] < 0)
+                    {
+                        Debug.LogError($"[LevelSpawner] 波次 {waveIndex} 配置了无效敌人条目或数量。");
+                        counts[i] = 0;
+                    }
+                }
+            }
+        }
+
+        private void UpdateWaves()
+        {
+            if (_waveRemaining == null || Entries == null)
+            {
+                return;
+            }
+
+            for (int waveIndex = 0; waveIndex < _waveRemaining.Length; waveIndex++)
+            {
+                if (!_waveTriggered[waveIndex])
+                {
+                    continue;
+                }
+
+                var wave = _config.SpawnWaves[waveIndex];
+                var indices = wave.EntryIndices;
+                var counts = _waveRemaining[waveIndex];
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    int entryIndex = indices[i];
+                    var entry = Entries[entryIndex];
+                    if (counts[i] <= 0 || _aliveCounts[entryIndex] >= entry.MaxAlive)
+                    {
+                        continue;
+                    }
+
+                    _waveTimers[waveIndex][i] -= Time.deltaTime;
+                    if (_waveTimers[waveIndex][i] > 0f)
+                    {
+                        continue;
+                    }
+
+                    var waveAnchors = _waveAnchors[waveIndex];
+                    if (waveAnchors != null && waveAnchors.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    bool spawned = waveAnchors != null
+                        ? TrySpawnAt(entryIndex, waveAnchors[_anchorCursor[entryIndex]++ % waveAnchors.Length])
+                        : TrySpawn(entryIndex, entry);
+                    if (spawned)
+                    {
+                        _aliveCounts[entryIndex]++;
+                        _spawnedTotals[entryIndex]++;
+                        counts[i]--;
+                        _waveTimers[waveIndex][i] = Mathf.Max(0.2f, entry.BaseInterval);
+                    }
+                }
+            }
         }
 
         private void OnEnemyDied(EnemyDeathEvent evt)

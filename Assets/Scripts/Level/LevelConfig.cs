@@ -31,7 +31,16 @@ namespace StarEco.Level
         /// 与 DefeatEnemies 严格区分：后者数"任意敌人"，路上小怪死一只即达标，
         /// 会导致 L3 跳过 Boss 战直接通关（T-28）。
         /// </summary>
-        DefeatBoss = 6
+        DefeatBoss = 6,
+
+        /// <summary>
+        /// 清理过河后的区域：右岸植物净化数与右岸敌人击杀数之和。
+        /// 仅由 LevelObjectiveTracker 在 Level02 按右岸 X 阈值统计。
+        /// </summary>
+        ClearRightBank = 7,
+
+        /// <summary>收集本关全部知识卡片（按本次进入关卡实际拾取事件计数）。</summary>
+        CollectKnowledgeCards = 8
     }
 
     /// <summary>
@@ -68,14 +77,54 @@ namespace StarEco.Level
         // ===== 刷怪 =====
 
         /// <summary>刷怪条目：某类敌人在一组锚点上的生成规则（R5）。</summary>
+        public enum SpawnWaveTrigger
+        {
+            GameStart = 0,
+            RightBankReached = 1,
+            TargetPurified = 2,
+            ObjectiveCompleted = 3,
+            PurifiedInRegion = 4
+        }
+
+        [Serializable]
+        public class SpawnWave
+        {
+            [Tooltip("一次性波次触发条件")]
+            public SpawnWaveTrigger Trigger;
+
+            [Tooltip("TargetPurified 时填写目标 ID；其他触发条件忽略")]
+            public string TargetId;
+
+            [Tooltip("ObjectiveCompleted 时填写目标序号（从 0 开始）")]
+            public int ObjectiveIndex = -1;
+
+            [Tooltip("PurifiedInRegion 时事件位置 X 的最小值")]
+            public float MinTargetX;
+
+            [Tooltip("RightBankReached 时玩家落地的最小 X 坐标")]
+            public float TriggerX = 7f;
+
+            [Tooltip("可选专属锚点名前缀；为空时使用敌人条目的锚点组")]
+            public string AnchorNamePrefix;
+
+            [Tooltip("SpawnEntries 中要生成的敌人条目序号，与 Counts 一一对应")]
+            public int[] EntryIndices = Array.Empty<int>();
+
+            [Tooltip("每个敌人条目的生成数量，与 EntryIndices 一一对应")]
+            public int[] Counts = Array.Empty<int>();
+        }
+
         [Serializable]
         public class SpawnEntry
         {
             [Tooltip("敌人预制体（须为预制体资产，走 PoolManager 对象池）")]
             public GameObject Prefab;
 
-            [Tooltip("生成锚点（循环取用；为空则该条目报错跳过）")]
+            [Tooltip("生成锚点（循环取用；为空则按场景锚点名称解析）")]
             public Transform[] Anchors = Array.Empty<Transform>();
+
+            [Tooltip("可选锚点名前缀；非空时只使用匹配锚点")]
+            public string AnchorNamePrefix;
 
             [Tooltip("同时存在上限（名额；敌人死亡后回收）")]
             public int MaxAlive = 2;
@@ -107,6 +156,10 @@ namespace StarEco.Level
         [Header("刷怪")]
         [Tooltip("刷怪表（污染度驱动：污染越高刷得越快）")]
         public SpawnEntry[] SpawnEntries = Array.Empty<SpawnEntry>();
+
+        [Header("一次性遭遇波次")]
+        [Tooltip("非空时使用一次性波次并忽略 SpawnEntry 的循环计时/目标序号解锁")]
+        public SpawnWave[] SpawnWaves = Array.Empty<SpawnWave>();
 
         [Header("结算")]
         [Tooltip("三星所需净化度百分比 (0~100)")]

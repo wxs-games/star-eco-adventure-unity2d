@@ -12,8 +12,11 @@ namespace StarEco.Eco
     {
         [SerializeField] private DropTable _dropTable;
 
-        [Tooltip("拾取物预制体（PurifyPickup）")]
+        [Tooltip("净化瓶预制体")]
         [SerializeField] private PurifyPickup _pickupPrefab;
+
+        [Tooltip("回血瓶预制体")]
+        [SerializeField] private HealingPickup _healingPickupPrefab;
 
         private void OnEnable()
         {
@@ -44,7 +47,16 @@ namespace StarEco.Eco
                 for (int i = 0; i < entry.Count; i++)
                 {
                     var offset = new Vector3(Random.Range(-0.5f, 0.5f), 0.15f, 0f);
-                    PurifyPickup.Spawn(_pickupPrefab, (Vector3)evt.Position + offset);
+                    Vector3 position = (Vector3)evt.Position + offset;
+                    switch (entry.Kind)
+                    {
+                        case PickupKind.PurifyBottle:
+                            PurifyPickup.Spawn(_pickupPrefab, position);
+                            break;
+                        case PickupKind.HealthBottle:
+                            HealingPickup.Spawn(_healingPickupPrefab, position);
+                            break;
+                    }
                 }
             }
         }

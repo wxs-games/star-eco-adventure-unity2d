@@ -47,9 +47,9 @@ namespace StarEco.Eco
         }
 
         /// <summary>便捷播放：经对象池取出、摆位、注入 prefab（prefab 为空静默跳过）。</summary>
-        public static void Play(FxOneShot prefab, Vector3 position)
+        public static FxOneShot Play(FxOneShot prefab, Vector3 position)
         {
-            Play(prefab, position, -1);
+            return Play(prefab, position, -1);
         }
 
         /// <summary>
@@ -58,16 +58,18 @@ namespace StarEco.Eco
         /// <param name="prefab">特效 prefab（为空静默跳过）。</param>
         /// <param name="position">播放位置。</param>
         /// <param name="sortingOrder">运行时 sortingOrder；-1 表示沿用 prefab 上的值。</param>
-        public static void Play(FxOneShot prefab, Vector3 position, int sortingOrder)
+        /// <returns>取出的特效实例（调用方可据此设置缩放等运行时属性），prefab 为空时返回 null。</returns>
+        public static FxOneShot Play(FxOneShot prefab, Vector3 position, int sortingOrder)
         {
             if (prefab == null || PoolManager.Instance == null)
             {
-                return;
+                return null;
             }
 
             var fx = PoolManager.Instance.Get(prefab);
             fx.transform.position = position;
             fx.Init(prefab, sortingOrder);
+            return fx;
         }
 
         private void Update()

@@ -32,7 +32,7 @@ MonoBehaviour:
   AirDodgeCount: 1
   DodgePassThroughLayers:
     serializedVersion: 2
-    m_Bits: 512
+    m_Bits: -1281
   DashDuration: 0.4
   DashDistance: 2.8
   DashCooldown: 0.5

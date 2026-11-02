@@ -39,7 +39,9 @@ namespace StarEco.Level
                 return;
             }
 
-            hittable.TakeDamage(new DamageInfo(_damage, Vector2.up, gameObject));
+            var info = new DamageInfo(_damage, Vector2.up, gameObject);
+            info.IsDrowning = true;
+            hittable.TakeDamage(info);
         }
 
         private void OnDrawGizmosSelected()

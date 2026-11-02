@@ -45,6 +45,7 @@ namespace StarEco.EnemyAI
         private bool _recycleGuard;
         private bool _pooled;
         private bool _awaken;
+        private bool _countsForLevelObjective = true;
 
         private static readonly Collider2D[] _senseBuffer = new Collider2D[8];
 
@@ -481,7 +482,9 @@ namespace StarEco.EnemyAI
             {
                 EnemyTypeId = _config.EnemyTypeId,
                 Position = transform.position,
-                DropTable = _config.DropTable
+                DropTable = _config.DropTable,
+                CountsForLevelObjective = _countsForLevelObjective,
+                InstanceId = GetInstanceID()
             });
         }
 
@@ -511,6 +514,12 @@ namespace StarEco.EnemyAI
             _pooled = true;
         }
 
+        /// <summary>标记该敌人是否计入关卡目标链。</summary>
+        public void SetCountsForLevelObjective(bool value)
+        {
+            _countsForLevelObjective = value;
+        }
+
         /// <summary>池取出后复位（不复用上一生命周期状态）。</summary>
         public virtual void ResetForReuse()
         {
@@ -524,6 +533,7 @@ namespace StarEco.EnemyAI
             _loseTargetTimer = 0f;
             _recycleGuard = false;
             _ignoreTargetUntil = 0f;
+            _countsForLevelObjective = true;
             Target = null;
             _homePosition = transform.position;   // 池复用对象可能被摆到别处，巡逻原点随之更新
 

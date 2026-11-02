@@ -1,6 +1,8 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using StarEco.Framework;
 using StarEco.Level;
+using StarEco.Eco.Events;
 
 namespace StarEco.Eco
 {
@@ -19,6 +21,30 @@ namespace StarEco.Eco
 
         private bool _collected;
         private SpriteRenderer _sprite;
+
+        // 进入第 N 关时，第 N 关及后续关卡重新收集；前置关卡沿用历史状态。
+        private int CurrentLevelIndex
+        {
+            get
+            {
+                switch (SceneManager.GetActiveScene().name)
+                {
+                    case "Level01": return 1;
+                    case "Level02": return 2;
+                    case "Level03": return 3;
+                    default: return 1;
+                }
+            }
+        }
+
+        private bool ResetsForCurrentRun
+        {
+            get
+            {
+                var card = UI.CodexService.Find(_cardId);
+                return card != null && card.LevelIndex >= CurrentLevelIndex;
+            }
+        }
 
         private void Awake()
         {
@@ -48,8 +74,8 @@ namespace StarEco.Eco
 
         private void Start()
         {
-            // 已入档则直接隐藏（重开场景后不再显示已收集的卡片）
-            _collected = _taken || UI.CodexService.IsCollected(_cardId);
+            // 当前关及后续关卡不读取历史状态；前置关卡按永久图鉴状态隐藏。
+            _collected = _taken || (!ResetsForCurrentRun && UI.CodexService.IsCollected(_cardId));
             if (_collected && _sprite != null)
             {
                 _sprite.enabled = false;
@@ -77,8 +103,19 @@ namespace StarEco.Eco
             }
 
             bool isNew = UI.CodexService.CollectCard(_cardId);
+            bool shouldShowPickupFeedback = isNew || ResetsForCurrentRun;
+
+            // 关卡机关需要区分“本次进入是否实际拾取”，不能直接读取永久图鉴存档。
+            EventCenter.Publish(new KnowledgeCardCollectedEvent
+            {
+                CardId = _cardId,
+                Position = transform.position
+            });
             _collected = true;
             _taken = true;
+
+            // 先取精灵引用：下面会关掉渲染器，但 sprite 资源本身仍可复用
+            var cardSprite = _sprite != null ? _sprite.sprite : null;
 
             if (_sprite != null)
             {
@@ -89,10 +126,23 @@ namespace StarEco.Eco
             AudioManager.Instance?.PlaySfx(SfxId.Pickup);
             UI.ToastLayer.Show($"获得知识卡：{card.Title}", UI.UIUtility.AccentGreen);
 
-            if (isNew)
+            // 塞尔达风格：角色欢呼 + 头顶物品升起 → 稍后再弹物品获得面板
+            // （面板带全屏遮罩且居中，会盖住角色和升起特效，所以必须等演出放映完再弹）
+            if (shouldShowPickupFeedback)
             {
+                player.PlayItemGetAnim(2f);
+                ItemRaiseFx.Play(cardSprite, player.Sprite);
+                StartCoroutine(ShowPanelDelayed(card, cardSprite, 1.6f));
                 Debug.Log($"[KnowledgeCardPickup] 获得知识卡片：{card.Title}");
             }
+        }
+
+        /// <summary>让「物品升起」先被看到，再弹出信息面板。</summary>
+        private System.Collections.IEnumerator ShowPanelDelayed(
+            UI.KnowledgeCardData card, Sprite icon, float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            UI.ItemGetUI.Show(card, 5f, icon);
         }
 
         private void OnValidate()

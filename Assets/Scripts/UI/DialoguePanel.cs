@@ -21,6 +21,9 @@ namespace StarEco.UI
         /// </summary>
         public static bool IsDialogueActive { get; private set; }
 
+        /// <summary>供 SignboardPanel 等外部面板设置：读牌期间同样让敌人定住、玩家免伤。</summary>
+        public static void SetDialogueActive(bool active) => IsDialogueActive = active;
+
         private const float TypeInterval = 0.03f;
 
         private Text _speakerText;

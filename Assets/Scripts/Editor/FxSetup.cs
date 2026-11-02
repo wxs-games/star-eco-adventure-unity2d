@@ -81,7 +81,7 @@ namespace StarEco.EditorTools
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            log.AppendLine("[FxSetup] 完成。剩余：prefab 的 sortingOrder 与材质需 A 侧处理（属 Prefabs 车道）。");
+            log.AppendLine("[FxSetup] 完成。剩余：请检查 prefab 的 sortingOrder 与材质。");
             Debug.Log(log.ToString());
         }
 

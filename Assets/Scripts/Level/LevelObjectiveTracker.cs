@@ -17,6 +17,7 @@ namespace StarEco.Level
     {
         private const string TowerIdPrefix = "Tower";
         private const string WaterBlockPrefix = "WaterBlock";   // M9：河道堵塞点单独计数
+        private const float RightBankMinX = 7f;
 
         [SerializeField] private LevelConfig _config;
 
@@ -34,9 +35,20 @@ namespace StarEco.Level
         private int _purifiedTargets;
         private int _purifiedTowers;
         private int _defeatedEnemies;
+        private int _rightBankPurified;
+        private int _rightBankDefeated;
         private int _rescuedAnimals;   // M9 R2：AnimalRescuedEvent 计数
         private int _defeatedBoss;     // T-28：BossDefeatedEvent 计数（与"击杀任意敌人"严格区分）
         private int _waterCleared;     // M9 R3：WaterBlock 前缀 GarbagePurifiedEvent 计数
+        private int _collectedKnowledgeCards;
+        private readonly System.Collections.Generic.HashSet<string> _collectedKnowledgeCardIds =
+            new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+        private readonly System.Collections.Generic.HashSet<int> _rightBankPurifiedInstanceIds =
+            new System.Collections.Generic.HashSet<int>();
+        private readonly System.Collections.Generic.HashSet<string> _rightBankPurifiedFallbackIds =
+            new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+        private readonly System.Collections.Generic.HashSet<int> _rightBankEnemyInstanceIds =
+            new System.Collections.Generic.HashSet<int>();
 
         // 运行时夹取后的 Required（不修改 LevelConfig 资产本身，避免 Editor 下资产被标脏持久化）
         private int[] _effectiveRequired;
@@ -78,6 +90,7 @@ namespace StarEco.Level
             EventCenter.Subscribe<EnemyDeathEvent>(OnEnemyDied);
             EventCenter.Subscribe<PurityChangedEvent>(OnPurityChanged);
             EventCenter.Subscribe<AnimalRescuedEvent>(OnAnimalRescued);   // M9 R2
+            EventCenter.Subscribe<KnowledgeCardCollectedEvent>(OnKnowledgeCardCollected);
             EventCenter.Subscribe<TowerDisableEvent>(OnTowerDestroyed);   // 炮塔改为攻击击毁后由此计数
             EventCenter.Subscribe<StarEco.Boss.Events.BossDefeatedEvent>(OnBossDefeated);   // T-28：击败 Boss 目标
         }
@@ -88,6 +101,7 @@ namespace StarEco.Level
             EventCenter.Unsubscribe<EnemyDeathEvent>(OnEnemyDied);
             EventCenter.Unsubscribe<PurityChangedEvent>(OnPurityChanged);
             EventCenter.Unsubscribe<AnimalRescuedEvent>(OnAnimalRescued);
+            EventCenter.Unsubscribe<KnowledgeCardCollectedEvent>(OnKnowledgeCardCollected);
             EventCenter.Unsubscribe<TowerDisableEvent>(OnTowerDestroyed);
             EventCenter.Unsubscribe<StarEco.Boss.Events.BossDefeatedEvent>(OnBossDefeated);   // T-28：与 OnEnable 配对
         }
@@ -110,9 +124,16 @@ namespace StarEco.Level
             _purifiedTargets = 0;
             _purifiedTowers = 0;
             _defeatedEnemies = 0;
+            _rightBankPurified = 0;
+            _rightBankDefeated = 0;
             _rescuedAnimals = 0;
             _waterCleared = 0;
+            _collectedKnowledgeCards = 0;
+            _collectedKnowledgeCardIds.Clear();
             _defeatedBoss = 0;   // T-28
+            _rightBankPurifiedInstanceIds.Clear();
+            _rightBankPurifiedFallbackIds.Clear();
+            _rightBankEnemyInstanceIds.Clear();
             ChainCompleted = false;
             _chainVersion++;   // 作废上一局遗留的延迟完成回调
 
@@ -129,9 +150,16 @@ namespace StarEco.Level
             _purifiedTargets = 0;
             _purifiedTowers = 0;
             _defeatedEnemies = 0;
+            _rightBankPurified = 0;
+            _rightBankDefeated = 0;
             _rescuedAnimals = 0;
             _waterCleared = 0;
+            _collectedKnowledgeCards = 0;
+            _collectedKnowledgeCardIds.Clear();
             _defeatedBoss = 0;   // T-28
+            _rightBankPurifiedInstanceIds.Clear();
+            _rightBankPurifiedFallbackIds.Clear();
+            _rightBankEnemyInstanceIds.Clear();
             ChainCompleted = false;
             _initialized = false;
             _chainVersion++;   // 作废上一局遗留的延迟完成回调
@@ -147,6 +175,15 @@ namespace StarEco.Level
 
         private void OnGarbagePurified(GarbagePurifiedEvent evt)
         {
+            if (IsLevel02RightBank(evt.Position.x) &&
+                !string.IsNullOrEmpty(evt.TargetId) &&
+                !evt.TargetId.StartsWith(WaterBlockPrefix, StringComparison.Ordinal) &&
+                ((evt.InstanceId != 0 && _rightBankPurifiedInstanceIds.Add(evt.InstanceId)) ||
+                 (evt.InstanceId == 0 && _rightBankPurifiedFallbackIds.Add(evt.TargetId))))
+            {
+                _rightBankPurified++;
+            }
+
             // M9 R3：河道堵塞点单独计数（PuzzleSolved），不算普通污染源
             if (!string.IsNullOrEmpty(evt.TargetId) &&
                 evt.TargetId.StartsWith(WaterBlockPrefix, StringComparison.Ordinal))
@@ -171,6 +208,12 @@ namespace StarEco.Level
         private void OnEnemyDied(EnemyDeathEvent evt)
         {
             _defeatedEnemies++;
+            if (evt.CountsForLevelObjective &&
+                (evt.InstanceId == 0 || _rightBankEnemyInstanceIds.Add(evt.InstanceId)) &&
+                IsLevel02RightBank(evt.Position.x))
+            {
+                _rightBankDefeated++;
+            }
             Evaluate();
         }
 
@@ -191,6 +234,20 @@ namespace StarEco.Level
         {
             _rescuedAnimals++;
             Evaluate();
+        }
+
+        private void OnKnowledgeCardCollected(KnowledgeCardCollectedEvent evt)
+        {
+            if (_config == null || _config.LevelIndex != 2 || string.IsNullOrEmpty(evt.CardId))
+            {
+                return;
+            }
+
+            if (_collectedKnowledgeCardIds.Add(evt.CardId))
+            {
+                _collectedKnowledgeCards++;
+                Evaluate();
+            }
         }
 
         /// <summary>
@@ -289,12 +346,16 @@ namespace StarEco.Level
                     return _purifiedTowers;
                 case LevelObjectiveType.DefeatEnemies:
                     return _defeatedEnemies;
+                case LevelObjectiveType.ClearRightBank:
+                    return _rightBankPurified + _rightBankDefeated;
                 case LevelObjectiveType.DefeatBoss:
                     return _defeatedBoss;   // T-28
                 case LevelObjectiveType.RescueTargets:
                     return _rescuedAnimals;
                 case LevelObjectiveType.PuzzleSolved:
                     return _waterCleared;
+                case LevelObjectiveType.CollectKnowledgeCards:
+                    return _collectedKnowledgeCards;
                 case LevelObjectiveType.ReachPurity:
                     return _purity != null ? Mathf.FloorToInt(_purity.Percent * 100f) : 0;
                 default:
@@ -378,6 +439,11 @@ namespace StarEco.Level
                     _effectiveRequired[i] = obj.Required;
                 }
             }
+        }
+
+        private bool IsLevel02RightBank(float x)
+        {
+            return _config != null && _config.LevelIndex == 2 && x >= RightBankMinX;
         }
 
         private static bool IsTower(string targetId)

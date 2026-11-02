@@ -58,8 +58,8 @@ namespace StarEco.Eco
         [Tooltip("停止喷洒后，开始自动回复前的等待时间（秒）")]
         public float TankRechargeDelay = 1.5f;
 
-        [Tooltip("净化剂自动回复速度（点/秒）")]
-        public float TankRechargePerSecond = 12f;
+        [Tooltip("净化剂自动回复速度（点/秒；资源经济裁决值）")]
+        public float TankRechargePerSecond = 2f;
 
         [Tooltip("拾取物单次回复量")]
         public int PickupTankAmount = 20;

@@ -87,6 +87,12 @@ namespace StarEco.Player
                 return;   // 受击/死亡打断攻击（R4，优先级高于攻击）
             }
 
+            // 攻击期间可被翻滚取消后摇（与 Idle/Run 保持一致的输入优先级）
+            if (TryStartDodge())
+            {
+                return;
+            }
+
             _segmentTimer -= Time.deltaTime;
 
             // ===== 空中单段 =====

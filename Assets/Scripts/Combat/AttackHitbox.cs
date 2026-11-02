@@ -26,7 +26,7 @@ namespace StarEco.Combat
         private const int FxFrontOrder = 21;
 
         /// <summary>斩击光相对角色的前方距离（世界单位）。</summary>
-        private const float SlashForwardOffset = 0.8f;
+        private const float SlashForwardOffset = 1.2f;
 
         private readonly HashSet<IHittable> _hitThisWindow = new HashSet<IHittable>();
         private PlayerController _player;
@@ -105,7 +105,12 @@ namespace StarEco.Combat
 
             float facing = _player.Sprite != null && _player.Sprite.flipX ? -1f : 1f;
             Vector3 pos = transform.position + new Vector3(facing * SlashForwardOffset, 0f, 0f);
-            FxOneShot.Play(_fxSlashPrefab, pos, FxFrontOrder);
+            var fx = FxOneShot.Play(_fxSlashPrefab, pos, FxFrontOrder);
+            if (fx != null)
+            {
+                // 攻击特效适度放大，使挥击明显但不遮挡角色
+                fx.transform.localScale = new Vector3(1.2f, 1.2f, 1f);
+            }
         }
 
         /// <summary>关窗：HitOff 事件帧调用。</summary>

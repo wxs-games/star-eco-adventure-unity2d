@@ -80,15 +80,14 @@
 
 | 道具 | 作用 | 落地状态（2026-10-31 核） |
 |---|---|---|
-| 可回收垃圾桶 | 净化剂补给 | ✅ 组件 `PurifyPickup` 已实现；**Level03 摆 1 个**（`Puzzle_Pickup` @(44.0, **3.01**)，高台顶，**已接入实物图**）。另有**敌人掉落**一路：三关 `DropSpawner` 均已挂 `TestDrop.asset`（`PurifyBottle` ×1，**概率 1.0**）+ `PurifyPickup.prefab`，即**每只敌人死亡必掉 1 瓶** |
+| 可回收垃圾桶 | 净化剂补给 | ✅ 组件 `PurifyPickup` 已实现；**Level03 摆 1 个**（`Puzzle_Pickup` @(44.0, **3.01**)，高台顶，**已接入实物图**）。另有敌人掉落：三关 `DropSpawner` 均引用 `TestDrop.asset`（`PurifyBottle` ×1，概率 **0.35**）；罐满时瓶子保留在场景中 |
 | 空气净化装置 | 区域减速敌人 | ❌ 未实现 |
 | 能量核心 | HP 补给 | ❌ 未实现（`TestDrop.asset` 掉落表仅 `PurifyBottle` 一种） |
-| 剧情收集品 | 环保知识卡片 | ✅ `KnowledgeCardPickup` + `CodexService`；卡片数据 **8 张**（`Resources/Data/knowledge_cards.json`），**已摆 7 张**（L1 2 张 / L2 3 张 / L3 2 张），仅 `kc_plastic_bag` 未摆放 |
+| 剧情收集品 | 环保知识卡片 | ✅ `KnowledgeCardPickup` + `CodexService`；卡片数据 **8 张**（`Resources/Data/knowledge_cards.json`），**已摆 8 张**（L1 3 张 / L2 3 张 / L3 2 张），无缺卡；L1 的 `kc_plastic_bag` 按 `LevelDesign.md` §9.3.2 作为左台阶（`PlatformL1`）独占探索奖励 |
 
-> **掉落系统状态（2026-10-31 修正）**：三关场景各挂 1 个 `DropSpawner` 组件，`_dropTable` = `TestDrop.asset`、`_pickupPrefab` = `PurifyPickup.prefab`，**两个字段均非空**，敌人死亡正常掉落净化瓶（概率 1.0 = 必掉）。此前「字段全部为空、接上即可启用」的记载**已过期**。
+> **掉落系统状态（2026-10-31 更新）**：三关场景各挂 1 个 `DropSpawner` 组件，`_dropTable` = `TestDrop.asset`、`_pickupPrefab` = `PurifyPickup.prefab`，两个字段均非空；掉落概率为 **0.35**，罐满拾取不消耗瓶子。
 >
-> ⚠️ **但由此产生一个未裁定的策划缺口**：净化剂有**自动回充**（停喷 1.5s 后 12/s，容量 100，`InitialTank=100`），空罐到满罐仅需 **约 10 秒**；实测三关的净化剂总消耗为 L1 约 72 点 / L2 约 36 点 / L3 约 132 点，**满罐 100 即可覆盖 L1、L2 全程**。因此 §3.2「净化剂经济：地图拾取 + 击败敌人掉落…（**资源抉择**）」中的「抉择」在当前数值下**名存实亡**——补给既不稀缺也不影响决策。
-> 该缺口的裁决与修复见 `LevelDesign.md` §5.8.1 附节「净化剂经济缺口（2026-10-31）」，以及 `策划实现对账清单.md`。
+> 资源经济已按批准值调整：容量/初始量 100，停喷 1.5s 后以 2/s 回充（空罐约 51.5s 回满），敌人净化瓶掉落概率 0.35；罐满拾取保留瓶子、不弹提示。原 12/s、100% 必掉导致资源决策失效的问题已记录为历史缺口，详见 `LevelDesign.md` §5.8.2。
 
 ## 五、界面规划
 
@@ -103,7 +102,7 @@
 | 图鉴 | 已收集知识卡片 | ✅ `CodexPanel` + `CodexService`，Title/Level01/02/03 四场景均已挂载 |
 | 对话框 | NPC 对话（逐字显示 + 头像位）、提示牌阅读 | ✅ `DialoguePanel` / `SignboardTrigger` |
 
-> 界面规划**全部落地**。唯一缺口在内容侧而非界面侧：图鉴有 8 张卡片数据，场景只摆了 2 张（见 4.3）。
+> 界面规划**全部落地**。内容侧的卡片缺口也已补齐：图鉴有 8 张卡片数据，8 张已全部摆入场景（L1 3 / L2 3 / L3 2，见 4.3）。
 
 ## 六、音效与音乐
 

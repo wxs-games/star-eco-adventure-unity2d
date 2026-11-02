@@ -39,6 +39,9 @@ namespace StarEco.Eco
 
         public bool IsPurified => _purified;
 
+        /// <summary>目标标识（供事件与检查点快照对齐）。</summary>
+        public string PurifyTargetId => _targetId;
+
         public int PurityValue => _purityValue >= 0
             ? _purityValue
             : (_blocksPath ? ConfigValue(c => c.GarbageWallPurityValue, 10) : ConfigValue(c => c.GarbagePurityValue, 5));
@@ -123,7 +126,8 @@ namespace StarEco.Eco
             {
                 PurityValue = PurityValue,
                 Position = transform.position,
-                TargetId = _targetId
+                TargetId = _targetId,
+                InstanceId = GetInstanceID()
             });
 
             // 净化完成：一律关闭阻挡碰撞体，净化后的目标不再挡路（R5）

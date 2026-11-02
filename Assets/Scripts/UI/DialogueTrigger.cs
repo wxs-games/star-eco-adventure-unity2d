@@ -93,7 +93,7 @@ namespace StarEco.UI
             // 若 _autoTalkOnFirstApproach=false（纯被动 NPC），首次靠近也只显示气泡，等玩家按 E 才说话。
             // 之后再靠近才回到"按 E 交谈"的自主触发，避免每次路过都被强制打断。
             // 其它对话正在播放时不抢，等对方播完（玩家仍在范围内）再自动开始。
-            if (_autoTalkOnFirstApproach && !_hasTalkedOnce && !_playing && !DialoguePanel.IsDialogueActive)
+            if (_autoTalkOnFirstApproach && !_hasTalkedOnce && !_playing && !DialoguePanel.IsDialogueActive && !(UIManager.HasInstance && UIManager.Instance.IsBlocking))
             {
                 BeginDialogue();
                 return;
@@ -130,7 +130,7 @@ namespace StarEco.UI
                 }
             }
 
-            if (!_playing && Input.GetKeyDown(_interactKey))
+            if (!_playing && Input.GetKeyDown(_interactKey) && !(UIManager.HasInstance && UIManager.Instance.IsBlocking))
             {
                 BeginDialogue();
             }
@@ -208,14 +208,15 @@ namespace StarEco.UI
             UIUtility.CreateWorldCanvas(canvasGo, transform, new Vector3(0f, _bubbleHeight, 0f));
 
             var canvasRt = canvasGo.GetComponent<RectTransform>();
-            canvasRt.sizeDelta = new Vector2(400f, 120f);   // 像素；已由 localScale 换算为 4×1.2 世界单位
+            canvasRt.sizeDelta = new Vector2(160f, 48f);    // 约 1.6×0.48 世界单位，进一步收窄背景
 
             _bubble = UIUtility.CreateObject("Bubble", canvasGo.transform);
-            UIUtility.CenterAnchor(_bubble, new Vector2(360f, 90f), Vector2.zero);
-            var bubbleBg = UIUtility.CreateImage("Background", _bubble.transform, UIUtility.PanelBg);
+            UIUtility.CenterAnchor(_bubble, new Vector2(130f, 38f), Vector2.zero);
+            var bubbleBg = UIUtility.CreateImage("Background", _bubble.transform,
+                new Color(0.05f, 0.08f, 0.10f, 0.84f));
             UIUtility.Stretch(bubbleBg.GetComponent<RectTransform>());
 
-            _bubbleText = UIUtility.CreateText("Label", _bubble.transform, "按 E 交谈", 34,
+            _bubbleText = UIUtility.CreateText("Label", _bubble.transform, "按 E 交谈", 18,
                 TextAnchor.MiddleCenter, UIUtility.TextMain);
             UIUtility.Stretch(_bubbleText.GetComponent<RectTransform>());
 

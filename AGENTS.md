@@ -262,54 +262,6 @@ python .../compose_sheet.py --frames ... --name Player_Run --dry       # 只看�
   `m_CorrespondingSourceObject` / `m_PrefabInstance` / `serializedVersion` 行剔掉再比，
   这样 169 个脚本 + 全部 `.asset/.json/.shader/.asmdef` 的真实差异只剩 `MainMenuPanel.cs`。
 
-### 多车道并行协作：严格按车道路径隔离，不许越界
-
-多个 AI 车道同时在同一个工程里干活时，**路径归属就是权限边界**，不是"参考范围"。
-
-| 车道 | 认领路径 |
-|---|---|
-| A 场景线（集成/装配/发布） | `Assets/Scenes/**`、`Assets/Prefabs/**`、`Assets/Settings/**`、`Assets/Resources/**`（除 `dialogues.json`）、`ProjectSettings/**`、构建打包与发布 |
-| B 代码线（主程） | `Assets/Scripts/**`（含 `.cs.meta`） |
-| C 美术管线线（主美） | `Assets/Art/**`、`Assets/Animations/**`、`Tools/art-pipeline/**` |
-| D 策划线（主策划，2026-10-31 新设） | `GraduationProject/docs/` 下的**策划文档主责**：`GDD.md`、`LevelDesign.md`、`NarrativeDesign.md`、`AudioDesign.md`、`ArtStyleGuide.md`、`UXDesign.md` 及 `specs/**`——D 拥有这些文档的解释权与修订权；**不碰** `.cs` / `.unity` / `.prefab` / `.asset` / 美术源文件 |
-
-**策划裁决权（2026-10-31 起，D 专属）**：目标顺序、数值、玩法规则、验收标准的分歧由 D 拍板。**制衡四条**：
-
-1. D 的裁决必须**先写进 `docs/` 并提交**再执行——留痕，可否决。
-2. A/B/C 对裁决有异议 → 看板提异议 → **用户仲裁**，D 不一锤定音。
-3. 主观资产红线不变：美术风格/文案/手感数值，用户点名才动，D 的裁决不能越过这条。
-4. 选项推荐的「策划缺口」由 D 补齐（此前 A 只能报缺口等用户，现移交 D）。
-
-> **📢 2026-10-31 车道编制变更通知（全体车道必读）**
->
-> 经用户拍板，本项目由三车道扩为**四车道**，新增 **D 主策划线**（A=集成/装配/发布、B=主程、C=主美 均不变）。
->
-> **对 B/C 的影响**：
-> 1. 此前「设计分歧需策划拍板」「策划缺口待补」的悬案（如 RiskRegister 里的 T-22），**即日起移交 D 裁决**，B/C 不再等用户转达——直接看板 @D。
-> 2. `docs/` 策划文档（GDD / LevelDesign / NarrativeDesign / AudioDesign / ArtStyleGuide / UXDesign / specs）**主责归 D**：解释权与修订权在 D，其他车道要改这些文件走 `[CLAIM-REQ]`。
-> 3. 台账类（RiskRegister / TestPlan / BuildAndRelease / README）**仍全员可写**（先登板一行），不变。
-> 4. D 的裁决 = 「先落 `docs/` 提交，再执行」。你有异议 → 看板提 → 用户仲裁，**不要因为不服裁决就自行改回**。
->
-> ⚠️ 注入规则：本文件只在**会话第一轮**注入。老会话读不到这条的，重新唤起一次或直接看看板 `[14:34]` 公告，以看板为准。
-
-**六条硬规矩：**
-
-1. **只写自己车道内的路径，别人的路径一律只读**——读、Grep、`git diff` 都可以，写一个字节都不行。
-2. **不许以"顺手修一下""这个 bug 我也看见了"为理由跨道写。** 发现问题就在看板登记、交归属人处理；自己动手等于制造冲突。
-3. **要改别人的文件**：看板发 `[CLAIM-REQ]` → 归属人回 `[CLAIM-OK]` → 才可动手。**没有 `[CLAIM-OK]` 一律视为越界**，即使改动本身是对的。
-4. **共享区**（`Assets/Resources/Data/dialogues.json`、看板文件本身、`GraduationProject/docs/` 中**非 D 主责**的台账文档：`RiskRegister.md`、`TestPlan.md`、`BuildAndRelease.md`、`README.md` 等）改动前先在看板登一行，避免两人写同一段。**D 主责的策划文档**（上表所列）其他车道要改需走 `[CLAIM-REQ]`。
-5. **冻结区任何人不得动**（需用户单独点头）：`Assets/Art/Player/**` 角色帧、`Assets/Audio/**`、`PlayerStateMachine` / `PlayerStates` / `PlayerStateBase` 状态机核心。
-6. **美术管线线零编辑器依赖**：不调用 Unity MCP 的任何写操作，不碰 `.unity` / `.prefab` / `.cs`；需要引擎侧落地（挂预制体、改场景、重导入）时交 A。
-
-**自证方式（宣布完成前必做）**：跑一次 `git status`，逐条核对本轮改过的路径是否全在自己车道内。
-
-- 出现不属于本车道的未提交改动 → **不要自行"顺手改回"或"顺手补完"**，先在看板登记：文件路径 + 修改时间 + `git diff` 摘要 + 自己的判断（是否自己所为）。
-- 归属不明的改动**保持原样不动**，由用户裁决，避免二次覆盖。
-
-> 历史事故（2026-10-31）：工作区同时出现 `Level/VentHazard.cs`、`Boss/BossHealthBar.cs`、
-> `Boss/BossGate.cs` 三处未提交改动（三处都属 B 线认领的 `Assets/Scripts/**`），而 B 在板上明确声明
-> 「我未写入任何代码」→ 归属冲突无据可查，只能靠用户裁决。根因就是当时没有成文的越界判定与自证流程。
-
 ### 选项推荐规范（策划优先，2026-10-31 取代旧版「社区主流标记」）
 
 **第一原则：推荐项的第一依据是已定稿的策划，不是社区流行度。**

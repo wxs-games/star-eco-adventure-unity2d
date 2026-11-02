@@ -5,7 +5,8 @@ namespace StarEco.Player
 {
     /// <summary>
     /// 蓄力状态（M5）：长按 L 站定蓄力；未满松开取消（零消耗），蓄满松开同帧释放净化波
-    /// 并播放 Player_HeavyAttack，恢复硬直后回地面状态。与喷洒互斥（本状态不检查 SprayHeld）。
+    /// 并播放非攻击表现（Interact），恢复硬直后回地面状态。与喷洒互斥（本状态不检查 SprayHeld）。
+    /// 净化波本身无攻击性，不伤害敌人，不触发 AttackHitbox。
     /// </summary>
     public class PlayerChargeState : PlayerStateBase
     {
@@ -101,8 +102,10 @@ namespace StarEco.Player
 
         private void ReleaseWave()
         {
-            _spray?.ReleasePurifyWave();   // 同帧结算（含扣净化剂）
-            Player.TryFireAnim(PlayerAnimParams.HeavyAttack);
+            _spray?.ReleasePurifyWave();   // 同帧结算（含扣净化剂）—— 仅净化，不伤害敌人
+            // 不再播放 Player_HeavyAttack：净化波不是攻击，不应触发 AttackHitbox 或播攻击动作。
+            // 改用 Interact 表现（与喷洒同款非攻击动画），或由策划替换为专门的净化波动画。
+            Player.TryFireAnim(PlayerAnimParams.Interact);
             _released = true;
             _recoverTimer = _spray != null && _spray.Config != null
                 ? _spray.Config.HeavyRecoverSeconds

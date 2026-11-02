@@ -23,6 +23,7 @@ namespace StarEco.Level
         [SerializeField] private string _endingDialogueId = "ava_ending";
 
         private bool _endingPlayed;   // 落幕对白只播一次，防止重复进终态时二次弹出
+        private Coroutine _pendingKnowledgeCardFinish;
 
         /// <summary>当前关卡状态。</summary>
         public LevelState State { get; private set; } = LevelState.NotStarted;
@@ -115,6 +116,9 @@ namespace StarEco.Level
         {
             ResolveDependencies();
 
+            // 新关卡开始前清空检查点快照，避免残留上一局状态。
+            CheckpointManager.Instance?.Clear();
+
             if (!HasRequiredDependencies())
             {
                 Debug.LogError("[LevelManager] 关卡依赖缺失，无法开始。");
@@ -166,6 +170,9 @@ namespace StarEco.Level
             enabled = false;
             gameObject.SetActive(false);
 
+            // 场景重载前清空检查点快照。
+            CheckpointManager.Instance?.Clear();
+
             UnityEngine.SceneManagement.SceneManager.LoadScene(scene.buildIndex);
         }
 
@@ -178,10 +185,24 @@ namespace StarEco.Level
 
             if (_player != null && _player.IsDead)
             {
+                // 死亡时若存在检查点快照，回滚至检查点并继续游玩；否则进入失败终态。
+                var checkpoint = CheckpointManager.Instance;
+                if (checkpoint != null && checkpoint.HasCheckpoint)
+                {
+                    var snap = checkpoint.SavedSnapshot;
+                    checkpoint.RestoreAll(snap);
+                    checkpoint.RestorePlayerAt(snap);
+                    return;
+                }
                 // 死亡即结束本局：直接进入失败终态并弹出结算面板（重新开始 / 返回主菜单）。
                 // 重开本关由结算面板的"重新开始"重载场景完成，不做原地续命。
                 // 死因区分：坠落（掉出关卡地面）不能说成"被击败"，否则玩家会以为是被怪打死的。
-                FinishLevel(false, _player.DiedFromFall ? "跌落山崖（掉出了关卡地面）" : "玩家被击败");
+                FinishLevel(false,
+                    _player.DiedFromDrowning
+                        ? "掉入河里，溺水了"
+                        : _player.DiedFromFall
+                            ? "跌落山崖（掉出了关卡地面）"
+                            : "玩家被击败");
             }
         }
 
@@ -354,6 +375,9 @@ namespace StarEco.Level
                 SetState(LevelState.Failed);
                 EventCenter.Publish(new LevelFailedEvent { Reason = reason });
             }
+
+            // 关卡终态后清空检查点快照，避免下一局误用旧快照。
+            CheckpointManager.Instance?.Clear();
         }
 
         private LevelResultData BuildResult(bool success)
@@ -404,6 +428,42 @@ namespace StarEco.Level
         {
             // T-22：关卡完成判据 = 目标链全部完成（唯一通路）。
             // 净化值 100% 只是目标链完成时的必然结果/副产物，不是并联的第二个通关条件。
+            if (State != LevelState.Playing)
+            {
+                return;
+            }
+
+            // 知识卡片是最后目标时，先让获得知识卡面板完整播放并关闭，
+            // 再显示通关结算；其他目标完成保持原有即时结算。
+            if (_tracker != null &&
+                _config != null &&
+                _config.LevelIndex == 2 &&
+                _config.Objectives != null &&
+                _config.Objectives.Length > 0 &&
+                _config.Objectives[_config.Objectives.Length - 1] != null &&
+                _config.Objectives[_config.Objectives.Length - 1].Type == LevelObjectiveType.CollectKnowledgeCards)
+            {
+                if (_pendingKnowledgeCardFinish == null)
+                {
+                    _pendingKnowledgeCardFinish = StartCoroutine(FinishAfterKnowledgeCardPanel());
+                }
+                return;
+            }
+
+            FinishLevel(true, "全部关卡目标完成");
+        }
+
+        private System.Collections.IEnumerator FinishAfterKnowledgeCardPanel()
+        {
+            // KnowledgeCardPickup 的升起演出结束后才创建面板，先给它时间出现。
+            yield return new WaitForSecondsRealtime(1.7f);
+
+            while (UI.ItemGetUI.IsShowing)
+            {
+                yield return null;
+            }
+
+            _pendingKnowledgeCardFinish = null;
             if (State == LevelState.Playing)
             {
                 FinishLevel(true, "全部关卡目标完成");

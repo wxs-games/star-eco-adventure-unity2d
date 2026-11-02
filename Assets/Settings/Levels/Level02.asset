@@ -22,23 +22,58 @@ MonoBehaviour:
   - Type: 5
     Required: 3
     Label: "\u6E05\u7406\u5835\u585E\u7269\uFF0C\u758F\u901A\u6CB3\u9053"
-  - Type: 0
+  - Type: 7
+    Required: 5
+    Label: "\u8FC7\u6CB3\u540E\u6E05\u7406\u53F3\u5CB8\u602A\u7269\u548C\u690D\u7269"
+  - Type: 8
     Required: 3
-    Label: "\u51C0\u5316\u68EE\u6797\u6C61\u67D3\u6E90"
-  - Type: 3
-    Required: 4
-    Label: "\u51FB\u8D25 4 \u53EA\u53D8\u5F02\u602A\u7269"
+    Label: "\u6536\u96C6\u7B2C\u4E8C\u5173\u5168\u90E8\u77E5\u8BC6\u5361"
   SpawnEntries:
   - Prefab: {fileID: 2027564446630586712, guid: a8f25c3ad6182e34e854453f96a46b13, type: 3}
     Anchors: []
+    AnchorNamePrefix: SpawnAnchorA
     MaxAlive: 1
-    BaseInterval: 12
+    BaseInterval: 4
     RequiredObjectiveIndex: -1
   - Prefab: {fileID: 743422200972414136, guid: 56d6108c5156f3f42a02d45835485656, type: 3}
     Anchors: []
+    AnchorNamePrefix: SpawnAnchorB
     MaxAlive: 2
-    BaseInterval: 10
-    RequiredObjectiveIndex: 1
+    BaseInterval: 2
+    RequiredObjectiveIndex: -1
+  SpawnWaves:
+  - Trigger: 0
+    TargetId: ""
+    ObjectiveIndex: -1
+    MinTargetX: 0
+    TriggerX: 7
+    AnchorNamePrefix: ""
+    EntryIndices:
+    - 0
+    Counts:
+    - 1
+  - Trigger: 1
+    TargetId: ""
+    ObjectiveIndex: -1
+    MinTargetX: 0
+    TriggerX: 7
+    AnchorNamePrefix: ""
+    EntryIndices:
+    - 1
+    Counts:
+    - 1
+  - Trigger: 4
+    TargetId: ""
+    ObjectiveIndex: -1
+    MinTargetX: 8
+    TriggerX: 7
+    AnchorNamePrefix: ""
+    EntryIndices:
+    - 0
+    - 1
+    Counts:
+    - 1
+    - 1
   Star3Purity: 100
   Star2Purity: 60
   Star1Purity: 30

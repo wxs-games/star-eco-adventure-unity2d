@@ -185,5 +185,17 @@ namespace StarEco.Player
                 _animator.Play(stateName, 0, 0f);
             }
         }
+
+        /// <summary>
+        /// 淡入到指定状态。用于「循环型演出状态」的主动收尾
+        /// （如 Victory 状态没有退出转移，播放完必须由代码淡回 Idle，否则会一直停在欢呼帧）。
+        /// </summary>
+        public void CrossFadeTo(string stateName, float duration = 0.12f)
+        {
+            if (_animator != null)
+            {
+                _animator.CrossFade(stateName, duration, 0, 0f);
+            }
+        }
     }
 }

@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Text;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -8,8 +7,8 @@ using StarEco.Eco;
 namespace StarEco.EditorTools
 {
     /// <summary>
-    /// 掉落表配置自检（B6）：一次扫描三关场景，检查每个 DropSpawner 的 _dropTable 与
-    /// _pickupPrefab 是否已配置。A1 已手工挂表（TestDrop + PurifyPickup），此工具用于
+    /// 掉落表配置自检：扫描三关场景，检查每个 DropSpawner 的掉落表及所需拾取预制体。
+    /// 此工具用于
     /// 回归防漏：任何一关缺表会在 Console 逐条告警，全齐则输出 PASS。
     /// 只读：Additive 打开场景检查后立即关闭，不保存、不改场景。
     /// 菜单：StarEco → Tools → 检查掉落表配置
@@ -43,20 +42,27 @@ namespace StarEco.EditorTools
                             var so = new SerializedObject(sp);
                             var table = so.FindProperty("_dropTable");
                             var prefab = so.FindProperty("_pickupPrefab");
+                            var healthPrefab = so.FindProperty("_healingPickupPrefab");
 
-                            if (table == null || prefab == null)
+                            if (table == null || prefab == null || healthPrefab == null)
                             {
                                 missing++;
                                 log.AppendLine($"[MISS] {path} {sp.name}：字段缺失（脚本版本不符？）");
                                 continue;
                             }
 
-                            if (table.objectReferenceValue == null || prefab.objectReferenceValue == null)
+                            var configuredTable = table.objectReferenceValue as DropTable;
+                            bool needsPurify = configuredTable != null && configuredTable.Entries.Exists(e => e.Kind == PickupKind.PurifyBottle);
+                            bool needsHealth = configuredTable != null && configuredTable.Entries.Exists(e => e.Kind == PickupKind.HealthBottle);
+                            bool missingPurify = needsPurify && prefab.objectReferenceValue == null;
+                            bool missingHealth = needsHealth && healthPrefab.objectReferenceValue == null;
+                            if (table.objectReferenceValue == null || missingPurify || missingHealth)
                             {
                                 missing++;
                                 log.AppendLine($"[MISS] {path} {sp.name}：" +
                                     $"_dropTable={(table.objectReferenceValue == null ? "null" : "ok")} " +
-                                    $"_pickupPrefab={(prefab.objectReferenceValue == null ? "null" : "ok")}");
+                                    $"_pickupPrefab={(missingPurify ? "null" : "ok")} " +
+                                    $"_healingPickupPrefab={(missingHealth ? "null" : "ok")}");
                             }
                         }
                     }

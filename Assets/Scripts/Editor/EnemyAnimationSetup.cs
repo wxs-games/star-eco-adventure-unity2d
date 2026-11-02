@@ -329,9 +329,34 @@ namespace StarEco.EditorTools
                 rb.bodyType = RigidbodyType2D.Kinematic;
                 rb.gravityScale = 0f;
                 rb.freezeRotation = true;
-                var col = go.AddComponent<BoxCollider2D>();
-                col.size = colliderSize;
-                col.offset = colliderOffset;
+
+                // 静态建筑用**贴身多边形**而不是方盒：炮台造型（圆顶 + 侧伸炮管 + 底法兰）
+                // 用 2.24×2.33 的方盒会把圆顶上方的空白、炮管两侧的空隙全部算成实体，
+                // 玩家贴着塔顶/炮管旁边走会被「看不见的角」挡住。
+                // 轮廓直接取精灵导入时生成的物理外形（spriteGenerateFallbackPhysicsShape=1），
+                // 与美术剪影一致；取不到时才退回方盒，保证不会变成没有碰撞体。
+                var poly = go.AddComponent<PolygonCollider2D>();
+                int shapeCount = sr.sprite != null ? sr.sprite.GetPhysicsShapeCount() : 0;
+                if (shapeCount > 0)
+                {
+                    poly.pathCount = shapeCount;
+                    var pts = new System.Collections.Generic.List<Vector2>();
+                    for (int i = 0; i < shapeCount; i++)
+                    {
+                        pts.Clear();
+                        sr.sprite.GetPhysicsShape(i, pts);
+                        poly.SetPath(i, pts.ToArray());
+                    }
+                    poly.offset = Vector2.zero;   // 轮廓点已相对 pivot，不能再叠 offset
+                }
+                else
+                {
+                    Debug.LogWarning($"[EnemyAnimationSetup] {unitName} 的精灵没有物理外形，退回方盒碰撞体。");
+                    Object.DestroyImmediate(poly);
+                    var col = go.AddComponent<BoxCollider2D>();
+                    col.size = colliderSize;
+                    col.offset = colliderOffset;
+                }
             }
 
             // AttackHitbox 子物体（近战单位）

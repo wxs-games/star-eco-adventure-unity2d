@@ -50,7 +50,7 @@ namespace StarEco.EditorTools
                 {
                     Kind = StarEco.Eco.PickupKind.PurifyBottle,
                     Count = 1,
-                    Probability = 1f
+                    Probability = 0.35f
                 });
                 AssetDatabase.CreateAsset(testDrop, DropPath);
                 log.AppendLine("已创建 TestDrop.asset（净化瓶x1 概率100%）");

@@ -39,6 +39,9 @@ namespace StarEco.EnemyAI
 
         public bool IsDisabled => _isDisabled;
 
+        /// <summary>该塔在场景中的唯一标识（供检查点快照对齐）。</summary>
+        public string RestorableId => gameObject.name;
+
         /// <summary>
         /// 可被攻击击杀（与怪物一致）：扣血 + 受击闪白 + 广播受伤事件；血尽即被击毁。
         /// 不走基类的受击硬直/死亡状态机 —— 塔只注册 Idle/Aim/Fire/Disable，
@@ -139,6 +142,13 @@ namespace StarEco.EnemyAI
         public override void ResetForReuse()
         {
             base.ResetForReuse();
+            _isDisabled = false;
+            _disableBroadcasted = false;
+        }
+
+        /// <summary>重置关闭态，以便检查点恢复时可重新 RequestDisable。</summary>
+        public void ResetDisableForCheckpoint()
+        {
             _isDisabled = false;
             _disableBroadcasted = false;
         }

@@ -32,6 +32,11 @@ namespace StarEco.Combat
         public bool IsFall;
 
         /// <summary>
+        /// 是否为溺水伤害（河道死亡区置 true），仅用于结算面板失败原因。
+        /// </summary>
+        public bool IsDrowning;
+
+        /// <summary>
         /// 命中点（世界坐标）。用于把 `fx_hit` 火花对准真正被打中的位置（§AnimationVFXSpec §8.3）。
         /// 未提供时为 false，播放方回退到受击者自身位置。
         /// </summary>
@@ -46,6 +51,7 @@ namespace StarEco.Combat
             KnockbackPower = 0f;
             IsPurify = false;
             IsFall = false;
+            IsDrowning = false;
             HasPoint = false;
             Point = Vector2.zero;
         }

@@ -31,6 +31,9 @@ namespace StarEco.Eco
 
         public bool IsPurified => _purified;
 
+        /// <summary>目标标识（供事件与检查点快照对齐）。</summary>
+        public string PurifyTargetId => _targetId;
+
         public int PurityValue => _purityValue >= 0
             ? _purityValue
             : (_config != null ? _config.GarbageWallPurityValue : 10);
@@ -103,7 +106,8 @@ namespace StarEco.Eco
             {
                 PurityValue = PurityValue,
                 Position = transform.position,
-                TargetId = _targetId
+                TargetId = _targetId,
+                InstanceId = GetInstanceID()
             });
 
             // 清走堵塞物：整体隐藏（水流通了）

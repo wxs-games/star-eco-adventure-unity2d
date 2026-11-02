@@ -59,6 +59,10 @@ namespace StarEco.UI
         private void OnDestroy()
         {
             EventCenter.Unsubscribe<ObjectiveCompletedEvent>(OnObjectiveCompleted);
+            if (_player != null && _player.Combat != null)
+            {
+                _player.Combat.HealthChanged -= OnHealthChanged;
+            }
 
             if (UIManager.HasInstance)
             {
@@ -85,6 +89,11 @@ namespace StarEco.UI
         {
             _player = FindObjectOfType<PlayerController>();
             _level = LevelManager.HasInstance ? LevelManager.Instance : null;
+            if (_player != null && _player.Combat != null)
+            {
+                _player.Combat.HealthChanged -= OnHealthChanged;
+                _player.Combat.HealthChanged += OnHealthChanged;
+            }
 
             // 无玩家数据源（如误挂主菜单场景）→ HUD 不显示
             if (_player == null)
@@ -303,6 +312,14 @@ namespace StarEco.UI
             var fillRt = fill.rectTransform;
             fillRt.offsetMin = new Vector2(inset, inset);
             fillRt.offsetMax = new Vector2(-inset, -inset);
+        }
+
+        private void OnHealthChanged(int currentHp)
+        {
+            if (_player != null && _player.Combat != null && _hearts != null)
+            {
+                RefreshHearts();
+            }
         }
 
         private void RefreshHearts()

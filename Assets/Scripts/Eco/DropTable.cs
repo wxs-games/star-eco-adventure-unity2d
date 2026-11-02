@@ -4,10 +4,11 @@ using UnityEngine;
 
 namespace StarEco.Eco
 {
-    /// <summary>拾取物类型（初期仅净化瓶，M6+ 可扩展）。</summary>
+    /// <summary>拾取物类型。</summary>
     public enum PickupKind
     {
-        PurifyBottle
+        PurifyBottle,
+        HealthBottle
     }
 
     /// <summary>

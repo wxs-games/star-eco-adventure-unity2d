@@ -169,6 +169,11 @@
 > ③**逻辑占位**（`SpawnAnchorA~D`、`KillZone`，不可见）→ **−5**（本表无此层级，按"玩家绝不该看到"取负值）。
 > 三关实际赋层一律以 **本文档本表** 为准；`LevelArt.md §8.4` 的逐对象清单只是本表的展开，若两者冲突以本表为准。
 
+> **补充（2026-11-01，悬空知识卡的指示件）**：
+> ①**指示光柱**（`KnowledgeCardBeacon` 运行时生成的 `Beacon` 子物体）→ **6**，与卡片同层；贴图为代码生成的 8×64 竖直渐变，宽度 0.08u，长度按「卡片精灵底 → 支撑面顶」配置（L1 0.90u / L2 0.42u），呼吸 alpha 0.16~0.50。
+> ②**呼吸脉冲**（`KnowledgeCardPulse`）**不新增层级**：只改写卡片的 `SpriteRenderer.color.a`（0.65~1.0）与 `localPosition.y`（±0.04u），**刻意不做缩放**——卡片下挂光柱，缩放父物体会把光柱一起拉变形。
+> ③ 三张悬空卡（L1 `KnowledgeCard_PlasticBag`、L2 `_Forest_Oxygen`、`_Forest_Invasive`）同时挂这两个组件；地面卡不加（无高度差，加了只是视觉噪音）。
+
 > **补充（2026-10-31 16:40，拆分「地面 0」层 · L2 压盖裁决）**：
 > 原表把**地面、河床、木筏、水面**四类全塞在 **order 0**，导致 L2 里这 7 个对象（`GroundL`/`GroundR`/`Riverbed`/`Water`/`Raft1~3`）**同 order 0**，
 > 压盖关系**完全由场景文件里的对象定义顺序决定** —— 实测定义顺序是
@@ -190,7 +195,7 @@
 >
 > ⚠️ **本表与 `Assets/Scripts/Editor/FixAllLevelSpriteSorting.cs` 必须同步** ——
 > 脚本的 `PrefixRules`/`SubstringRules` 里 `("ground",0) ("riverbed",0) ("raft",0) ("water",0)` **四条全是 0**，
-> **跑一次脚本就会把场景刷回旧口径（当前场景实测四者全 0，Water 因定义最后而盖住岸，正是穿帮来源）**。脚本属主程序车道，需同步为 `riverbed −2 / water −1 / ground 0 / raft 5`（覆盖原 `riverbed −1 / water 1` 旧派单）。
+> **跑一次脚本就会把场景刷回旧口径（当前场景实测四者全 0，Water 因定义最后而盖住岸，正是穿帮来源）**。需同步脚本为 `riverbed −2 / water −1 / ground 0 / raft 5`（覆盖原 `riverbed −1 / water 1` 旧派单）。
 
 > **补充（2026-10-31 15:50，新增第 7 层「拾取物」）**：L3 的净化剂补给瓶 `Puzzle_Pickup` 原挂在 **order 3**，
 > 而 `Puzzle_Floor` 地面是 **order 5** → **地面画在瓶子上面，把瓶子整个盖住**，玩家看到的是「地板下面有个东西」。

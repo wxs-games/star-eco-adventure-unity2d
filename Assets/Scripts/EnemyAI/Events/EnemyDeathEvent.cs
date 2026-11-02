@@ -16,5 +16,11 @@ namespace StarEco.EnemyAI.Events
 
         /// <summary>掉落表引用（M5 落地前可为 null）。</summary>
         public ScriptableObject DropTable;
+
+        /// <summary>该死亡是否计入关卡目标（桥上临时遭遇等场景专属敌人可关闭）。</summary>
+        public bool CountsForLevelObjective;
+
+        /// <summary>死亡实例 ID，用于目标链去重。</summary>
+        public int InstanceId;
     }
 }

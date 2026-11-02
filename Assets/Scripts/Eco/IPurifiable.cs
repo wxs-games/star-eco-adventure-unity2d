@@ -8,6 +8,9 @@ namespace StarEco.Eco
     /// </summary>
     public interface IPurifiable
     {
+        /// <summary>该目标的标识（如 GarbagePile / WaterBlock / Tower01），用于事件携带与检查点快照对齐。</summary>
+        string PurifyTargetId { get; }
+
         /// <summary>接收一次净化量（amount ≥ 0）。已净化的目标应幂等忽略。</summary>
         void ReceivePurify(int amount, GameObject source);
 

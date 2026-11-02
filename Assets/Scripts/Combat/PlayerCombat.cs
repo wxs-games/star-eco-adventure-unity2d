@@ -16,6 +16,7 @@ namespace StarEco.Combat
         private PlayerController _player;
 
         public CombatConfig Config => _config;
+        public System.Action<int> HealthChanged;
 
         /// <summary>当前 HP（整数定点，单位「半心点」：2 点 = 1 颗心；远程 1 点伤害 = 半颗心）。</summary>
         public int CurrentHP { get; private set; }
@@ -34,6 +35,7 @@ namespace StarEco.Combat
             }
 
             CurrentHP = MaxHP;
+            HealthChanged?.Invoke(CurrentHP);
         }
 
         private void Update()
@@ -55,6 +57,29 @@ namespace StarEco.Combat
 
             AttackPressedThisFrame = false;
             return true;
+        }
+
+        /// <summary>回复生命值并返回实际回复量。</summary>
+        public int Heal(int amount)
+        {
+            if (_player == null || _player.IsDead)
+            {
+                return 0;
+            }
+
+            int applied = CalculateHeal(CurrentHP, MaxHP, amount);
+            if (applied > 0)
+            {
+                CurrentHP += applied;
+                HealthChanged?.Invoke(CurrentHP);
+            }
+
+            return applied;
+        }
+
+        public static int CalculateHeal(int currentHp, int maxHp, int amount)
+        {
+            return Mathf.Min(Mathf.Max(0, amount), Mathf.Max(0, maxHp - currentHp));
         }
 
         // ===== IHittable =====
@@ -85,8 +110,8 @@ namespace StarEco.Combat
             int newHp = Mathf.Max(0, CurrentHP - info.Amount);
             CurrentHP = newHp;
 
-            // 记录死因（坠落死亡区会置 IsFall），供结算面板把「玩家被击败」换成「跌落山崖」
-            _player.MarkDeathCause(info.IsFall);
+            // 记录死因，供结算面板区分坠落、溺水与普通受击死亡。
+            _player.MarkDeathCause(info.IsFall, info.IsDrowning);
 
             // 击退方向：无来源方向时按垂直上抛兜底
             Vector2 from = info.SourceDirection.sqrMagnitude > 0.0001f ? info.SourceDirection : Vector2.up;

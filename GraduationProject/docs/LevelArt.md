@@ -98,11 +98,17 @@ L2 `ground_forest`（2048×1024 @PPU128，平均亮度 **36.8%**，见 §4.4）�
 | 5 | 15.60 | 2.48 | PlatformR2 | `platform_flat` | ✅ |
 | 6 | −2.50 | 0.60 | KnowledgeCard1 | `knowledge_card` | ✅ |
 | 6 | 7.50 | 0.60 | KnowledgeCard2 | `knowledge_card` | ✅ |
+| 6 | −12.80 | 2.55 | KnowledgeCard_PlasticBag | `knowledge_card` | ✅（`PlatformL1` 上方 1.06u 悬浮，需跳跃拾取） |
 | −5 | −3.00 | 0.20 | SpawnAnchorA | — | 纯逻辑锚点，无美术 |
 | −5 | 8.00 | 0.20 | SpawnAnchorB | — | 同上 |
 
 > 补充：L1 另有 2 个 `SignGlow`（可读牌的「有边框=能读」视觉区分，2026-10-31 新增，order **7** = 牌 6 + 1），由 A 挂在 `Signboard_Plastic` / `Signboard_Recycle` 下。
 > `SpawnAnchorA/B` 属**逻辑占位**，按 §5.2 补录条取 **−5**（玩家绝不该看到），旧表写的 15 是兜底值的遗留。
+>
+> **悬空知识卡的指示（2026-11-01）**：三张悬空卡——L1 `KnowledgeCard_PlasticBag`（−12.80 / 2.55）、L2 `_Forest_Oxygen`（−24.5 / 3.18）、L2 `_Forest_Invasive`（24.5 / 4.89）——同时挂两个组件：
+> - `KnowledgeCardBeacon`：卡片下方生成竖直绿色光柱（宽 **0.08u**，长 L1 **0.90u** / L2 **0.42u**，alpha 呼吸 0.16~0.50），提示「这张卡要用跳的」；
+> - `KnowledgeCardPulse`：卡片自身透明度 0.65~1.0 @0.75Hz + 上下浮动 ±0.04u。
+> 地面卡（y=0.60 一类）不加：没有高度差，加了只是视觉噪音。
 
 ### 3.3 区段划分（按 X）
 
@@ -121,7 +127,7 @@ L2 `ground_forest`（2048×1024 @PPU128，平均亮度 **36.8%**，见 §4.4）�
 
 **规范**：L1 的装饰树应为**枯树 / 半枯树**（无叶、扭曲、灰褐）。
 
-> ✅ **已交付（2026-10-31，C 线）**：`Assets/Art/Art/Environment/Props/tree_dead.png`
+> ✅ **已交付（2026-10-31，实现侧）**：`Assets/Art/Art/Environment/Props/tree_dead.png`
 > 580×881 @ PPU **339**、`pivot (0.5, 0.5)`、画布尺寸与 `tree_forest.png` **逐像素一致**，
 > 且树干底边同样贴死画布底行 → **A 侧换图零改动**：只把 4 个 `Decor_Tree_*` 的
 > `SpriteRenderer.sprite` 换成 `tree_dead`（guid `43a8d421960645bf9af0de5e89ee27e5`），
@@ -150,13 +156,13 @@ L1 有四块"牌子"：
 2. 装饰牌换成完全不同的贴图（如纯色地标石、路障），从根上区分。
 3. 装饰牌去掉贴图，改用地形元素（碎石堆、铁桶）。
 
-> ✅ **美术件已交付（2026-10-31，C 线，方案 1）**：
+> ✅ **美术件已交付（2026-10-31，实现侧，方案 1）**：
 > `Assets/Art/Art/Environment/Props/sign_glow_plastic.png` 与 `sign_glow_recycle.png`
 > —— 与两张原牌**同画布同 PPU**（288×1024@890 / 260×926@805）、`pivot (0.5,0.5)`、中孔全透明（透明占比 88%），
 > 边框沿板面外轮廓一圈（亮芯 + 柔光晕），叠加后不遮盖牌面内容。
 > **A 侧挂法**：在原牌对象下建子对象 `SignGlow`，`localPosition = (0,0,0)`、`localScale = (1,1,1)`、
 > `SpriteRenderer.sprite = sign_glow_*`、`Order in Layer = 原牌 +1`（即可读牌 6 → **7**）。
-> 想加呼吸效果就给该子对象挂 `scale 1.0↔1.02 / 2s` 简单脚本（属 B 车道）。
+> 想加呼吸效果就给该子对象挂 `scale 1.0↔1.02 / 2s` 简单脚本（属 ）。
 > **装饰牌不要挂** —— 区分点就在于"只有能读的牌会发光"。
 > 覆盖范围：L1 `Signboard_Plastic`（塑料警示牌）、`Signboard_Recycle`（回收牌）、L2 `Signboard_Forest`。
 > **L3 不适用**：L3 七块牌子全是装饰牌、没有可读牌，本方案只能"区分"，无法制造出可读牌。
@@ -222,7 +228,7 @@ L2 是唯一有明确三层结构的关卡：
 | `Riverbed` | 同上，`m_Color (0.62,0.68,0.62)` 压暗 | ✅ 主题正确 |
 | `ground_polluted_soil` | — | ❌ 全库闲置（原始大图） |
 
-**本轮已修（C 线，2026-10-31）**：`ground_forest.png` 由 512×128 @PPU32 **升级为 2048×1024 @PPU128 = 16×8u**，
+**本轮已修（实现侧，2026-10-31）**：`ground_forest.png` 由 512×128 @PPU32 **升级为 2048×1024 @PPU128 = 16×8u**，
 GUID 保持不变 → **A 侧无需改任何 `SpriteRenderer`，只需重导入 `Assets/Art`**。升级后：
 
 - 8u 高的地面正好铺**一整格**，草坪带不再在中间重复（这是最直观的一处改善）
@@ -250,7 +256,7 @@ GUID 保持不变 → **A 侧无需改任何 `SpriteRenderer`，只需重导入 
 
 **成因**：`Level02Setup.MakeRaftPlank()` 用 `MakeWorldBox(name, white, 4.5f, 0.4f, ...)` 生成，靠 `WhiteSquare` + color 染色占位。这条路本身能序列化，问题在设计而非技术。
 
-**修法**（拆给两条车道）：
+**修法**（拆给两条工作流）：
 
 1. ~~**C（美术）**：替换 `SpriteRenderer.sprite`~~ → ✅ **已交付**：C3 产出 `Assets/Art/Art/Environment/Props/raft_deck.png`（512×74 @ PPU 113.78 = **4.50×0.65u**，透明底，独立 GUID `e2ab2e7d…`）
 2. **A（场景）**：`RaftPath` 增加跟随水位的位移，或把三段缩到河道宽度并重排 x（当前 −4.5 / 0 / 4.5）——**未做**
@@ -907,7 +913,7 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 |---|---|---|
 | `bulkhead_industrial.png` | `Environment/Props/` | ✅ `Level03.unity`（L3 真墙，1.5×3u 正合预留位，提交 `c5e5e17`） |
 | `ground_industrial.png` | `Environment/Tiles/` | ✅ `Level03.unity`（L3 地面，2048×1024 @128 = 16×8u，提交 `80462e3`） |
-| `raft_deck.png` | `Environment/Props/` | ✅ `Level02.unity` 的 `Raft1/2/3`（1800×157 @PPU400 = 4.50×0.3925u，与 `BoxCollider2D` 4.41×0.392 齐平；初版 4.50×0.65 高 0.13u 会让角色脚底陷进甲板，已按碰撞盒重生）。⚠️ **2026-10-31 发现 `m_Size` 遗留**：`SpriteRenderer.m_Size` 仍是 **{0.04, 0.04}**（旧白方块时代）→ **木筏只渲染 0.04u，玩家看不见自己站的木筏**。应改为 **{4.5, 0.393}**（与精灵世界尺寸一致）。**这是 `m_Size` 遗留的第 3 处**（前两处：拾取物瓶、L2 分类统计）。属集成装配发布车道 |
+| `raft_deck.png` | `Environment/Props/` | ✅ `Level02.unity` 的 `Raft1/2/3`（1800×157 @PPU400 = 4.50×0.3925u，与 `BoxCollider2D` 4.41×0.392 齐平；初版 4.50×0.65 高 0.13u 会让角色脚底陷进甲板，已按碰撞盒重生）。⚠️ **2026-10-31 发现 `m_Size` 遗留**：`SpriteRenderer.m_Size` 仍是 **{0.04, 0.04}**（旧白方块时代）→ **木筏只渲染 0.04u，玩家看不见自己站的木筏**。应改为 **{4.5, 0.393}**（与精灵世界尺寸一致）。**这是 `m_Size` 遗留的第 3 处**（前两处：拾取物瓶、L2 分类统计）。属集成装配发布工作流 |
 
 **尚未接入（7 张，交 A 线挂载；美术侧素材已就绪）**
 
@@ -923,7 +929,7 @@ L3 有 7 块 `Decor_Sign_* / Jump_Sign / Puzzle_Sign`，**全部无脚本**。�
 | `Boss01_Lockup_A.png` | `Boss/Boss01/Lockup/` | Boss 定妆图 | **美术留档，不进运行时**（不需挂载） |
 
 > 另：`Environment/Props/` 下的 `bush_shrub` / `debris_grass` / `debris_rubble` / `debris_scrap` / `tree_dead` / `vine_hanging`
-> 六件同样「已交付但未被场景引用」，属 C 线 P2 交付项（灌木/垂藤/地表杂物/死树），用途见 `LevelArt §4` 与 `§7` 对应行。
+> 六件同样「已交付但未被场景引用」，属 实现侧 P2 交付项（灌木/垂藤/地表杂物/死树），用途见 `LevelArt §4` 与 `§7` 对应行。
 > **均保留不归档**，等 A 线决定落位。
 
 ### A.5 冻结区说明

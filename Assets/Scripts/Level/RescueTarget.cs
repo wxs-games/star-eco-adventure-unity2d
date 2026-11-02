@@ -41,6 +41,12 @@ namespace StarEco.Level
         private float _openTimer;
         private bool _opening;
 
+        /// <summary>目标标识（供事件与检查点快照对齐）。</summary>
+        public string RestorableId => _targetId;
+
+        /// <summary>是否已解救完成。</summary>
+        public bool IsRescued => _done;
+
         // 气泡 Canvas 只在运行时创建。
         // 不能放 OnEnable：编辑器模式下 OnEnable 也会跑，会把世界空间 Canvas 建进场景，
         // 在 Scene 视图里显示成一大片白色线框（看起来像"挡住路"的隐形墙）。
@@ -114,7 +120,8 @@ namespace StarEco.Level
                 return;
             }
 
-            bool inRange = Vector2.Distance(transform.position, _player.position) <= _radius;
+            Vector3 interactionPosition = GetInteractionPosition();
+            bool inRange = Vector2.Distance(interactionPosition, _player.position) <= _radius;
             if (inRange != _playerInRange)
             {
                 _playerInRange = inRange;
@@ -165,10 +172,42 @@ namespace StarEco.Level
             EventCenter.Publish(new AnimalRescuedEvent
             {
                 TargetId = _targetId,
-                Position = transform.position
+                Position = GetInteractionPosition()
             });
 
             Debug.Log($"[RescueTarget] 已解救 {_targetId}，广播 AnimalRescuedEvent");
+        }
+
+        /// <summary>直接完成解救（检查点恢复时调用，不走玩家 E 键交互与动画延迟）。</summary>
+        public void ForceCompleteRescue()
+        {
+            _opening = false;
+            _done = true;
+
+            var visual = _cageVisual != null ? _cageVisual : gameObject;
+            visual.SetActive(false);
+
+            EventCenter.Publish(new AnimalRescuedEvent
+            {
+                TargetId = _targetId,
+                Position = GetInteractionPosition()
+            });
+        }
+
+        /// <summary>重置为未解救态（检查点回滚时调用）。</summary>
+        public void ResetRescue()
+        {
+            _done = false;
+            _opening = false;
+            _openTimer = 0f;
+
+            var visual = _cageVisual != null ? _cageVisual : gameObject;
+            visual.SetActive(true);
+        }
+
+        private Vector3 GetInteractionPosition()
+        {
+            return _cageVisual != null ? _cageVisual.transform.position : transform.position;
         }
 
         // ===== 气泡（复刻 DialogueTrigger 的世界空间 Canvas 模式）=====
@@ -177,7 +216,11 @@ namespace StarEco.Level
         {
             var canvasGo = new GameObject("RescueBubbleCanvas",
                 typeof(RectTransform), typeof(Canvas));
-            UIUtility.CreateWorldCanvas(canvasGo, transform, new Vector3(0f, _bubbleHeight, 0f));
+
+            // 动物画面可能在场景中单独调整位置；提示必须跟随它，而不是固定在笼子根节点原点。
+            // 交互距离仍以 RescueTarget 根节点计算，避免改变玩法判定范围。
+            var bubbleAnchor = _cageVisual != null ? _cageVisual.transform : transform;
+            UIUtility.CreateWorldCanvas(canvasGo, bubbleAnchor, new Vector3(0f, _bubbleHeight, 0f));
 
             var canvasRt = canvasGo.GetComponent<RectTransform>();
             canvasRt.sizeDelta = new Vector2(400f, 120f);   // 像素；已由 localScale 换算为 4×1.2 世界单位
@@ -197,7 +240,7 @@ namespace StarEco.Level
         private void OnDrawGizmosSelected()
         {
             Gizmos.color = new Color(0.6f, 1f, 0.7f, 0.35f);
-            Gizmos.DrawWireSphere(transform.position, _radius);
+            Gizmos.DrawWireSphere(GetInteractionPosition(), _radius);
         }
     }
 }

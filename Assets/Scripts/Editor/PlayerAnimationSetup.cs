@@ -47,15 +47,17 @@ namespace StarEco.EditorTools
             // Run 用 36fps：帧数由 8 提到 12 后，若仍按 24fps 循环会拉长到 0.5s，
             // 步频与移动速度脱节会导致脚底打滑；12/36 = 0.333s 与旧 8 帧版周期一致。
             { "Player_Run",         ("Run", true, 36) },
-            // Jump 用 27fps：帧数由 3 提到 12 后，动画时长按上升段配平。
-            // 起跳速度 13、重力 3*9.81=29.43 => 上升 0.4417s，12/27 = 0.4444s，
-            // 播到顶点恰好满足 Jump->Fall 的 VelocityY<-0.1 切换条件。
-            { "Player_Jump",        ("Jump", false, 27) },
-            // Fall 用 36fps：帧数由 4 提到 12 后，12/36 = 0.333s 与旧 4 帧版周期一致。
-            { "Player_Fall",        ("Fall", true, 36) },
-            // Land 用 30fps：旧 3 帧 @24fps 只有 0.125s（占位时长），12 帧按 30fps = 0.4s，
-            // 落地缓冲才有可读的"沉下去再起来"。
-            { "Player_Land",        ("Land", false, 30) },
+            // Jump 用 9fps：2026-11-01 换成新的 4 帧起跳弧线（起跳伸展 → 收腿 → 顶点 → 腿下伸）。
+            // 4 帧 @9fps 每帧 0.111s，末帧关键帧落在 0.333s；起跳速度 13、重力 3*9.81=29.43
+            // => 上升 0.4417s，所以末帧会在顶点附近保持约 0.11s 再切 Fall(VelocityY<-0.1)，
+            // 正好把「顶点悬停」交给上一帧的收腿姿势，不会出现落地蹲姿在顶点闪一下。
+            { "Player_Jump",        ("Jump", false, 9) },
+            // Fall 用 12fps：2026-11-01 换成新素材后只剩 1 帧（同一张跳跃图里的「腿已下伸」姿势），
+            // 单帧即恒定保持，采样率此时无实际意义，保留一个非零值只为不让时长算成 0。
+            { "Player_Fall",        ("Fall", true, 12) },
+            // Land 用 8fps：2026-11-01 换成新素材的 3 帧（落地蹲 → 蹲起势 → 站稳），
+            // 2/8 = 0.25s，比旧 12 帧的 0.4s 短但姿势更少、节奏更利落。
+            { "Player_Land",        ("Land", false, 8) },
             { "Player_Hurt",        ("Hurt", false, 20) },
             // Die 用 15fps：帧数由 8 提到 10 后，10/15 = 0.667s。旧 8 帧 @18fps 只有 0.44s，
             // 倒地过程太快，看不出「先失衡、再加速下坠、落地回弹」的三段节奏。
@@ -564,6 +566,21 @@ namespace StarEco.EditorTools
             var ledgeGrab = AddState(root, "LedgeGrab", GetClip(clips, "Player_LedgeGrab"), new Vector2(1000, 480));
             var crouch = AddState(root, "Crouch", GetClip(clips, "Player_Crouch"), new Vector2(1200, 480));
             var longIdle = AddState(root, "Idle02", GetClip(clips, "Player_Idle02"), new Vector2(1400, 480));
+
+            // ---- 拾取演出「双手举物」（2026-11-01 新增）----
+            // 这个 clip 是手工关键帧（2 帧定格 / 1.2s，播完停在最后一帧），不是由帧目录按 fps 生成的，
+            // 所以不走上面的 clips 表，而是「资产存在才挂」。否则重跑本菜单会把状态抹掉，
+            // 代码里的 animator.Play("ItemGetHold") 找不到状态会静默变成站桩。
+            var itemGetHoldClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AnimationClip>(
+                "Assets/Animations/Player/ItemGetHold.anim");
+            if (itemGetHoldClip != null)
+            {
+                AddState(root, "ItemGetHold", itemGetHoldClip, new Vector2(1600, 620));
+            }
+            else
+            {
+                Debug.LogWarning("[PlayerAnimationSetup] 未找到 ItemGetHold.anim，拾取演出状态未挂载。");
+            }
 
             // ---- 地面移动循环 ----
             Link(idle, run, t => t.AddCondition(AnimatorConditionMode.Greater, 0.1f, "Speed"));

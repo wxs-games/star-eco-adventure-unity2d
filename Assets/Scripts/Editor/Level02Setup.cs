@@ -10,7 +10,7 @@ namespace StarEco.EditorTools
 {
     /// <summary>
     /// 第二关一键搭建（M9 R5）：Level02.asset + Level02.unity 灰盒（生态森林）。
-    /// 目标链（四段）：解救 2 只动物 → 清理 3 处堵塞疏通河道 → 净化 3 处污染源 → 击败 4 只毒植物。
+    /// 目标链（三段）：解救 2 只动物 → 清理 3 处堵塞疏通河道 → 过河后清理右岸 3 个污染源和 2 只固定遭遇敌人。
     /// 空间动线：左岸（出生/解救/清堵）→ 河道（深水致命，木筏通路初始禁用）→ 右岸（净化/战斗）。
     /// 复用 M6 关卡系统与 M7 UI 面板；菜单：StarEco → Setup → Level02（幂等：场景已存在则跳过）。
     /// </summary>
@@ -85,7 +85,7 @@ namespace StarEco.EditorTools
             config.TimeLimit = 0f;
             config.IntroText = "森林里的动物被困住了，河道也被污染物堵住。先解救动物，再清理堵塞物疏通河道。";
 
-            // 四段目标链（顺序解锁）
+            // 三段目标链（顺序解锁）
             config.Objectives = new[]
             {
                 new LevelConfig.LevelObjective(
@@ -93,38 +93,60 @@ namespace StarEco.EditorTools
                 new LevelConfig.LevelObjective(
                     LevelObjectiveType.PuzzleSolved, 3, "清理堵塞物，疏通河道"),
                 new LevelConfig.LevelObjective(
-                    LevelObjectiveType.PurifyTargets, 3, "净化森林污染源"),
+                    LevelObjectiveType.ClearRightBank, 5, "过河后清理右岸怪物和植物"),
                 new LevelConfig.LevelObjective(
-                    LevelObjectiveType.DefeatEnemies, 4, "击败 4 只变异怪物")
+                    LevelObjectiveType.CollectKnowledgeCards, 3, "收集第二关全部知识卡")
             };
 
-            // 刷怪表（v1.1 重做）：不允许两类敌人在 L2 全程同时无限循环刷新。
-            // 第一条：远程毒植物 Enemy02，左岸救援 + 清堵阶段压制，RequiredObjectiveIndex=-1
-            // 即关卡开始就可刷新，用于“先处理敌人还是冒险开笼/清堵”的选择。
-            // 第二条：近战怪 Enemy01，清堵主线完成（目标②达成）后才开始刷新，
-            // 对应右岸登陆 → 污染源 → 守关三波收尾，避免前段被常驻战斗稀释。
+            // 三阶段一次性遭遇：左岸开局、右岸登陆、首个右岸污染源。
+            // 右岸固定遭遇共 2 只敌人；桥上敌人是限时临时遭遇，不计入最终清理数量。
             config.SpawnEntries = new[]
             {
                 new LevelConfig.SpawnEntry
                 {
                     Prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Enemy02Prefab),
                     Anchors = new Transform[0],
+                    AnchorNamePrefix = "SpawnAnchorA",
                     MaxAlive = 1,
-                    BaseInterval = 12f,
+                    BaseInterval = 4f,
                     RequiredObjectiveIndex = -1
                 },
                 new LevelConfig.SpawnEntry
                 {
                     Prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Enemy01Prefab),
                     Anchors = new Transform[0],
+                    AnchorNamePrefix = "SpawnAnchorB",
                     MaxAlive = 2,
-                    BaseInterval = 10f,
-                    RequiredObjectiveIndex = 1
+                    BaseInterval = 2f,
+                    RequiredObjectiveIndex = -1
                 }
+            };
+            config.SpawnWaves = new[]
+            {
+                new LevelConfig.SpawnWave
+                {
+                    Trigger = LevelConfig.SpawnWaveTrigger.GameStart,
+                    EntryIndices = new[] { 0 },
+                    Counts = new[] { 1 }
+                },
+                new LevelConfig.SpawnWave
+                {
+                    Trigger = LevelConfig.SpawnWaveTrigger.RightBankReached,
+                    TriggerX = 7f,
+                    EntryIndices = new[] { 1 },
+                    Counts = new[] { 1 }
+                },
+                new LevelConfig.SpawnWave
+                {
+                    Trigger = LevelConfig.SpawnWaveTrigger.PurifiedInRegion,
+                    MinTargetX = 8f,
+                    EntryIndices = new[] { 0, 1 },
+                    Counts = new[] { 1, 1 }
+                },
             };
 
             AssetDatabase.CreateAsset(config, ConfigPath);
-            log.AppendLine("已创建 Level02.asset（四段目标链：1 只远程毒植物 + 2 只近战怪）");
+            log.AppendLine("已创建 Level02.asset（三段目标链：右岸 3 个污染源 + 3 只固定遭遇敌人）");
             return config;
         }
 
@@ -255,13 +277,12 @@ namespace StarEco.EditorTools
             // —— 刷怪锚点 ——
             // 两个锚点都必须落在空地：Enemy02 不透明体约 2.34u 宽（待机帧），而草垛/树（排序 15、10）
             // 都画在敌人（排序 0）前面，锚点压到道具上会让毒植物出生时半截身体被遮住。
-            // A 放在 14.5 号树（右缘 14.50）与 Garbage2（左缘 17.50）之间的空档，取 16.0，左右各留 0.33u；
-            // B 放在右端 24 号树（右缘 24.86）右侧的岸边空档，取 26.43，距关卡右边界 28 留 0.40u。
-            // 左岸水面堵塞物贯通 -16.25~-8.75 且同样排序 15，不设锚点。
-            MakeAnchor(white, "SpawnAnchorA", new Vector3(16f, 0.2f, 0f));
-            MakeAnchor(white, "SpawnAnchorB", new Vector3(26.43f, 0.2f, 0f));
+            // A 位于左岸清堵区（x=-10），B 位于右岸污染作业区与高台之间的空档（x=16）。
+            // 左岸水面堵塞物贯通 -16.25~-8.75 且排序更高，不在水面设锚点。
+            MakeAnchor(white, "SpawnAnchorA", new Vector3(-10f, 0.2f, 0f));
+            MakeAnchor(white, "SpawnAnchorB", new Vector3(16f, 0.2f, 0f));
 
-            log.AppendLine("已放置 SpawnAnchorA/B");
+            log.AppendLine("已放置 SpawnAnchorA/B（左岸远程、右岸近战）");
 
             // —— 相机（跟随，横向 56u 必须跟随）——
             var camGo = new GameObject("Main Camera");

@@ -30,6 +30,11 @@ namespace StarEco.Level
         private bool _snapRequested;
         private Vector3? _snapTo;
 
+        // 自动检测的地面边界（优先于序列化的 _levelLeft/_levelRight）
+        private float _autoLevelLeft;
+        private float _autoLevelRight;
+        private bool _boundsAutoDetected;
+
         // 命中震屏：只叠在最终位置上，不改变跟随逻辑与钳制结果
         private float _shakeTimer;
         private float _shakeDuration;
@@ -73,6 +78,32 @@ namespace StarEco.Level
         {
             _self = transform;
             _cam = GetComponent<Camera>();
+
+            // 自动检测场景中名为 "Ground" 的对象边界，作为相机钳制范围。
+            // 这样策划/美术在场景里拉长或缩短地面后，相机能自动适应，无需手动改 _levelLeft/_levelRight。
+            var ground = GameObject.Find("Ground");
+            if (ground != null)
+            {
+                var col = ground.GetComponent<UnityEngine.Collider2D>();
+                var sr = ground.GetComponent<SpriteRenderer>();
+                if (col != null)
+                {
+                    _autoLevelLeft = col.bounds.min.x;
+                    _autoLevelRight = col.bounds.max.x;
+                    _boundsAutoDetected = true;
+                }
+                else if (sr != null)
+                {
+                    _autoLevelLeft = sr.bounds.min.x;
+                    _autoLevelRight = sr.bounds.max.x;
+                    _boundsAutoDetected = true;
+                }
+
+                if (_boundsAutoDetected)
+                {
+                    Debug.Log($"[CameraFollow2D] 已自动检测地面边界：Left={_autoLevelLeft:F2}, Right={_autoLevelRight:F2}");
+                }
+            }
 
             // 运行态兜底：场景若漏配 AudioListener，会导致控制台持续刷屏，表现像“卡住”。
             if (_cam != null && GetComponent<AudioListener>() == null)
@@ -144,11 +175,15 @@ namespace StarEco.Level
         /// <summary>按关卡边界与视口半宽钳制相机 X。</summary>
         private float ClampX(float x, float halfWidth)
         {
-            float minX = _levelLeft + halfWidth;
-            float maxX = _levelRight - halfWidth;
+            // 优先使用自动检测的地面边界；否则回退到序列化的 _levelLeft/_levelRight
+            float left = _boundsAutoDetected ? _autoLevelLeft : _levelLeft;
+            float right = _boundsAutoDetected ? _autoLevelRight : _levelRight;
+
+            float minX = left + halfWidth;
+            float maxX = right - halfWidth;
 
             // 关卡比视口还窄时，居中显示
-            return maxX > minX ? Mathf.Clamp(x, minX, maxX) : (_levelLeft + _levelRight) * 0.5f;
+            return maxX > minX ? Mathf.Clamp(x, minX, maxX) : (left + right) * 0.5f;
         }
     }
 }

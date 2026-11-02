@@ -21,10 +21,24 @@ namespace StarEco.UI
         private void Awake()
         {
             Build();
+            EnsureQuitConfirmPanel();
             if (UIManager.HasInstance)
             {
                 UIManager.Instance.Register(this);
             }
+        }
+
+        private void EnsureQuitConfirmPanel()
+        {
+            var existing = GetComponentInChildren<QuitConfirmPanel>(true);
+            if (existing != null)
+            {
+                return;
+            }
+
+            var confirmGo = new GameObject("QuitConfirm", typeof(RectTransform));
+            confirmGo.transform.SetParent(transform, false);
+            confirmGo.AddComponent<QuitConfirmPanel>();
         }
 
         private void OnDestroy()
@@ -206,14 +220,15 @@ namespace StarEco.UI
             Debug.Log($"[MainMenu] 继续游戏：进入第 {target} 关（{SceneNames.ForLevel(target)}）。");
         }
 
-        private void OnQuitClicked()
+        public void RequestQuitConfirmation()
         {
             UIUtility.PlayClickSfx();
-#if UNITY_EDITOR
-            Debug.Log("[MainMenu] 退出游戏（编辑器模式下不真正退出）。");
-#else
-            Application.Quit();
-#endif
+            UIManager.SafeOpen(QuitConfirmPanel.PanelId);
+        }
+
+        private void OnQuitClicked()
+        {
+            RequestQuitConfirmation();
         }
 
         private void RefreshContinueState()
@@ -269,6 +284,7 @@ namespace StarEco.UI
         private static Sprite _titlePlate;
         private static Sprite _button;
         private static Sprite _panelFrame;
+        private static Sprite _quitConfirmFrame;
         private static Sprite _closeButton;
         private static bool _loaded;
 
@@ -296,6 +312,12 @@ namespace StarEco.UI
             get { EnsureLoaded(); return _panelFrame; }
         }
 
+        /// <summary>退出确认专用面板底图。</summary>
+        public static Sprite QuitConfirmFrame
+        {
+            get { EnsureLoaded(); return _quitConfirmFrame; }
+        }
+
         /// <summary>右上角圆形 X 关闭按钮图标。</summary>
         public static Sprite CloseIcon
         {
@@ -314,6 +336,7 @@ namespace StarEco.UI
             _titlePlate = Resources.Load<Sprite>(Root + "menu_title_plate");
             _button = Resources.Load<Sprite>(Root + "menu_button");
             _panelFrame = Resources.Load<Sprite>(Root + "menu_panel");
+            _quitConfirmFrame = Resources.Load<Sprite>(Root + "quit_confirm_panel");
             _closeButton = Resources.Load<Sprite>(Root + "menu_close");
         }
 
@@ -359,7 +382,8 @@ namespace StarEco.UI
         /// 创建一块带边框皮肤的弹窗面板，返回的 RectTransform 直接作为内容父节点。
         /// 底板贴图已烘焙玻璃内腔，调用方不必再叠纯色背景；素材缺失时回退 PanelBg。
         /// </summary>
-        public static RectTransform CreatePanel(Transform parent, string name, Vector2 size, Vector2 position)
+        public static RectTransform CreatePanel(Transform parent, string name, Vector2 size, Vector2 position,
+            Sprite frame = null)
         {
             var panel = UIUtility.CreateObject(name, parent);
             UIUtility.CenterAnchor(panel, size, position);
@@ -367,11 +391,11 @@ namespace StarEco.UI
             var skin = UIUtility.CreateImage("Skin", panel.transform, Color.white);
             UIUtility.Stretch(skin.GetComponent<RectTransform>());
 
-            var sprite = PanelFrame;
+            var sprite = frame != null ? frame : PanelFrame;
             if (sprite != null)
             {
                 skin.sprite = sprite;
-                skin.type = Image.Type.Sliced;
+                skin.type = frame != null ? Image.Type.Simple : Image.Type.Sliced;
             }
             else
             {

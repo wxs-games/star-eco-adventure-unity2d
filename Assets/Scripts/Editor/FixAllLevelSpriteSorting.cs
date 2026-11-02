@@ -39,10 +39,10 @@ public static class FixAllLevelSpriteSorting
 
         // —— 地面 ——
         ("ground", 0),                 // 地面
-        ("riverbed", 0),               // 河床
-        ("raft", 0),                   // 木筏
+        ("riverbed", -2),              // 河床（水下，被水盖）
+        ("raft", 5),                   // 木筏（可站立平台）
         ("waterblock", 5),             // 水块（可站立）
-        ("water", 0),                  // 水面（§5.2 明确含"水面"）
+        ("water", -1),                 // 水面（退到岸后，由地面盖边角）
 
         // —— 地表装饰（无交互）——
         ("decor_sign", 2),             // 装饰牌
@@ -86,10 +86,10 @@ public static class FixAllLevelSpriteSorting
         ("decor_tree", -4),
         ("tree", -4),
         ("ground", 0),
-        ("riverbed", 0),
-        ("raft", 0),
+        ("riverbed", -2),
+        ("raft", 5),
         ("waterblock", 5),
-        ("water", 0),
+        ("water", -1),
         ("decor_sign", 2),
         ("jump_sign", 2),
         ("puzzle_sign", 2),

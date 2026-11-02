@@ -241,19 +241,13 @@
     {
      "Speaker": "老工厂维护机器人",
      "AvatarTint": "#F5B301",
-     "Text": "嗡——又来了一个。这厂子停了四十年，可我这儿的水泵一直在转，而且转得越来越费劲。",
+     "Text": "嗡……谁在那里？别靠近，这铁齿会夺走一切。",
      "EventId": ""
     },
     {
      "Speaker": "老工厂维护机器人",
      "AvatarTint": "#F5B301",
-     "Text": "你们在外面把河清通了，水才流得进来。可这厂子里攒下的东西，比河里的脏得多。",
-     "EventId": ""
-    },
-    {
-     "Speaker": "老工厂维护机器人",
-     "AvatarTint": "#F5B301",
-     "Text": "往里走吧。地刺那边得扳拉杆，拉杆在高处，我这履带上不去。",
+     "Text": "我被锁在齿隙之间。只有高处的机关被触动，我才能重获自由。",
      "EventId": ""
     }
    ]
@@ -265,14 +259,98 @@
     {
      "Speaker": "老工厂维护机器人",
      "AvatarTint": "#F5B301",
-     "Text": "拉杆还在高处挂着呢。够得着就去扳一下，别在底下干等。",
+     "Text": "铁齿还在。高处的机关，尚未被触动。",
      "EventId": ""
     },
     {
      "Speaker": "老工厂维护机器人",
      "AvatarTint": "#F5B301",
-     "Text": "机房在最里面。进去之前，把路上该清的都清了。",
+     "Text": "我仍被锁在此处，等待那一声机响。",
      "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "robot_second_rescued",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "嗡……铁齿松开了。谢谢你，访客。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "这是我体内存留的旧钥匙。右边那扇门，只有它方能打开。拿好，去吧。",
+     "EventId": "robot_give_key"
+    }
+   ]
+  },
+  {
+   "Id": "robot_first_told",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "嗡……你感觉到了吗？厂子深处，还有另一束微弱的信号。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "它在呼唤。但锈迹的铁齿，不是普通脚步能跨越的。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "robot_first_told_repeat",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "那束信号还在。铁齿未松，它无法离开。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "robot_factory_trapped",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "嗡——救救我！这地刺是老机关，我被卡在里面动不了。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "你上二楼扳那根拉杆，地刺就能缩回去。我上不去高台，只能靠你了。",
+     "EventId": ""
+    }
+   ]
+  },
+  {
+   "Id": "robot_factory_rescued",
+   "Once": false,
+   "Entries": [
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "嗡——地刺缩了！我可以出来了。谢谢你。",
+     "EventId": ""
+    },
+    {
+     "Speaker": "老工厂维护机器人",
+     "AvatarTint": "#F5B301",
+     "Text": "这是钥匙，右边的门需要它才能打开。拿好，快去吧。",
+     "EventId": "robot_give_key"
     }
    ]
   },

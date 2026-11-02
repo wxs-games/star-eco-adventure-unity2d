@@ -16,5 +16,8 @@ namespace StarEco.Eco.Events
 
         /// <summary>目标标识（如 GarbagePile / GarbageWall / Tower01）。</summary>
         public string TargetId;
+
+        /// <summary>净化目标实例 ID，用于目标链去重。</summary>
+        public int InstanceId;
     }
 }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using StarEco.Framework;
 using StarEco.Level;
 using StarEco.Player;
@@ -186,8 +187,27 @@ namespace StarEco.UI
         {
             if (_stack.Count > 0)
             {
-                // HUD 不响应 Esc（非阻断面板不占 Esc）
+                // 退出确认层由自身处理 Esc 关闭，避免再次弹出确认层。
                 var top = _stack[_stack.Count - 1];
+                if (top.PanelName == QuitConfirmPanel.PanelId)
+                {
+                    CloseTop();
+                    return;
+                }
+
+                // Title 场景的主菜单按 Esc 进入退出确认，而不是直接关闭主菜单。
+                if (top.PanelName == MainMenuPanel.PanelId &&
+                    SceneManager.GetActiveScene().name == SceneNames.Title)
+                {
+                    var menu = top as MainMenuPanel;
+                    if (menu != null)
+                    {
+                        menu.RequestQuitConfirmation();
+                    }
+                    return;
+                }
+
+                // HUD 不响应 Esc（非阻断面板不占 Esc）
                 if (top.BlocksInput)
                 {
                     CloseTop();

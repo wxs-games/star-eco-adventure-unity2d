@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using StarEco.Player;
 
 namespace StarEco.UI
@@ -8,11 +7,11 @@ namespace StarEco.UI
     /// <summary>
     /// 提示牌触发器（M7 R9）：靠近按 E 打开阅读界面，整段文本分页，E 翻页，末页关闭。
     /// 与 NPC 对话的区别：不分句、无逐字、无头像；数据复用 DialogueData 单 Entry。
+    /// 读牌 UI 走 SignboardPanel（UIPanel 派生，入栈），触发器只负责「请求打开 + 传数据」。
     /// </summary>
     [RequireComponent(typeof(Collider2D))]
     public class SignboardTrigger : MonoBehaviour
     {
-        private const int PageCharCount = 80;
 
         [Tooltip("提示牌数据 Id（Resources/Data/dialogues.json，Entry 只有一条长文本）")]
         [SerializeField] private string _dialogueId = "signboard_plastic";
@@ -21,7 +20,7 @@ namespace StarEco.UI
         [SerializeField] private KeyCode _interactKey = KeyCode.E;
 
         [Tooltip("触发区半径（单位 u）")]
-        [SerializeField] private float _radius = 2.5f;
+        [SerializeField] private float _radius = 5.0f;
 
         [Tooltip("气泡相对牌体高度")]
         [SerializeField] private float _bubbleHeight = 1.6f;
@@ -29,11 +28,6 @@ namespace StarEco.UI
         private Transform _player;
         private bool _playerInRange;
         private GameObject _bubble;
-
-        // 阅读状态
-        private bool _reading;
-        private List<string> _pages = new List<string>();
-        private int _pageIndex;
 
         private void OnEnable()
         {
@@ -61,13 +55,10 @@ namespace StarEco.UI
                 _player = pc.transform;
             }
 
-            if (_reading)
-            {
-                HandleReadingInput();
-                return;
-            }
-
-            float dist = Vector2.Distance(transform.position, _player.position);
+            var signCollider = GetComponent<Collider2D>();
+            float dist = signCollider != null
+                ? Vector2.Distance(signCollider.ClosestPoint(_player.position), _player.position)
+                : Vector2.Distance(transform.position, _player.position);
             bool inRange = dist <= _radius;
 
             if (inRange != _playerInRange)
@@ -79,10 +70,43 @@ namespace StarEco.UI
                 }
             }
 
-            if (inRange && Input.GetKeyDown(_interactKey))
+            if (!inRange)
+            {
+                return;
+            }
+
+            // 阅读中不再抢 E：这个键归 SignboardPanel 翻页/关闭，
+            // 否则同一次按键会既翻页又重开面板。
+            if (IsPanelReading())
+            {
+                return;
+            }
+
+            // 关闭用的那一次 E 不能立刻又把面板打开：
+            // 面板与触发器的 Update 顺序不确定，关闭后本帧的 E 仍是按下状态。
+            if (Time.unscaledTime - SignboardPanel.LastCloseUnscaledTime < 0.2f)
+            {
+                return;
+            }
+
+            // 另有面板在栈顶 → 读牌界面不吃 E
+            // （对话/暂停/设置面板开着时，避免误触发读牌）
+            if (UIManager.HasInstance && UIManager.Instance.IsBlocking)
+            {
+                return;
+            }
+
+            if (Input.GetKeyDown(_interactKey))
             {
                 StartReading();
             }
+        }
+
+        /// <summary>提示牌面板当前是否正在阅读（决定本触发器是否让出 E 键）。</summary>
+        private static bool IsPanelReading()
+        {
+            var panel = SignboardPanel.Instance;
+            return panel != null && panel.IsReading;
         }
 
         private void StartReading()
@@ -95,56 +119,23 @@ namespace StarEco.UI
             }
 
             var text = data.Entries[0].Text ?? string.Empty;
-            _pages = Paginate(text, PageCharCount);
-            _pageIndex = 0;
-            _reading = true;
+
+            // 走专用阅读面板：自带压暗遮罩 + 卡片底板 + 标题/正文/页脚，
+            // 长文自动分页，避免文字直接叠在游戏画面上。
+            var pages = Paginate(text, SignboardPanel.PageCharCount);
+            var panel = SignboardPanel.EnsureInstance();
+            if (panel == null)
+            {
+                Debug.LogError("[SignboardTrigger] SignboardPanel 创建失败，无法显示提示牌内容。");
+                return;
+            }
+
+            panel.SetTitle(string.IsNullOrEmpty(data.Entries[0].Speaker) ? "提示牌" : data.Entries[0].Speaker);
+            panel.StartReading(pages);
 
             if (_bubble != null)
             {
                 _bubble.SetActive(false);
-            }
-
-            EnsureReaderUI();
-            _readerRoot.SetActive(true);
-            RefreshPage();
-        }
-
-        private void HandleReadingInput()
-        {
-            if (!Input.GetKeyDown(_interactKey))
-            {
-                return;
-            }
-
-            _pageIndex++;
-            if (_pageIndex >= _pages.Count)
-            {
-                StopReading();
-                return;
-            }
-
-            RefreshPage();
-        }
-
-        private void StopReading()
-        {
-            _reading = false;
-            if (_readerRoot != null)
-            {
-                _readerRoot.SetActive(false);
-            }
-        }
-
-        private void RefreshPage()
-        {
-            if (_readerText != null && _pageIndex < _pages.Count)
-            {
-                _readerText.text = _pages[_pageIndex];
-            }
-
-            if (_readerPageText != null)
-            {
-                _readerPageText.text = $"第 {_pageIndex + 1}/{_pages.Count} 页 · 按 E 翻页";
             }
         }
 
@@ -166,80 +157,23 @@ namespace StarEco.UI
             return pages;
         }
 
-        // ===== 阅读界面（程序化） =====
-
-        private GameObject _readerRoot;
-        private Text _readerText;
-        private Text _readerPageText;
-
-        private void EnsureReaderUI()
-        {
-            if (_readerRoot != null)
-            {
-                return;
-            }
-
-            UIUtility.EnsureEventSystem();
-
-            var canvas = UIUtility.CreateCanvas("SignboardCanvas", transform, 80);
-            _readerRoot = canvas.gameObject;
-
-            var bg = UIUtility.CreateImage("Background", canvas.transform, UIUtility.Overlay);
-            UIUtility.Stretch(bg.GetComponent<RectTransform>());
-
-            var panel = UIUtility.CreateObject("Panel", canvas.transform);
-            UIUtility.CenterAnchor(panel, new Vector2(1100f, 560f), Vector2.zero);
-            var panelBg = UIUtility.CreateImage("Background", panel.transform, UIUtility.PanelBg);
-            UIUtility.Stretch(panelBg.GetComponent<RectTransform>());
-
-            var title = UIUtility.CreateText("Title", panel.transform, "提示牌", 40,
-                TextAnchor.MiddleCenter, UIUtility.AccentGreen);
-            var titleRt = title.GetComponent<RectTransform>();
-            titleRt.anchorMin = new Vector2(0.5f, 1f);
-            titleRt.anchorMax = new Vector2(0.5f, 1f);
-            titleRt.pivot = new Vector2(0.5f, 1f);
-            titleRt.sizeDelta = new Vector2(0f, 70f);
-            titleRt.anchoredPosition = new Vector2(0f, -14f);
-
-            _readerText = UIUtility.CreateText("Body", panel.transform, string.Empty, 30,
-                TextAnchor.UpperLeft, UIUtility.TextBody);
-            var bodyRt = _readerText.GetComponent<RectTransform>();
-            bodyRt.anchorMin = new Vector2(0f, 0f);
-            bodyRt.anchorMax = new Vector2(1f, 1f);
-            bodyRt.pivot = new Vector2(0.5f, 0.5f);
-            bodyRt.offsetMin = new Vector2(48f, 70f);
-            bodyRt.offsetMax = new Vector2(-48f, -90f);
-            _readerText.lineSpacing = 1.6f;
-
-            _readerPageText = UIUtility.CreateText("Page", panel.transform, string.Empty, 24,
-                TextAnchor.LowerCenter, new Color(1f, 1f, 1f, 0.6f));
-            var pageRt = _readerPageText.GetComponent<RectTransform>();
-            pageRt.anchorMin = new Vector2(0.5f, 0f);
-            pageRt.anchorMax = new Vector2(0.5f, 0f);
-            pageRt.pivot = new Vector2(0.5f, 0f);
-            pageRt.sizeDelta = new Vector2(0f, 40f);
-            pageRt.anchoredPosition = new Vector2(0f, 14f);
-
-            _readerRoot.SetActive(false);
-        }
-
         // ===== 气泡 =====
 
         private void BuildBubble()
         {
             var canvasGo = new GameObject("SignBubbleCanvas",
-typeof(RectTransform), typeof(Canvas));
+                typeof(RectTransform), typeof(Canvas));
             UIUtility.CreateWorldCanvas(canvasGo, transform, new Vector3(0f, _bubbleHeight, 0f));
 
             var canvasRt = canvasGo.GetComponent<RectTransform>();
-            canvasRt.sizeDelta = new Vector2(400f, 120f);   // 像素；已由 localScale 换算为 4×1.2 世界单位
+            canvasRt.sizeDelta = new Vector2(240f, 70f);    // 像素；已由 localScale 换算为 2.4×0.7 世界单位
 
             _bubble = UIUtility.CreateObject("Bubble", canvasGo.transform);
-            UIUtility.CenterAnchor(_bubble, new Vector2(360f, 90f), Vector2.zero);
+            UIUtility.CenterAnchor(_bubble, new Vector2(200f, 50f), Vector2.zero);
             var bubbleBg = UIUtility.CreateImage("Background", _bubble.transform, UIUtility.PanelBg);
             UIUtility.Stretch(bubbleBg.GetComponent<RectTransform>());
 
-            var text = UIUtility.CreateText("Label", _bubble.transform, "按 E 查看", 34,
+            var text = UIUtility.CreateText("Label", _bubble.transform, "按 E 查看", 24,
                 TextAnchor.MiddleCenter, UIUtility.TextMain);
             UIUtility.Stretch(text.GetComponent<RectTransform>());
 

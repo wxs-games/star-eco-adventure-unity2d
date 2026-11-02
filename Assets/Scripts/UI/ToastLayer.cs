@@ -100,7 +100,16 @@ namespace StarEco.UI
 
             if (Instance == null)
             {
-                Bootstrap();
+                var existing = Object.FindObjectOfType<ToastLayer>(true);
+                if (existing != null)
+                {
+                    Instance = existing;
+                }
+                else
+                {
+                    var go = new GameObject("ToastLayer", typeof(ToastLayer));
+                    if (Application.isPlaying) Object.DontDestroyOnLoad(go);
+                }
             }
 
             if (Instance != null)
@@ -131,6 +140,7 @@ namespace StarEco.UI
             EventCenter.Subscribe<StarEco.Level.Events.LevelFailedEvent>(OnLevelEnded);
             EventCenter.Subscribe<StarEco.Level.Events.LevelCompletedEvent>(OnLevelCompleted);
             EventCenter.Subscribe<StarEco.Eco.Events.PickupCollectedEvent>(OnPickupCollected);
+            EventCenter.Subscribe<StarEco.EnemyAI.Events.TowerDisableEvent>(OnTowerDisabled);
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
@@ -139,7 +149,17 @@ namespace StarEco.UI
             EventCenter.Unsubscribe<StarEco.Level.Events.LevelFailedEvent>(OnLevelEnded);
             EventCenter.Unsubscribe<StarEco.Level.Events.LevelCompletedEvent>(OnLevelCompleted);
             EventCenter.Unsubscribe<StarEco.Eco.Events.PickupCollectedEvent>(OnPickupCollected);
+            EventCenter.Unsubscribe<StarEco.EnemyAI.Events.TowerDisableEvent>(OnTowerDisabled);
             SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+
+        /// <summary>L1 塔被击毁或净化关闭时，反馈压力源已解除。</summary>
+        private void OnTowerDisabled(StarEco.EnemyAI.Events.TowerDisableEvent evt)
+        {
+            if (SceneManager.GetActiveScene().name == SceneNames.Level01)
+            {
+                Show("威胁已解除", UIUtility.AccentGreen);
+            }
         }
 
         /// <summary>关卡失败/通关：结算面板要占屏幕底部，提示条让位。</summary>

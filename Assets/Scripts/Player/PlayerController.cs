@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using StarEco.Framework;
 
@@ -45,6 +47,9 @@ namespace StarEco.Player
         /// <summary>死因是否为坠落（跌落山崖）。仅用于失败面板文案，不影响任何玩法逻辑。</summary>
         public bool DiedFromFall { get; private set; }
 
+        /// <summary>死因是否为溺水，仅用于失败面板文案。</summary>
+        public bool DiedFromDrowning { get; private set; }
+
         /// <summary>
         /// 环境推力（传送带 / 气流管道）。ConveyorZone 在物理步内写入，
         /// MoveHorizontally 每次算完目标速度后清零，所以离开区域后自动失效。
@@ -58,9 +63,10 @@ namespace StarEco.Player
         }
 
         /// <summary>由伤害入口在 HP 归零时写入死因。</summary>
-        public void MarkDeathCause(bool fromFall)
+        public void MarkDeathCause(bool fromFall, bool fromDrowning = false)
         {
             DiedFromFall = fromFall;
+            DiedFromDrowning = fromDrowning;
         }
         /// <summary>
         /// 状态机内部锁（翻滚/冲刺/受击等临时接管）。注意：这些状态的 Exit 会把它清成 false，
@@ -129,6 +135,15 @@ namespace StarEco.Player
         // 翻滚穿透：本体碰撞体在翻滚期间排除怪物层
         private Collider2D _bodyCollider;
         private int _baseExcludeLayers;
+
+        // 翻滚穿透（只忽略实心体，trigger 保留）：
+        // _passIgnored 记录本次翻滚期间已忽略碰撞的实心体；
+        // 翻滚每 FixedUpdate 增量补扫，翻滚结束后等脱开已忽略体再还原碰撞（超时兜底）。
+        private readonly List<Collider2D> _passIgnored = new List<Collider2D>(16);
+        private readonly Collider2D[] _passBuf = new Collider2D[32];
+        private ContactFilter2D _passFilter;
+        private float _passReleaseTimer;
+        private bool _passThroughActive;
 
         // 受击
         private bool _pendingHurt;
@@ -221,6 +236,7 @@ namespace StarEco.Player
             UpdateGravity();
             _machine.FixedTick();
             ClampFallSpeed();
+            UpdatePassThrough();
         }
 
         /// <summary>
@@ -416,8 +432,10 @@ namespace StarEco.Player
         }
 
         /// <summary>
-        /// 翻滚穿透：开启时本体碰撞体排除怪物层，翻滚中可穿过敌人、不被其碰撞体顶回；
-        /// 关闭时还原为初始排除层。由 <see cref="PlayerDodgeState"/> 在 Enter/Exit 成对调用。
+        /// 翻滚穿透：开启时对周围实心碰撞体逐个 IgnoreCollision(true)，翻滚中可穿过墙/敌人/箱子，
+        /// 但不与地面层发生碰撞；trigger（水坑/拾取/对话）一律不受影响。
+        /// 关闭时不立即还原碰撞，而是等玩家脱开刚穿过的墙体再恢复（避免翻滚结束时嵌在墙里被弹飞）。
+        /// 由 <see cref="PlayerDodgeState"/> 在 Enter/Exit 成对调用。
         /// </summary>
         public void SetDodgePassThrough(bool on)
         {
@@ -426,9 +444,117 @@ namespace StarEco.Player
                 return;
             }
 
-            _bodyCollider.excludeLayers = on
-                ? _baseExcludeLayers | _config.DodgePassThroughLayers.value
-                : _baseExcludeLayers;
+            if (on)
+            {
+                _passThroughActive = true;
+                _passReleaseTimer = 0f;
+                _passIgnored.Clear();
+                RefreshPassThrough();
+            }
+            else
+            {
+                // 不立即还原：翻滚结束可能正嵌在刚穿过的墙里，立即恢复会被弹飞。
+                // 置放行定时器，每帧检查是否已脱开，超时强制还原。
+                _passReleaseTimer = 0.35f;
+            }
+        }
+
+        /// <summary>扫描翻滚路径周围的实心障碍，逐个 IgnoreCollision(true) 并记入 _passIgnored。</summary>
+        private void RefreshPassThrough()
+        {
+            if (_bodyCollider == null)
+            {
+                return;
+            }
+
+            // 预取范围按整段翻滚位移加余量：DodgeDistance + 1.5u
+            Vector2 center = _bodyCollider.transform.position;
+            Vector2 size = new Vector2(_config.DodgeDistance + 1.5f, _bodyCollider.bounds.size.y + 0.4f);
+
+            int count = Physics2D.OverlapBoxNonAlloc(center, size, 0f, _passBuf, _config.DodgePassThroughLayers.value);
+            for (int i = 0; i < count; i++)
+            {
+                var col = _passBuf[i];
+                if (col == null || col == _bodyCollider || col.transform.IsChildOf(transform))
+                {
+                    continue;
+                }
+                if (!IsSolidObstacle(col))
+                {
+                    continue;
+                }
+                // 地面层保留碰撞，翻滚必须能落地
+                if (((1 << col.gameObject.layer) & _config.GroundLayer.value) != 0)
+                {
+                    continue;
+                }
+                if (_passIgnored.Contains(col))
+                {
+                    continue;
+                }
+
+                Physics2D.IgnoreCollision(_bodyCollider, col, true);
+                _passIgnored.Add(col);
+            }
+        }
+
+        /// <summary>翻滚期间每 FixedUpdate 增量补扫：新遇到的实心体也要忽略。</summary>
+        private void UpdatePassThrough()
+        {
+            if (!_passThroughActive || _bodyCollider == null)
+            {
+                return;
+            }
+
+            RefreshPassThrough();
+
+            // 释放放行期：检查是否已脱开所有已忽略碰撞体
+            if (_passReleaseTimer > 0f)
+            {
+                _passReleaseTimer -= Time.fixedDeltaTime;
+                if (_passReleaseTimer <= 0f || !IsStillOverlappingIgnored())
+                {
+                    ReleasePassThrough();
+                }
+            }
+        }
+
+        /// <summary>检查玩家本体是否仍与已忽略的碰撞体重叠（用于决定何时还原碰撞）。</summary>
+        private bool IsStillOverlappingIgnored()
+        {
+            if (_passIgnored.Count == 0 || _bodyCollider == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _passIgnored.Count; i++)
+            {
+                var col = _passIgnored[i];
+                if (col != null && col.enabled && _bodyCollider.IsTouching(col))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>还原所有已忽略的碰撞，清空记录。</summary>
+        private void ReleasePassThrough()
+        {
+            _passThroughActive = false;
+            _passReleaseTimer = 0f;
+
+            for (int i = 0; i < _passIgnored.Count; i++)
+            {
+                var col = _passIgnored[i];
+                if (col != null)
+                {
+                    Physics2D.IgnoreCollision(_bodyCollider, col, false);
+                }
+            }
+
+            _passIgnored.Clear();
         }
 
         /// <summary>水平移动（状态机在 FixedTick 调用；air 参数控制空中控制力；speedFactor 为移速因子，喷洒减速用）。</summary>
@@ -1133,12 +1259,66 @@ namespace StarEco.Player
             GetComponent<StarEco.Combat.AttackHitbox>()?.OnAttackWindowClose();
         }
 
+        // ===== 获得物品演出（塞尔达风格：举起展示） =====
+
+        /// <summary>
+        /// 播放"获得物品"庆祝动画：锁定输入、播放 ItemGetHold（双手把知识卡举过头顶），
+        /// 约 2 秒后淡回 Idle。供 KnowledgeCardPickup 等拾取系统调用。
+        ///
+        /// 为什么用 ItemGetHold 而不是 Interact / Victory：
+        /// - Interact 只有 6 帧「握拳站立」，没有举物姿势；
+        /// - Victory 是 8 帧循环欢呼，手里不拿东西，且没有退出转移（被 BossController 用于击败 Boss）。
+        /// ItemGetHold 是本项目为拾取演出新做的 2 帧定格（1200×833 / PPU 378，与其它动作同画布同比例），
+        /// 播完停在最后一帧，因此这里在锁定期结束时主动淡回 Idle。
+        /// </summary>
+        public void PlayItemGetAnim(float lockSeconds = 2f)
+        {
+            InputLocked = true;
+            ExternalInputLock = true;
+            Anim?.PlayOneShot("ItemGetHold");
+            StartCoroutine(ItemGetAnimRoutine(lockSeconds));
+        }
+
+        private IEnumerator ItemGetAnimRoutine(float lockSeconds)
+        {
+            yield return new WaitForSeconds(lockSeconds);
+
+            // 收尾：淡回 Idle，交还控制权给状态机（落地/空中会被 Idle 的既有转移正确接管）
+            Anim?.CrossFadeTo("Idle", 0.12f);
+
+            InputLocked = false;
+            ExternalInputLock = false;
+        }
+
         private void UpdateInvincibility()
         {
             if (_invincibleTimer > 0f)
             {
                 _invincibleTimer -= Time.deltaTime;
             }
+        }
+
+        /// <summary>检查点回滚后复位死亡标志与输入，使玩家可继续操作。</summary>
+        public void ResetAfterCheckpoint()
+        {
+            IsDead = false;
+            DiedFromFall = false;
+            DiedFromDrowning = false;
+            InputLocked = false;
+            ExternalInputLock = false;
+            if (Body != null)
+            {
+                Body.velocity = Vector2.zero;
+                Body.angularVelocity = 0f;
+            }
+            _invincibleTimer = 0f;
+            _pendingHurt = false;
+        }
+
+        private void OnDisable()
+        {
+            // 域重载/退出 Play 时清理 IgnoreCollision 状态，避免残留影响下一局
+            ReleasePassThrough();
         }
     }
 }
