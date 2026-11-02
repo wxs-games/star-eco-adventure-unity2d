@@ -42,9 +42,8 @@ namespace StarEco.EditorTools
                             var so = new SerializedObject(sp);
                             var table = so.FindProperty("_dropTable");
                             var prefab = so.FindProperty("_pickupPrefab");
-                            var healthPrefab = so.FindProperty("_healingPickupPrefab");
 
-                            if (table == null || prefab == null || healthPrefab == null)
+                            if (table == null || prefab == null)
                             {
                                 missing++;
                                 log.AppendLine($"[MISS] {path} {sp.name}：字段缺失（脚本版本不符？）");
@@ -53,16 +52,13 @@ namespace StarEco.EditorTools
 
                             var configuredTable = table.objectReferenceValue as DropTable;
                             bool needsPurify = configuredTable != null && configuredTable.Entries.Exists(e => e.Kind == PickupKind.PurifyBottle);
-                            bool needsHealth = configuredTable != null && configuredTable.Entries.Exists(e => e.Kind == PickupKind.HealthBottle);
                             bool missingPurify = needsPurify && prefab.objectReferenceValue == null;
-                            bool missingHealth = needsHealth && healthPrefab.objectReferenceValue == null;
-                            if (table.objectReferenceValue == null || missingPurify || missingHealth)
+                            if (table.objectReferenceValue == null || missingPurify)
                             {
                                 missing++;
                                 log.AppendLine($"[MISS] {path} {sp.name}：" +
                                     $"_dropTable={(table.objectReferenceValue == null ? "null" : "ok")} " +
-                                    $"_pickupPrefab={(missingPurify ? "null" : "ok")} " +
-                                    $"_healingPickupPrefab={(missingHealth ? "null" : "ok")}");
+                                    $"_pickupPrefab={(missingPurify ? "null" : "ok")}");
                             }
                         }
                     }

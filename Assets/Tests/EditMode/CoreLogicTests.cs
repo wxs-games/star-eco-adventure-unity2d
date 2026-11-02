@@ -109,35 +109,6 @@ namespace StarEco.Tests.EditMode
             Assert.AreEqual(1f, Percent(current, total), 1e-5f, "超量累加应被夹取到 100%");
         }
 
-        // ===== 3. 玩家治疗 =====
-
-        [TestCase(6, 10, 3, 3)]
-        [TestCase(9, 10, 3, 1)]
-        [TestCase(10, 10, 3, 0)]
-        [TestCase(6, 10, 0, 0)]
-        [TestCase(6, 10, -2, 0)]
-        public void PlayerCombat_HealAmount不会超出有效缺血量(int current, int max, int requested, int expected)
-        {
-            Assert.AreEqual(expected, PlayerCombat.CalculateHeal(current, max, requested));
-        }
-
-        [Test]
-        public void DropTable_可分别表示两种拾取物()
-        {
-            var table = ScriptableObject.CreateInstance<DropTable>();
-            try
-            {
-                table.Entries.Add(new DropTable.Entry { Kind = PickupKind.PurifyBottle, Count = 1, Probability = 0.35f });
-                table.Entries.Add(new DropTable.Entry { Kind = PickupKind.HealthBottle, Count = 1, Probability = 0.35f });
-                Assert.AreEqual(PickupKind.PurifyBottle, table.Entries[0].Kind);
-                Assert.AreEqual(PickupKind.HealthBottle, table.Entries[1].Kind);
-            }
-            finally
-            {
-                Object.DestroyImmediate(table);
-            }
-        }
-
         // ===== 4. 存档序列化往返 =====
 
         [System.Serializable]

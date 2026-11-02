@@ -15,9 +15,6 @@ namespace StarEco.Eco
         [Tooltip("净化瓶预制体")]
         [SerializeField] private PurifyPickup _pickupPrefab;
 
-        [Tooltip("回血瓶预制体")]
-        [SerializeField] private HealingPickup _healingPickupPrefab;
-
         private void OnEnable()
         {
             EventCenter.Subscribe<EnemyDeathEvent>(OnEnemyDeath);
@@ -52,9 +49,6 @@ namespace StarEco.Eco
                     {
                         case PickupKind.PurifyBottle:
                             PurifyPickup.Spawn(_pickupPrefab, position);
-                            break;
-                        case PickupKind.HealthBottle:
-                            HealingPickup.Spawn(_healingPickupPrefab, position);
                             break;
                     }
                 }

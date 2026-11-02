@@ -7,8 +7,7 @@ namespace StarEco.Eco
     /// <summary>拾取物类型。</summary>
     public enum PickupKind
     {
-        PurifyBottle,
-        HealthBottle
+        PurifyBottle = 0
     }
 
     /// <summary>

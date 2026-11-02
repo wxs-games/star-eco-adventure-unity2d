@@ -59,29 +59,6 @@ namespace StarEco.Combat
             return true;
         }
 
-        /// <summary>回复生命值并返回实际回复量。</summary>
-        public int Heal(int amount)
-        {
-            if (_player == null || _player.IsDead)
-            {
-                return 0;
-            }
-
-            int applied = CalculateHeal(CurrentHP, MaxHP, amount);
-            if (applied > 0)
-            {
-                CurrentHP += applied;
-                HealthChanged?.Invoke(CurrentHP);
-            }
-
-            return applied;
-        }
-
-        public static int CalculateHeal(int currentHp, int maxHp, int amount)
-        {
-            return Mathf.Min(Mathf.Max(0, amount), Mathf.Max(0, maxHp - currentHp));
-        }
-
         // ===== IHittable =====
 
         public void TakeDamage(DamageInfo info)
