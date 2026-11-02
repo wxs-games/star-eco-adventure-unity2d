@@ -86,8 +86,8 @@ namespace StarEco.UI
 
             var root = canvas.transform;
 
-            // 背景：AI 生成的主菜单插画（素材缺失时退回纯色底，保证可运行）
-            var bg = UIUtility.CreateImage("Background", root, new Color(0.06f, 0.10f, 0.09f, 1f));
+            // 背景（已存在则复用，避免编辑器模式下重复创建）
+            var bg = root.Find("Background")?.gameObject ?? UIUtility.CreateImage("Background", root, new Color(0.06f, 0.10f, 0.09f, 1f)).gameObject;
             UIUtility.Stretch(bg.GetComponent<RectTransform>());
             var bgSprite = MenuArt.Background;
             if (bgSprite != null)
@@ -99,20 +99,20 @@ namespace StarEco.UI
                 bgImage.preserveAspect = false;
             }
 
-            // 压暗层：保证标题与按钮在任何底图上都清晰可读
-            var dim = UIUtility.CreateImage("ReadabilityDim", root, new Color(0f, 0f, 0f, 0.28f));
+            // 压暗层
+            var dim = root.Find("ReadabilityDim")?.gameObject ?? UIUtility.CreateImage("ReadabilityDim", root, new Color(0f, 0f, 0f, 0.28f)).gameObject;
             UIUtility.Stretch(dim.GetComponent<RectTransform>());
 
-            // 标题牌匾：AI 生成的装饰边框，垫在标题文字之下
+            // 标题牌匾
             var plateSprite = MenuArt.TitlePlate;
             if (plateSprite != null)
             {
-                var plate = UIUtility.CreateImage("TitlePlate", root, Color.white);
-                var plateImage = plate.GetComponent<Image>();
+                var plateGo = root.Find("TitlePlate")?.gameObject ?? UIUtility.CreateImage("TitlePlate", root, Color.white).gameObject;
+                var plateImage = plateGo.GetComponent<Image>();
                 plateImage.sprite = plateSprite;
                 plateImage.type = Image.Type.Simple;
 
-                var plateRt = plate.GetComponent<RectTransform>();
+                var plateRt = plateGo.GetComponent<RectTransform>();
                 plateRt.anchorMin = new Vector2(0.5f, 1f);
                 plateRt.anchorMax = new Vector2(0.5f, 1f);
                 plateRt.pivot = new Vector2(0.5f, 0.5f);
@@ -120,10 +120,8 @@ namespace StarEco.UI
                 plateRt.anchoredPosition = new Vector2(0f, -130f);
             }
 
-            var title = UIUtility.CreateText("Title", root, "星际环保", 96,
+            var title = root.Find("Title")?.GetComponent<Text>() ?? UIUtility.CreateText("Title", root, "星际环保", 96,
                 TextAnchor.MiddleCenter, UIUtility.TextMain);
-            // 注意：Text 的 verticalOverflow 为 Truncate，96 号字整行高约 136px，
-            // 行框必须留够高度，否则整行被丢弃、标题完全不显示（曾踩）。
             var titleRt = title.GetComponent<RectTransform>();
             titleRt.anchorMin = new Vector2(0.5f, 1f);
             titleRt.anchorMax = new Vector2(0.5f, 1f);
@@ -131,7 +129,7 @@ namespace StarEco.UI
             titleRt.sizeDelta = new Vector2(900f, 170f);
             titleRt.anchoredPosition = new Vector2(0f, -45f);
 
-            var subtitle = UIUtility.CreateText("Subtitle", root, "—— 动作冒险 · 环保教育 ——", 32,
+            var subtitle = root.Find("Subtitle")?.GetComponent<Text>() ?? UIUtility.CreateText("Subtitle", root, "—— 动作冒险 · 环保教育 ——", 32,
                 TextAnchor.MiddleCenter, UIUtility.AccentGreen);
             var subtitleRt = subtitle.GetComponent<RectTransform>();
             subtitleRt.anchorMin = new Vector2(0.5f, 1f);
@@ -141,7 +139,7 @@ namespace StarEco.UI
             subtitleRt.anchoredPosition = new Vector2(0f, -265f);
 
             // 按钮列
-            var column = UIUtility.CreateObject("Buttons", root);
+            var column = root.Find("Buttons")?.gameObject ?? UIUtility.CreateObject("Buttons", root);
             var columnRt = column.GetComponent<RectTransform>();
             columnRt.anchorMin = new Vector2(0.5f, 0.5f);
             columnRt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -149,40 +147,46 @@ namespace StarEco.UI
             columnRt.sizeDelta = new Vector2(360f, 480f);
             columnRt.anchoredPosition = new Vector2(0f, -40f);
 
-            var startButton = UIUtility.CreateButton("StartButton", column.transform, "开始新游戏",
+            var startButton = column.transform.Find("StartButton")?.GetComponent<Button>() ?? UIUtility.CreateButton("StartButton", column.transform, "开始新游戏",
                 new Vector2(340f, 74f), new Vector2(0f, 200f));
+            startButton.onClick.RemoveAllListeners();
             startButton.onClick.AddListener(OnStartClicked);
 
-            _continueButton = UIUtility.CreateButton("ContinueButton", column.transform, "继续游戏",
+            _continueButton = column.transform.Find("ContinueButton")?.GetComponent<Button>() ?? UIUtility.CreateButton("ContinueButton", column.transform, "继续游戏",
                 new Vector2(340f, 74f), new Vector2(0f, 110f));
+            _continueButton.onClick.RemoveAllListeners();
             _continueButton.onClick.AddListener(OnContinueClicked);
 
-            var levelSelectButton = UIUtility.CreateButton("LevelSelectButton", column.transform, "关卡选择",
+            var levelSelectButton = column.transform.Find("LevelSelectButton")?.GetComponent<Button>() ?? UIUtility.CreateButton("LevelSelectButton", column.transform, "关卡选择",
                 new Vector2(340f, 74f), new Vector2(0f, 20f));
+            levelSelectButton.onClick.RemoveAllListeners();
             levelSelectButton.onClick.AddListener(() =>
             {
                 UIUtility.PlayClickSfx();
                 UIManager.SafeOpen(LevelSelectPanel.PanelId);
             });
 
-            var codexButton = UIUtility.CreateButton("CodexButton", column.transform, "环保图鉴",
+            var codexButton = column.transform.Find("CodexButton")?.GetComponent<Button>() ?? UIUtility.CreateButton("CodexButton", column.transform, "环保图鉴",
                 new Vector2(340f, 74f), new Vector2(0f, -70f));
+            codexButton.onClick.RemoveAllListeners();
             codexButton.onClick.AddListener(() =>
             {
                 UIUtility.PlayClickSfx();
                 UIManager.SafeOpen(CodexPanel.PanelId);
             });
 
-            var settingsButton = UIUtility.CreateButton("SettingsButton", column.transform, "设置",
+            var settingsButton = column.transform.Find("SettingsButton")?.GetComponent<Button>() ?? UIUtility.CreateButton("SettingsButton", column.transform, "设置",
                 new Vector2(340f, 74f), new Vector2(0f, -160f));
+            settingsButton.onClick.RemoveAllListeners();
             settingsButton.onClick.AddListener(() =>
             {
                 UIUtility.PlayClickSfx();
                 UIManager.SafeOpen(SettingsPanel.PanelId);
             });
 
-            var quitButton = UIUtility.CreateButton("QuitButton", column.transform, "退出游戏",
+            var quitButton = column.transform.Find("QuitButton")?.GetComponent<Button>() ?? UIUtility.CreateButton("QuitButton", column.transform, "退出游戏",
                 new Vector2(340f, 74f), new Vector2(0f, -250f));
+            quitButton.onClick.RemoveAllListeners();
             quitButton.onClick.AddListener(OnQuitClicked);
 
             // 按钮皮肤：换成 AI 生成的玻璃绿贴图（素材缺失时保留原纯色按钮）
@@ -191,7 +195,7 @@ namespace StarEco.UI
                 MenuArt.ApplyButtonSkin(button);
             }
 
-            _versionText = UIUtility.CreateText("Version", root,
+            _versionText = root.Find("Version")?.GetComponent<Text>() ?? UIUtility.CreateText("Version", root,
                 "v1.0 · Unity 2022.3", 22, TextAnchor.LowerRight,
                 new Color(1f, 1f, 1f, 0.35f));
             var versionRt = _versionText.GetComponent<RectTransform>();
