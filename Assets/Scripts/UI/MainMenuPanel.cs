@@ -82,6 +82,26 @@ namespace StarEco.UI
             {
                 canvas.transform.SetParent(transform, false);
             }
+
+            // 场景预置 Canvas 必须与运行时创建的 Canvas 完全一致：
+            // 1) 根变换归零 —— 旧场景对象曾被保存为 localScale=0；
+            // 2) CanvasScaler 必须是 ScaleWithScreenSize —— 场景里曾存成
+            //    ConstantPixelSize(m_UiScaleMode=0)，导致小尺寸 Game 视图下
+            //    1080 高的布局按 1:1 像素渲染，按钮被整体放大、压住标题并溢出屏幕。
+            canvas.transform.localPosition = Vector3.zero;
+            canvas.transform.localRotation = Quaternion.identity;
+            canvas.transform.localScale = Vector3.one;
+
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            var scaler = canvas.GetComponent<CanvasScaler>();
+            if (scaler == null)
+            {
+                scaler = canvas.gameObject.AddComponent<CanvasScaler>();
+            }
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = UIUtility.ReferenceResolution;
+            scaler.matchWidthOrHeight = 0.5f;
+
             SetRoot(canvas.gameObject, visibleByDefault: true);
 
             var root = canvas.transform;
@@ -149,16 +169,19 @@ namespace StarEco.UI
 
             var startButton = column.transform.Find("StartButton")?.GetComponent<Button>() ?? UIUtility.CreateButton("StartButton", column.transform, "开始新游戏",
                 new Vector2(340f, 74f), new Vector2(0f, 200f));
+            ConfigureButton(startButton, new Vector2(340f, 74f), new Vector2(0f, 200f));
             startButton.onClick.RemoveAllListeners();
             startButton.onClick.AddListener(OnStartClicked);
 
             _continueButton = column.transform.Find("ContinueButton")?.GetComponent<Button>() ?? UIUtility.CreateButton("ContinueButton", column.transform, "继续游戏",
                 new Vector2(340f, 74f), new Vector2(0f, 110f));
+            ConfigureButton(_continueButton, new Vector2(340f, 74f), new Vector2(0f, 110f));
             _continueButton.onClick.RemoveAllListeners();
             _continueButton.onClick.AddListener(OnContinueClicked);
 
             var levelSelectButton = column.transform.Find("LevelSelectButton")?.GetComponent<Button>() ?? UIUtility.CreateButton("LevelSelectButton", column.transform, "关卡选择",
                 new Vector2(340f, 74f), new Vector2(0f, 20f));
+            ConfigureButton(levelSelectButton, new Vector2(340f, 74f), new Vector2(0f, 20f));
             levelSelectButton.onClick.RemoveAllListeners();
             levelSelectButton.onClick.AddListener(() =>
             {
@@ -168,6 +191,7 @@ namespace StarEco.UI
 
             var codexButton = column.transform.Find("CodexButton")?.GetComponent<Button>() ?? UIUtility.CreateButton("CodexButton", column.transform, "环保图鉴",
                 new Vector2(340f, 74f), new Vector2(0f, -70f));
+            ConfigureButton(codexButton, new Vector2(340f, 74f), new Vector2(0f, -70f));
             codexButton.onClick.RemoveAllListeners();
             codexButton.onClick.AddListener(() =>
             {
@@ -177,6 +201,7 @@ namespace StarEco.UI
 
             var settingsButton = column.transform.Find("SettingsButton")?.GetComponent<Button>() ?? UIUtility.CreateButton("SettingsButton", column.transform, "设置",
                 new Vector2(340f, 74f), new Vector2(0f, -160f));
+            ConfigureButton(settingsButton, new Vector2(340f, 74f), new Vector2(0f, -160f));
             settingsButton.onClick.RemoveAllListeners();
             settingsButton.onClick.AddListener(() =>
             {
@@ -186,6 +211,7 @@ namespace StarEco.UI
 
             var quitButton = column.transform.Find("QuitButton")?.GetComponent<Button>() ?? UIUtility.CreateButton("QuitButton", column.transform, "退出游戏",
                 new Vector2(340f, 74f), new Vector2(0f, -250f));
+            ConfigureButton(quitButton, new Vector2(340f, 74f), new Vector2(0f, -250f));
             quitButton.onClick.RemoveAllListeners();
             quitButton.onClick.AddListener(OnQuitClicked);
 
@@ -204,6 +230,21 @@ namespace StarEco.UI
             versionRt.pivot = new Vector2(1f, 0f);
             versionRt.sizeDelta = new Vector2(420f, 34f);
             versionRt.anchoredPosition = new Vector2(-16f, 10f);
+        }
+
+        private static void ConfigureButton(Button button, Vector2 size, Vector2 position)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            var rt = button.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = size;
+            rt.anchoredPosition = position;
         }
 
         // ===== 交互 =====
