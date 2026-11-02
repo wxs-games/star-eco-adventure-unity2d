@@ -231,38 +231,6 @@ python .../compose_sheet.py --frames ... --name Player_Run --dry       # 只看�
   （PlayerController / PlayerAnimatorDriver / PlayerCombat / AttackHitbox / SprayController），
   并确认控制台无 error，再交给用户试玩。
 
-### 双项目同步（毕设 + 求职展示）
-
-- 本工程有两份内容几乎相同的 Unity 项目，**任何改动必须两边同步**：
-  - 毕设版：`e:\desktop\UnityXiangMu\BiShe\BiShe`（当前工作区，Unity 工程目录嵌套一层）
-  - 求职展示版：`E:\desktop\UnityXiangMu\StarEco`（Unity 工程目录直接在根下）
-
-> **状态（2026-10-31 实测）**：求职版目录当前**已不存在**——已被改名为
-> `E:\desktop\UnityXiangMu\_已删除_求职版_StarEco_20261030_1658`，工作区里只剩毕设版一份工程。
-> 本节规则在求职版按「求职版」生成规程重新生成后重新生效；在此之前不必再做双份同步。
-- **换行符必须归一后比对**：毕设版是 LF，StarEco 是 CRLF，直接比哈希会把全部 169 个脚本
-  误判成"有差异"。比对前统一 `.Replace("\r\n","\n")`（2026-10-29 实测：原 140+ 个"差异"归一后
-  只剩 8 个）。
-- **已核实的实质差异（改动涉及时逐条确认，不要盲目覆盖）**：
-  | 文件 | 差异 |
-  |---|---|
-  | `Assets/Scenes/Level03.unity` | 毕设版有 `Checkpoint1/2`；求职版换成 `StairsL/StairsR`。**另外求职版右端 x=21.5 的墙是 `BossGateWall`**（`GarbagePile(_targetId=BossGateWall, _blocksPath=1)` + `BossGate` 脚本，做 Boss 登场演出）；毕设版没有这个闸门，同位置是普通净化墙 `GarbageWall_03R`（`_targetId=GarbageWall_03R`）。改动别覆盖掉求职版的 Boss 登场 |
-  | `Assets/Scripts/UI/MainMenuPanel.cs` | 有意不同：毕设副标题 `—— 动作冒险 · 毕业设计 ——`、角标 `Unity 2022.3 · 毕业设计`（代码 112/173 行实测）；求职版 `—— 动作冒险 · 环保教育 ——`、`v1.0 · Unity 2022.3`。**除此之外该文件必须两边一致** |
-  | `Assets/Scripts/Level/RescueTarget.cs`、`UI/DialogueTrigger.cs`、`UI/SignboardTrigger.cs` | 已核对（2026-10-30）两边**完全一致**，历史上那段「毕设多出 `isPlaying` 分支」的差异已被清除 |
-  | `Assets/Prefabs/Player/Player.prefab` | 已核对（2026-10-30）两边**语义完全一致**（`ToolAnchor`、命中盒位置、层、排序号全部相同），只剩各有各的本地 fileID；比对时必须忽略 `fileID`，否则会误判 |
-  | `Assets/Scenes/Level01.unity`、`Level02.unity` | 场景内容有差异（实例覆盖块不同），改动前先确认哪边是基准 |
-- 同步做法：改完一边，立刻把同一处改动应用到另一边（脚本直接同文替换；`.unity` 场景用
-  `git diff --no-index` 定位到具体对象后再操作），改动后归一换行符再比对，确认目标文件两边一致
-  （上表"有意保留的差异"除外）。
-- 求职展示版的 Unity 编辑器通常不打开，**改动无法编译验证**，必须在报告里注明"StarEco 侧未
-  编译验证"，不得宣称已运行通过。
-- **判定标准（用户 2026-10-30 明确）：两份项目只允许「文案」不同，其余必须一致。**
-  也就是说，发现任何代码/配置/预制体的实质差异，都要当成 bug 同步掉，不能当成"各有各的设计"。
-  目前唯一允许的文案差异是 `MainMenuPanel.cs` 的副标题与版本号那一行。
-- 全量核对命令（忽略换行与 fileID）：先 `.Replace("\r\n","\n")` 比文本，再把 `fileID` /
-  `m_CorrespondingSourceObject` / `m_PrefabInstance` / `serializedVersion` 行剔掉再比，
-  这样 169 个脚本 + 全部 `.asset/.json/.shader/.asmdef` 的真实差异只剩 `MainMenuPanel.cs`。
-
 ### 选项推荐规范（策划优先，2026-10-31 取代旧版「社区主流标记」）
 
 **第一原则：推荐项的第一依据是已定稿的策划，不是社区流行度。**
@@ -461,37 +429,3 @@ python .../compose_sheet.py --frames ... --name Player_Run --dry       # 只看�
 4. 模式 B 下每个决策点的选择都要在最终回复里列出清单（决策点 → 采用了什么 → 依据是策划哪条 / 还是社区主流+缺口），方便用户事后复盘。
 5. 用户随时可以在任务进行到一半时插话切换，切换后立即按新模式继续剩余工作，不重跑已完成部分。
 
-### 「求职版」生成规程（口令触发）
-
-**触发词**：用户说「求职版」/「做个求职版」/「出一个求职版」/「生成求职版」时，执行本节。
-
-**核心原则：只改文字，不改功能；不维护第二份副本，不做增量同步。**
-毕设版（`E:/desktop/UnityXiangMu/BiShe/BiShe/`）是唯一开发主线。求职版不是长期并行的分支，
-而是在用户需要时一次性复制出来、只动两行文案的产物。**任何功能/美术/关卡改动都只做在毕设版**，
-做完不需要同步，等用户口令时再整体复制。
-
-> 与「双项目同步（毕设 + 求职展示）」小节并存：那节讲的是**当前已存在的两份工程**如何保持一致，
-> 本节讲的是**重新生成**求职版时怎么复制。两节如有冲突，以「双项目同步」小节的实测差异表为准。
-
-生成步骤：
-
-1. 复制整个毕设工程目录到目标位置（默认 `E:/desktop/UnityXiangMu/StarEco/`），
-   排除 `Library/`、`Temp/`、`Logs/`、`obj/`、`.vs/`、`UserSettings/`。
-2. 改 `Assets/Scripts/UI/MainMenuPanel.cs` 的两处文案 —— **这是两版唯一的代码差异**：
-
-   | 位置 | 毕设版 | 求职版 |
-   | --- | --- | --- |
-   | 主菜单副标题（约 112 行） | `—— 动作冒险 · 毕业设计 ——` | `—— 动作冒险 · 环保教育 ——` |
-   | 右下角版本角标（约 173 行） | `Unity 2022.3 · 毕业设计` | `v1.0 · Unity 2022.3` |
-
-   > 上表已于 2026-10-31 对照 `MainMenuPanel.cs:112` / `:173` 的实际字符串核实（毕设版为
-   > `—— 动作冒险 · 毕业设计 ——` 与 `Unity 2022.3 · 毕业设计`）。此前「双项目同步」小节里
-   > 写的「Unity 2021.3 · M7 原型」是过期值，已同步更正。
-3. 删掉毕设专属材料：`GraduationProject/`、`AGENTS.md`、`docs/`（内部规格、交接文档）。
-4. 补上对外包装：`README.md`、`LICENSE`、`Docs/`（含 `Docs/images/` 截图、`Docs/AI-工作流.md`）。
-   求职版要**突出 AI 协同开发能力**，与毕设版「绝不能出现 AI 表述」的要求相反。
-5. 校验：`diff -w` 两版的 `MainMenuPanel.cs` 必须**只差上面那两行**；其余 `.cs` 文件应全部相同。
-   若发现别处也有差异，说明毕设版被改脏了，先报告再处理。
-
-明确不做：不建第二个仓库来长期维护、不逐次同步改动、不在求职版残留任何「毕业设计」字样。
-是否另外建 git 仓库、推送、打 Release，由用户当场决定，不默认执行。

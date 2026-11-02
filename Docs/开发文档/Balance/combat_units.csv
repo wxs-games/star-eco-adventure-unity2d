@@ -1,0 +1,6 @@
+id,name,role,tier,hp,atk,def,aps,crit_rate,crit_mult,dps_ref,notes
+enemy_01,Enemy01 污染污泥怪,慢速近战,trash,6,2,0,0.8333,0,1.0,5.33,第一关教学怪；HP 3 颗心／伤害 1 颗心；AttackInterval 1.2s
+enemy_02,Enemy02 变异毒植物,远程毒气,trash,8,1,0,0.8333,0,1.0,5.33,第二关远程；HP 4 颗心／伤害 0.5 颗心；射程 16
+enemy_03,Enemy03 巡逻机器人,高速追击,trash,10,2,0,1.0,0,1.0,5.33,第三关追击型；HP 5 颗心；移速 6 = 玩家
+tower_01,Tower01 毒气防御塔,固定炮台,elite,16,2,0,0.6667,0,1.0,5.33,第一关固定炮台（可击毁/净化关闭）；HP 8 颗心；射程 14
+boss_01,Boss01 工厂污染核心,三阶段 Boss,boss,80,2,0,0.5,0,1.0,5.33,HP 40 颗心；近战 2s/次；另有 3 发弹幕 3s/次；阶段 60%/30%

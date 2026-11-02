@@ -87,3 +87,10 @@ Assets/CoplayPlan.md*
 
 # 编译检查日志
 compile_check.log
+
+# 发布整理：本地缓存、临时截图与拼版备份
+__pycache__/
+*.py[cod]
+/Captures/
+*.pre-compose.png
+*.pre-compose.png.meta
