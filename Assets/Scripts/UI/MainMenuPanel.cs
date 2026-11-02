@@ -73,8 +73,16 @@ namespace StarEco.UI
         {
             UIUtility.EnsureEventSystem();
 
-            var canvas = UIUtility.CreateCanvas("MainMenuCanvas", transform, 20);
-            SetRoot(canvas.gameObject);
+            var canvas = GameObject.Find("MainMenuCanvas")?.GetComponent<Canvas>();
+            if (canvas == null)
+            {
+                canvas = UIUtility.CreateCanvas("MainMenuCanvas", transform, 20);
+            }
+            else
+            {
+                canvas.transform.SetParent(transform, false);
+            }
+            SetRoot(canvas.gameObject, visibleByDefault: true);
 
             var root = canvas.transform;
 
@@ -123,7 +131,7 @@ namespace StarEco.UI
             titleRt.sizeDelta = new Vector2(900f, 170f);
             titleRt.anchoredPosition = new Vector2(0f, -45f);
 
-            var subtitle = UIUtility.CreateText("Subtitle", root, "—— 动作冒险 · 毕业设计 ——", 32,
+            var subtitle = UIUtility.CreateText("Subtitle", root, "—— 动作冒险 · 环保教育 ——", 32,
                 TextAnchor.MiddleCenter, UIUtility.AccentGreen);
             var subtitleRt = subtitle.GetComponent<RectTransform>();
             subtitleRt.anchorMin = new Vector2(0.5f, 1f);
@@ -184,7 +192,7 @@ namespace StarEco.UI
             }
 
             _versionText = UIUtility.CreateText("Version", root,
-                "Unity 2022.3 · 毕业设计", 22, TextAnchor.LowerRight,
+                "v1.0 · Unity 2022.3", 22, TextAnchor.LowerRight,
                 new Color(1f, 1f, 1f, 0.35f));
             var versionRt = _versionText.GetComponent<RectTransform>();
             versionRt.anchorMin = new Vector2(1f, 0f);
