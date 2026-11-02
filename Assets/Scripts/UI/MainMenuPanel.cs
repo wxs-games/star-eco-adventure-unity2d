@@ -69,7 +69,7 @@ namespace StarEco.UI
 
         // ===== 构建 =====
 
-        private void Build()
+        public void Build()
         {
             UIUtility.EnsureEventSystem();
 
