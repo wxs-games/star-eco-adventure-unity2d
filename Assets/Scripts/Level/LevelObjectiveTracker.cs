@@ -31,6 +31,9 @@ namespace StarEco.Level
         /// <summary>目标链完成回调的代次令牌：关卡重开时自增，用于作废上一局遗留的延迟回调。</summary>
         private int _chainVersion;
 
+        /// <summary>并行模式：所有目标独立计数，全部达标后才通关。第三关启用。</summary>
+        private bool _parallelMode;
+
         // 各类型累计计数（只由当前目标推进时写入）
         private int _purifiedTargets;
         private int _purifiedTowers;
@@ -137,6 +140,9 @@ namespace StarEco.Level
             ChainCompleted = false;
             _chainVersion++;   // 作废上一局遗留的延迟完成回调
 
+            // 所有关卡：通关条件无先后顺序，全部达标即可
+            _parallelMode = true;
+
             ClampRequired();
 
             _initialized = true;
@@ -161,6 +167,7 @@ namespace StarEco.Level
             _rightBankPurifiedFallbackIds.Clear();
             _rightBankEnemyInstanceIds.Clear();
             ChainCompleted = false;
+            _parallelMode = false;
             _initialized = false;
             _chainVersion++;   // 作废上一局遗留的延迟完成回调
         }
@@ -238,11 +245,12 @@ namespace StarEco.Level
 
         private void OnKnowledgeCardCollected(KnowledgeCardCollectedEvent evt)
         {
-            if (_config == null || _config.LevelIndex != 2 || string.IsNullOrEmpty(evt.CardId))
+            if (_config == null || string.IsNullOrEmpty(evt.CardId))
             {
                 return;
             }
 
+            // 按本次进入关卡实际拾取事件计数，不受历史存档影响；第 2 关与第 3 关均适用。
             if (_collectedKnowledgeCardIds.Add(evt.CardId))
             {
                 _collectedKnowledgeCards++;
@@ -267,6 +275,13 @@ namespace StarEco.Level
         {
             if (!_initialized || ChainCompleted)
             {
+                return;
+            }
+
+            // 第三关并行模式：所有目标独立计数，全部达标后才通关
+            if (_parallelMode)
+            {
+                EvaluateParallel();
                 return;
             }
 
@@ -299,6 +314,50 @@ namespace StarEco.Level
                     CompleteChain();
                     return;
                 }
+            }
+        }
+
+        /// <summary>并行模式下的目标完成度评估：所有目标独立计数，全部达标后才触发 CompleteChain。</summary>
+        private void EvaluateParallel()
+        {
+            if (_config.Objectives == null || _config.Objectives.Length == 0)
+            {
+                CompleteChain();
+                return;
+            }
+
+            bool allCompleted = true;
+            int firstIncompleteIndex = -1;
+            for (int i = 0; i < _config.Objectives.Length; i++)
+            {
+                var obj = _config.Objectives[i];
+                if (obj == null)
+                {
+                    continue;
+                }
+                int required = _effectiveRequired[i];
+                int current = CurrentCountFor(obj.Type);
+                if (current < required)
+                {
+                    allCompleted = false;
+                    if (firstIncompleteIndex < 0)
+                    {
+                        firstIncompleteIndex = i;
+                    }
+                }
+            }
+
+            if (allCompleted)
+            {
+                CompleteChain();
+                return;
+            }
+
+            // 广播第一个未完成目标的进度，供 HUD 显示
+            if (firstIncompleteIndex >= 0)
+            {
+                _index = firstIncompleteIndex;
+                BroadcastCurrent();
             }
         }
 
@@ -433,6 +492,19 @@ namespace StarEco.Level
                 {
                     Debug.LogWarning($"[LevelObjectiveTracker] 目标 {i} 要求清理 {obj.Required} 处堵塞，场景仅有 {waterBlocks} 处，已按实际夹取。");
                     _effectiveRequired[i] = waterBlocks;
+                }
+                else if (obj.Type == LevelObjectiveType.CollectKnowledgeCards)
+                {
+                    var knowledgeCards = FindObjectsByType<KnowledgeCardPickup>(FindObjectsInactive.Exclude, FindObjectsSortMode.None).Length;
+                    if (obj.Required > knowledgeCards)
+                    {
+                        Debug.LogWarning($"[LevelObjectiveTracker] 目标 {i} 要求收集 {obj.Required} 个知识卡片，场景仅有 {knowledgeCards} 个，已按实际夹取。");
+                        _effectiveRequired[i] = knowledgeCards;
+                    }
+                    else
+                    {
+                        _effectiveRequired[i] = obj.Required;
+                    }
                 }
                 else
                 {

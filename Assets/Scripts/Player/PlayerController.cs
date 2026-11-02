@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using StarEco.Framework;
+using StarEco.Level;
 
 namespace StarEco.Player
 {
@@ -480,6 +481,11 @@ namespace StarEco.Player
                     continue;
                 }
                 if (!IsSolidObstacle(col))
+                {
+                    continue;
+                }
+                // 钥匙门不允许翻滚穿透：必须持有钥匙并按 E 打开，翻滚闪避不可绕过
+                if (col.GetComponent<KeyDoor>() != null)
                 {
                     continue;
                 }
