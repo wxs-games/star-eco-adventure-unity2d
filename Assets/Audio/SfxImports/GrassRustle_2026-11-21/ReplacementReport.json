@@ -1,0 +1,13 @@
+{
+  "source": "C:/Users/WSX.LAPTOP-5HQ2JJQQ/Downloads/二维环保冒险游戏草地脚步音效生成.mp4",
+  "source_interval": [
+    0.88,
+    1.12
+  ],
+  "duration": 0.24,
+  "peak_dbfs": -12.041199826559248,
+  "rms_dbfs": -30.541055499445065,
+  "target": "E:\\desktop\\UnityXiangMu\\StarEco\\Assets\\Audio\\Sfx\\GrassRustle.wav",
+  "guid_preserved": true,
+  "note": "Single event extracted; subjective sound character not auditioned."
+}

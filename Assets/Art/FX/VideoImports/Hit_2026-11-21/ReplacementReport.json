@@ -1,0 +1,16 @@
+{
+  "source": "C:/Users/WSX.LAPTOP-5HQ2JJQQ/Downloads/薄荷绿水流动画生成 (1).mp4",
+  "source_interval": [
+    0,
+    3
+  ],
+  "frames": 6,
+  "fps": 12,
+  "duration": 0.5,
+  "audio_slots": [
+    "EnemyHit",
+    "BossHit"
+  ],
+  "original_assets_backup": "PreviousAssets",
+  "note": "Source and processed audio retained; existing sprite and audio GUIDs preserved."
+}

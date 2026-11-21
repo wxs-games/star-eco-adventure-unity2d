@@ -1,0 +1,11 @@
+{
+  "source": "C:/Users/WSX.LAPTOP-5HQ2JJQQ/Downloads/环保冒险游戏配乐创作.mp4",
+  "duration_seconds": 14.571995464852607,
+  "original_lufs": -29.53,
+  "processed_lufs": "-26.01",
+  "true_peak_dbtp": "-10.64",
+  "crossfade_seconds": 0.5,
+  "loop_sample_boundary_step": 10,
+  "target_asset": "E:\\desktop\\UnityXiangMu\\StarEco\\Assets\\Resources\\Audio\\Bgm\\Level01.wav",
+  "note": "Preserved Level01 GUID. 15-second source; subjective music quality and harmonic loop continuity not auditioned."
+}

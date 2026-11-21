@@ -1,0 +1,10 @@
+{
+  "source_interval": [
+    0.6,
+    0.98
+  ],
+  "duration": 0.38,
+  "peak_dbfs": -9.11924501370542,
+  "target": "E:\\desktop\\UnityXiangMu\\StarEco\\Assets\\Audio\\Sfx\\Jump.wav",
+  "guid_preserved": true
+}

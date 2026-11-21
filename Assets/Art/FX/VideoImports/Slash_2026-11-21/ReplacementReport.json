@@ -1,0 +1,25 @@
+{
+  "source": "C:\\Users\\WSX.LAPTOP-5HQ2JJQQ\\Downloads\\青白色弧光挥击视频生成.mp4",
+  "sha256": "b47ddbb8b16f1a5d14ff3cff7090b1350a767f29c07696e8385caf5e26eb9b59",
+  "video_samples_seconds": [
+    6.0,
+    6.12,
+    6.24,
+    6.36,
+    6.48,
+    6.6
+  ],
+  "audio_interval": [
+    6,
+    6.72
+  ],
+  "duration": 0.25,
+  "fps": 24,
+  "frames": 6,
+  "canvas": [
+    835,
+    759
+  ],
+  "runtime": "hitbox center, mirrored scale 0.55 retained",
+  "selection": "User explicitly selected this video again"
+}

@@ -1,0 +1,11 @@
+{
+  "source": "C:/Users/WSX.LAPTOP-5HQ2JJQQ/Downloads/森林探索配乐创作.mp4",
+  "duration_seconds": 14.571995464852607,
+  "original_lufs": "-28.58",
+  "processed_lufs": "-26.01",
+  "true_peak_dbtp": "-11.15",
+  "crossfade_seconds": 0.5,
+  "loop_sample_boundary_step": 51,
+  "target_asset": "E:\\desktop\\UnityXiangMu\\StarEco\\Assets\\Resources\\Audio\\Bgm\\Level02.wav",
+  "note": "Preserved Level02 GUID; subjective quality and harmonic loop continuity not auditioned."
+}

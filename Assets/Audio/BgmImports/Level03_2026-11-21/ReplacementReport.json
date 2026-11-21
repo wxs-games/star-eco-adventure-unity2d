@@ -1,0 +1,11 @@
+{
+  "source": "C:/Users/WSX.LAPTOP-5HQ2JJQQ/Downloads/原创二维手绘游戏能源工厂配乐.mp4",
+  "duration_seconds": 9.58,
+  "original_lufs": "-23.40",
+  "processed_lufs": "-26.00",
+  "true_peak_dbtp": "-12.65",
+  "crossfade_seconds": 0.5,
+  "loop_sample_boundary_step": 15,
+  "target_asset": "E:\\desktop\\UnityXiangMu\\StarEco\\Assets\\Resources\\Audio\\Bgm\\Level03.wav",
+  "note": "Preserved Level03 GUID; subjective quality and harmonic loop continuity not auditioned."
+}

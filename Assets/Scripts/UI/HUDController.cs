@@ -81,7 +81,7 @@ namespace StarEco.UI
             if (UIManager.HasInstance)
             {
                 UIManager.Instance.Register(this);
-                UIManager.Instance.Open(PanelId);
+                UIManager.Instance.Open(PanelId, playSound: false);
             }
         }
 

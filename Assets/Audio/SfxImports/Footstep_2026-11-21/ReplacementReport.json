@@ -1,0 +1,12 @@
+{
+  "source": "C:/Users/WSX.LAPTOP-5HQ2JJQQ/Downloads/二维手绘环保游戏音效生成.mp4",
+  "source_interval": [
+    0.28,
+    0.52
+  ],
+  "duration": 0.24,
+  "peak_dbfs": -12.041199826559248,
+  "target": "E:\\desktop\\UnityXiangMu\\StarEco\\Assets\\Audio\\Sfx\\Footstep.wav",
+  "guid_preserved": true,
+  "note": "Single event; subjective character and in-game listening not evaluated."
+}

@@ -72,16 +72,12 @@
 - 代码标识符（类名、方法名、命名空间、文件路径等）保持英文，不翻译。
 - 技术术语在中文中夹注英文原文即可（如"状态机（FSM）"）。
 
-### 美术资源生成：只用 Codex Image Router 插件
+### 美术资源生成
 
-- **生成/编辑任何图像一律用 `codex-image-router` 插件**（Codex Image Router，模型 `gpt-image-2.5-sunburst`）。
-  它对外提供 `image_generate`（文生图）和 `image_edit`（图生图/改图）两个工具，
-  配置读 `%APPDATA%\codex-image-router\config.json`（gateway 地址、模型、密钥都在这里）。
 - **禁止使用 Unity MCP（`unityMCP`）自带的 `generate_image` / `generate_model`**。
   那条通道要求自己在编辑器里填第三方 API 密钥，且当前槽位里是 `nvapi-` 开头的 NVIDIA 密钥，
   fal 侧一律返回 `HTTP 401`。不要为了它去改密钥、换 provider 或绕开报错。
 - Unity MCP 只用来做**引擎侧的事**：导入资源、跑装配菜单、读控制台、改场景/预制体等。
-  一句话区分：**出图找 Image Router，进 Unity 找 unityMCP。**
 - **保持角色一致性必须走 `image_edit`**：先定一张定妆图，后续每个动作都以定妆图为 `image_path`
   做图生图；只靠 `image_generate` 纯文生图会导致各动作人物不一致。
 - 生成好的图必须落进工程 `Assets/Art/...`（绝对路径写入），再在 Unity 里刷新确认，不能只留在临时目录。

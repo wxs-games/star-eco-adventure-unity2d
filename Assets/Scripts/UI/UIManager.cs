@@ -87,7 +87,7 @@ namespace StarEco.UI
         }
 
         /// <summary>打开面板（入栈）。</summary>
-        public void Open(string panelName)
+        public void Open(string panelName, bool playSound = true)
         {
             if (!_panels.TryGetValue(panelName, out var panel))
             {
@@ -104,7 +104,10 @@ namespace StarEco.UI
             _stack.Add(panel);
             panel.Open();
             ApplyInputLock();
-            UIUtility.PlayClickSfx();
+            if (playSound)
+            {
+                UIUtility.PlayClickSfx();
+            }
         }
 
         /// <summary>关闭面板（出栈）。</summary>

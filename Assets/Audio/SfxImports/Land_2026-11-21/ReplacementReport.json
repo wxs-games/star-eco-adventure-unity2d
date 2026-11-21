@@ -1,0 +1,12 @@
+{
+  "source": "C:/Users/WSX.LAPTOP-5HQ2JJQQ/Downloads/二维横版环保冒险游戏落地音效生成.mp4",
+  "source_interval": [
+    1,
+    1.3
+  ],
+  "duration": 0.3,
+  "peak_dbfs": -9.11924501370542,
+  "target": "E:\\desktop\\UnityXiangMu\\StarEco\\Assets\\Audio\\Sfx\\Land.wav",
+  "guid_preserved": true,
+  "note": "Single landing extracted; source decoded as float before attenuation; actual gameplay listening not evaluated."
+}

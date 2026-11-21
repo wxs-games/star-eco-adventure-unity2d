@@ -1,0 +1,28 @@
+{
+  "source": "C:/Users/WSX.LAPTOP-5HQ2JJQQ/Downloads/薄荷绿水流动画生成.mp4",
+  "source_interval_seconds": [
+    0,
+    4
+  ],
+  "playback_seconds": 0.6666666666666666,
+  "frames": 8,
+  "canvas": [
+    740,
+    693
+  ],
+  "fps": 12,
+  "audio_tempo": 6,
+  "preserves": [
+    "frame GUIDs",
+    "animation binding",
+    "prefab references",
+    "canvas",
+    "pivot",
+    "material",
+    "playback duration"
+  ],
+  "audio_slots": [
+    "PurifyComplete",
+    "SprayStart"
+  ]
+}

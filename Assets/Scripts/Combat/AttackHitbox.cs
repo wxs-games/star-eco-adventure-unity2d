@@ -104,12 +104,14 @@ namespace StarEco.Combat
             }
 
             float facing = _player.Sprite != null && _player.Sprite.flipX ? -1f : 1f;
-            Vector3 pos = transform.position + new Vector3(facing * SlashForwardOffset, 0f, 0f);
+            Vector3 pos = _hitbox != null
+                ? _hitbox.bounds.center
+                : transform.position + new Vector3(facing * SlashForwardOffset, 0f, 0f);
             var fx = FxOneShot.Play(_fxSlashPrefab, pos, FxFrontOrder);
             if (fx != null)
             {
-                // 攻击特效适度放大，使挥击明显但不遮挡角色
-                fx.transform.localScale = new Vector3(1.2f, 1.2f, 1f);
+                // 紧贴判定盒的短弧光；池复用时也重新设置朝向。
+                fx.transform.localScale = new Vector3(facing * 0.55f, 0.55f, 1f);
             }
         }
 
