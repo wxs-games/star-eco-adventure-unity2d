@@ -27,7 +27,6 @@ namespace StarEco.EditorTools
         [MenuItem("StarEco/Setup/打击特效接入（T-07）")]
         public static void Run()
         {
-            var fxSlash = LoadFx("fx_slash");
             var fxHit = LoadFx("fx_hit");
             var fxExplode = LoadFx("fx_explode");
             var fxGas = LoadFx("fx_gas");
@@ -42,9 +41,8 @@ namespace StarEco.EditorTools
                 var hitbox = root.GetComponent<AttackHitbox>();
                 if (hitbox != null)
                 {
-                    SetIfPresent(hitbox, "_fxSlashPrefab", fxSlash);
                     SetIfPresent(hitbox, "_fxHitPrefab", fxHit);
-                    log.AppendLine($"  AttackHitbox: slash={(fxSlash != null ? "OK" : "缺")} hit={(fxHit != null ? "OK" : "缺")}");
+                    log.AppendLine($"  AttackHitbox: hit={(fxHit != null ? "OK" : "缺")}");
                 }
                 else
                 {

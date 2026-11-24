@@ -17,6 +17,7 @@ namespace StarEco.Eco
     {
         [SerializeField] private EcoConfig _config;
         [SerializeField] private FxOneShot _fxPurifyPrefab;
+        [SerializeField] private FxOneShot _fxPurifyWavePrefab;
         [SerializeField] private SprayHitbox _hitbox;
         // M10：喷雾音效改走命名音效库（AudioManager.PlaySfx(SfxId)），
         // 保留序列化字段供个别关卡覆写；为空时用库内默认音。
@@ -301,6 +302,15 @@ namespace StarEco.Eco
             if (box != null)
             {
                 size = box.size * (_config != null ? _config.HeavyWaveScale : 2f);
+            }
+
+            float facing = _sprite != null && _sprite.flipX ? -1f : 1f;
+            var waveOrigin = transform.position + new Vector3(facing * .55f, .08f, -.08f);
+            var wave = FxOneShot.Play(_fxPurifyWavePrefab, waveOrigin, 21);
+            if (wave != null)
+            {
+                wave.transform.rotation = Quaternion.identity;
+                wave.transform.localScale = new Vector3(facing, 1f, 1f);
             }
 
             int count = Physics2D.OverlapBoxNonAlloc(center, size, 0f, WaveOverlaps);

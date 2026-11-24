@@ -174,6 +174,12 @@ namespace StarEco.EditorTools
                 new Color(0.32f, 0.42f, 0.30f, 1f), -5);
             groundR.layer = groundLayer;
             ApplyTile(groundR, "ground_forest.png");
+            var grassWind = Resources.Load<Material>("Shaders/ForestGrassWind");
+            if (grassWind != null)
+            {
+                groundL.GetComponent<SpriteRenderer>().sharedMaterial = grassWind;
+                groundR.GetComponent<SpriteRenderer>().sharedMaterial = grassWind;
+            }
             log.AppendLine($"已创建 GroundL/R（x∈[{LevelLeft},{BankL}] / [{BankR},{LevelRight}]，顶面 y={GroundTop}）");
 
             // —— 河床与溺水区 ——
@@ -208,6 +214,13 @@ namespace StarEco.EditorTools
                 new Color(0.25f, 0.50f, 0.85f, 0.55f), -2);
             water.transform.SetParent(waterRoot.transform, false);
             UnityEngine.Object.DestroyImmediate(water.GetComponent<BoxCollider2D>());   // 水域纯视觉
+            var riverRenderer = water.GetComponent<SpriteRenderer>();
+            var riverMaterial = Resources.Load<Material>("Shaders/ForestRiverFlow");
+            if (riverMaterial != null)
+            {
+                riverRenderer.sharedMaterial = riverMaterial;
+                riverRenderer.color = new Color(1f, 1f, 1f, 0.78f);
+            }
 
             var raftPath = new GameObject("RaftPath");
             raftPath.transform.SetParent(waterRoot.transform, false);
@@ -358,6 +371,7 @@ namespace StarEco.EditorTools
                     .FindPropertyRelative("Blockage").objectReferenceValue = blockages[i];
             }
             pzSo.FindProperty("_waterVisual").objectReferenceValue = waterRoot.transform;
+            pzSo.FindProperty("_riverRenderer").objectReferenceValue = riverRenderer;
             pzSo.FindProperty("_lowY").floatValue = WaterLowY;
             pzSo.FindProperty("_highY").floatValue = WaterHighY;
             pzSo.FindProperty("_raftPath").objectReferenceValue = raftPath;
@@ -551,6 +565,8 @@ namespace StarEco.EditorTools
                     "tree_forest.png", pos, GroundTop, 0f, false))
             {
                 tree.name = "Tree";
+                var wind = Resources.Load<Material>("Shaders/TreeWind");
+                if (wind != null) tree.GetComponent<SpriteRenderer>().sharedMaterial = wind;
             }
             else
             {

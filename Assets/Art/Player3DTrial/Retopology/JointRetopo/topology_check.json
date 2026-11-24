@@ -1,0 +1,155 @@
+{
+  "before": {
+    "4": 5777,
+    "3": 170,
+    "5": 44
+  },
+  "after": {
+    "4": 6403,
+    "3": 836,
+    "5": 36
+  },
+  "open_edges": 0,
+  "unweighted_vertices": 0,
+  "grip_vertices": 894,
+  "zones": [
+    {
+      "zone": "shoulder",
+      "side": "L",
+      "new_cut_edges": [
+        18,
+        15,
+        13
+      ]
+    },
+    {
+      "zone": "elbow",
+      "side": "L",
+      "new_cut_edges": [
+        6,
+        6,
+        7
+      ]
+    },
+    {
+      "zone": "wrist",
+      "side": "L",
+      "new_cut_edges": [
+        4,
+        5,
+        5
+      ]
+    },
+    {
+      "zone": "knee",
+      "side": "L",
+      "new_cut_edges": [
+        10,
+        11,
+        11
+      ]
+    },
+    {
+      "zone": "ankle",
+      "side": "L",
+      "new_cut_edges": [
+        8,
+        8,
+        8
+      ]
+    },
+    {
+      "zone": "hip",
+      "side": "L",
+      "new_cut_edges": [
+        8,
+        10,
+        11
+      ]
+    },
+    {
+      "zone": "finger_area",
+      "side": "L",
+      "new_cut_edges": [
+        81,
+        84,
+        72,
+        63
+      ]
+    },
+    {
+      "zone": "shoulder",
+      "side": "R",
+      "new_cut_edges": [
+        18,
+        15,
+        11
+      ]
+    },
+    {
+      "zone": "elbow",
+      "side": "R",
+      "new_cut_edges": [
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "zone": "wrist",
+      "side": "R",
+      "new_cut_edges": [
+        4,
+        6,
+        6
+      ]
+    },
+    {
+      "zone": "knee",
+      "side": "R",
+      "new_cut_edges": [
+        9,
+        12,
+        13
+      ]
+    },
+    {
+      "zone": "ankle",
+      "side": "R",
+      "new_cut_edges": [
+        6,
+        9,
+        12
+      ]
+    },
+    {
+      "zone": "hip",
+      "side": "R",
+      "new_cut_edges": [
+        14,
+        17,
+        17
+      ]
+    },
+    {
+      "zone": "finger_area",
+      "side": "R",
+      "new_cut_edges": [
+        66,
+        72,
+        59,
+        54
+      ]
+    }
+  ],
+  "reopened_blend_checks": {
+    "components": 1,
+    "open_edges": 0,
+    "non_manifold_edges": 0,
+    "unweighted_vertices": 0,
+    "shape_keys": [
+      "Basis",
+      "RunGrip"
+    ]
+  }
+}

@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using UnityEngine;
 using StarEco.Combat;
+using StarEco.EnemyAI;
 using StarEco.Framework;
 
 namespace StarEco.Player
@@ -18,7 +20,27 @@ namespace StarEco.Player
     public class PlayerAttackState : PlayerStateBase
     {
         /// <summary>第三段出手时刻 (s)：24fps 的 Attack03 第 5 帧附近，手臂挥到最前。</summary>
-        private const float ThrowReleaseTime = 0.19f;
+        internal const float ThrowReleaseTime = 0.19f;
+        internal const float AirKickDuration = 31f / 60f;
+        internal const float AirKickImpact = .22f;
+        private const float AirKickContactGap = .64f;
+        private const float AirKickApproachGap = .38f;
+        private const float AirKickVerticalReach = .52f;
+        private const float AirKickRange = 5.5f;
+        private const float AirKickVerticalRange = 3.8f;
+        private const float AirKickSpeed = 23f;
+        private static readonly ContactFilter2D KickGround = new ContactFilter2D
+            { useLayerMask = true, layerMask = LayerMask.GetMask("Ground") };
+        private static readonly ContactFilter2D KickEnemies = new ContactFilter2D
+            { useLayerMask = true, layerMask = LayerMask.GetMask("Enemy"), useTriggers = true };
+        private readonly List<Collider2D> _kickCandidates = new List<Collider2D>(12);
+        private readonly RaycastHit2D[] _kickWalls = new RaycastHit2D[4];
+        private Collider2D _kickTarget;
+        private EnemyControllerBase _kickEnemy;
+        internal EnemyControllerBase KickEnemy => _kickEnemy;
+        private float _kickFacing;
+        private float _kickDuration;
+        private float _kickImpactAt;
 
         private PlayerCombat _combat;
         private AttackHitbox _hitbox;
@@ -44,8 +66,17 @@ namespace StarEco.Player
             if (!Player.IsGrounded)
             {
                 _segment = 0;
-                _segmentTimer = EndTime(0);
-                Player.PlayOneShot("AttackAir");
+                if (TrySelectKickTarget())
+                {
+                    _segmentTimer = _kickDuration;
+                    Player.AirKickElapsed = 0f;
+                    Player.Sprite.flipX = _kickFacing < 0f;
+                }
+                else
+                {
+                    _segmentTimer = EndTime(0);
+                    Player.PlayOneShot("AttackAir");
+                }
             }
             else
             {
@@ -71,10 +102,23 @@ namespace StarEco.Player
             }
 
             _throwCountdown = 0f;
+            if (Player.AirKickElapsed >= 0f)
+            {
+                Player.AirKickElapsed = -1f;
+                StopKickTravel();
+                _kickTarget = null;
+                _kickEnemy = null;
+            }
         }
 
         public override void FixedTick()
         {
+            if (Player.AirKickElapsed >= 0f)
+            {
+                UpdateKickTravel();
+                return;
+            }
+
             // 边跑边打：不再 StopHorizontal。地面按正常移速、空中按 AirControlRatio，
             // 攻击只负责播动画与判定，位移交给移动逻辑（起手时已有的速度也自然延续）。
             Player.MoveHorizontally(!Player.IsGrounded);
@@ -98,6 +142,14 @@ namespace StarEco.Player
             // ===== 空中单段 =====
             if (_segment == 0)
             {
+                if (Player.AirKickElapsed >= 0f)
+                {
+                    float elapsed = _kickDuration - _segmentTimer;
+                    // Keep the extension frame aligned with contact at both short and long distances.
+                    Player.AirKickElapsed = elapsed < _kickImpactAt
+                        ? Mathf.Lerp(0f, AirKickImpact, elapsed / _kickImpactAt)
+                        : Mathf.Min(AirKickDuration, AirKickImpact + elapsed - _kickImpactAt);
+                }
                 // 触地优先 → Land（R2）
                 if (Player.IsGrounded && Player.VerticalVelocity <= 0.01f)
                 {
@@ -153,6 +205,127 @@ namespace StarEco.Player
             {
                 ExitToLocomotion();
             }
+        }
+
+        private bool TrySelectKickTarget()
+        {
+            Vector2 origin = Player.Body.worldCenterOfMass;
+            Physics2D.OverlapCircle(origin, AirKickRange, KickEnemies, _kickCandidates);
+            float nearest = AirKickRange * AirKickRange;
+            _kickTarget = null;
+            _kickEnemy = null;
+            foreach (var collider in _kickCandidates)
+            {
+                var enemy = collider.GetComponentInParent<EnemyControllerBase>();
+                if (enemy == null || !enemy.isActiveAndEnabled || enemy.IsDead) continue;
+                Vector2 targetPoint = collider.ClosestPoint(origin);
+                Vector2 delta = targetPoint - origin;
+                if (delta.sqrMagnitude >= nearest || Mathf.Abs(delta.y) > AirKickVerticalRange
+                    || Physics2D.Linecast(origin, targetPoint, KickGround, _kickWalls) > 0)
+                    continue;
+
+                nearest = delta.sqrMagnitude;
+                _kickTarget = collider;
+                _kickEnemy = enemy;
+                float horizontal = collider.bounds.center.x - origin.x;
+                _kickFacing = Mathf.Abs(horizontal) > .05f ? Mathf.Sign(horizontal) : Player.FacingDir;
+            }
+
+            _kickImpactAt = Mathf.Clamp(Mathf.Sqrt(nearest) / 16f, AirKickImpact, .36f);
+            _kickDuration = AirKickDuration + _kickImpactAt - AirKickImpact;
+            return _kickTarget != null;
+        }
+
+        private void UpdateKickTravel()
+        {
+            if (ReferenceEquals(_kickTarget, null)) return;
+            if (_kickTarget == null || !_kickTarget.enabled || !_kickEnemy || !_kickEnemy.isActiveAndEnabled || _kickEnemy.IsDead
+                || Player.AirKickElapsed > AirKickImpact + .10f)
+            {
+                _kickTarget = null;
+                _kickEnemy = null;
+                StopKickTravel();
+                return;
+            }
+
+            Vector2 origin = Player.Body.worldCenterOfMass;
+            Vector2 point = _kickTarget.ClosestPoint(origin);
+            Vector2 delta = point - origin;
+            if (Physics2D.Linecast(origin, point, KickGround, _kickWalls) > 0)
+            {
+                _kickTarget = null;
+                _kickEnemy = null;
+                StopKickTravel();
+                return;
+            }
+
+            float forwardGap = delta.x * _kickFacing;
+            if (forwardGap >= -.12f && forwardGap <= AirKickContactGap
+                && Mathf.Abs(delta.y) <= AirKickVerticalReach && Player.AirKickElapsed >= AirKickImpact)
+            {
+                int damage = _combat != null && _combat.Config != null ? _combat.Config.AttackDamage : 1;
+                float push = _combat != null && _combat.Config != null ? _combat.Config.ThirdHitKnockback : 6f;
+                _kickTarget = null;
+                StopKickTravel();
+                int previousHp = _kickEnemy.CurrentHP;
+                bool useKickEffect = _hitbox != null && _hitbox.HasAirKickImpact;
+                _kickEnemy.TakeDamage(new DamageInfo(damage, new Vector2(-_kickFacing, 0f), Player.gameObject)
+                    { KnockbackPower = push, SuppressDefaultHitFx = useKickEffect }.WithPoint(point));
+                if (useKickEffect && _kickEnemy != null && _kickEnemy.CurrentHP < previousHp)
+                {
+                    Vector2 effectPoint = Player.TryGetComponent<Player3DGameplayVisual>(out var visual)
+                        ? visual.AirKickImpactPosition(point) : point;
+                    _hitbox.PlayAirKickImpact(effectPoint, _kickFacing);
+                }
+                HitFeel.Play(.075f, .10f);
+                return;
+            }
+
+            // Aim at the enemy's upper body so an attack from above visibly descends into the target.
+            var bounds = _kickTarget.bounds;
+            float aimHeight = bounds.center.y + bounds.extents.y * .45f;
+            var approach = new Vector2(_kickFacing * Mathf.Max(0f, forwardGap - AirKickApproachGap),
+                Mathf.Clamp(aimHeight - origin.y, delta.y - .4f, delta.y + .4f));
+            float time = Mathf.Max(Time.fixedDeltaTime,
+                _segmentTimer - (AirKickDuration - AirKickImpact) + Time.fixedDeltaTime);
+            Vector2 velocity = Vector2.ClampMagnitude(approach / time, AirKickSpeed);
+            if (velocity.y < 0f)
+            {
+                // Keep the player just above a platform while closing the remaining horizontal gap.
+                float step = Time.fixedDeltaTime;
+                const float floorClearance = .15f;
+                int groundHits = Player.Body.Cast(Vector2.down, KickGround, _kickWalls,
+                    -velocity.y * step + floorClearance);
+                for (int i = 0; i < groundHits; i++)
+                {
+                    var hit = _kickWalls[i];
+                    if (hit.normal.y > .5f)
+                        velocity.y = Mathf.Max(velocity.y, -Mathf.Max(0f, hit.distance - floorClearance) / step);
+                }
+            }
+
+            if (velocity.sqrMagnitude > .001f)
+            {
+                int obstacles = Player.Body.Cast(velocity.normalized, KickGround, _kickWalls,
+                    velocity.magnitude * Time.fixedDeltaTime + .03f);
+                for (int i = 0; i < obstacles; i++)
+                {
+                    if (_kickWalls[i].normal.y > .5f) continue;
+                    _kickTarget = null;
+                    _kickEnemy = null;
+                    StopKickTravel();
+                    return;
+                }
+            }
+
+            Player.Body.velocity = velocity;
+        }
+
+        private void StopKickTravel()
+        {
+            Vector2 velocity = Player.Body.velocity;
+            velocity.x = 0f;
+            Player.Body.velocity = velocity;
         }
 
         private void AdvanceCombo()

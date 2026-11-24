@@ -1,0 +1,7 @@
+{
+  "bones": 20,
+  "body_vertices": 4729,
+  "unweighted_vertices": 0,
+  "binding_result": "Fallback region-constrained distance weights; covered vertices but deformation not yet approved",
+  "status": "Draft rig; joint placement and deformation require rendered pose checks before animation delivery."
+}

@@ -27,7 +27,7 @@ Transform:
   m_GameObject: {fileID: 2596983267452995995}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.3738095, y: 0, z: 0}
+  m_LocalPosition: {x: 1.9238095, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -76,7 +76,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 1.4, y: 1.2}
+  m_Size: {x: 2.5, y: 1.2}
   m_EdgeRadius: 0
 --- !u!114 &8433971688763474533
 MonoBehaviour:
@@ -208,6 +208,7 @@ GameObject:
   - component: {fileID: 7107463270109589794}
   - component: {fileID: -3558639408562610080}
   - component: {fileID: 4286606396997937737}
+  - component: {fileID: 7118568196659334202}
   m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
@@ -253,7 +254,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 9b03f3fb6c9b8ef4c9aa428b5b26b462, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -274,7 +275,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 10
-  m_Sprite: {fileID: 21300000, guid: 0529e8b4ca985a04bbf0ea4f865408a6, type: 3}
+  m_Sprite: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -282,7 +283,7 @@ SpriteRenderer:
   m_Size: {x: 3.1782994, y: 2.2037036}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 1
+  m_WasSpriteAssigned: 0
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!50 &403287181897505301
@@ -308,7 +309,7 @@ Rigidbody2D:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
   m_CollisionDetection: 1
   m_Constraints: 4
@@ -452,6 +453,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _config: {fileID: 11400000, guid: 000763bf7438471499478357ff388c71, type: 2}
   _fxPurifyPrefab: {fileID: 2503825716971219817, guid: 12ac78a39c003c44192709a11ab7c706, type: 3}
+  _fxPurifyWavePrefab: {fileID: 8354128752598071911, guid: 88d83f0f448979c4ab4de6460a0b9fb7, type: 3}
   _hitbox: {fileID: 8433971688763474533}
   _sprayStartSfx: {fileID: 0}
   _heavyReleaseSfx: {fileID: 0}
@@ -468,8 +470,128 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _hitbox: {fileID: 5432908658887443895}
-  _fxSlashPrefab: {fileID: 2311530099708964964, guid: 947d3b77ee64a3648935905c2e3c4373, type: 3}
+  _groundSwingReach: 0.22
   _fxHitPrefab: {fileID: 6723326672747166943, guid: 5ba218ed0ae954d4ab07376808d8a7fe, type: 3}
+  _fxAirKickImpact: {fileID: 1922953213757722805, guid: df6004d775cf65843b3ebad8063f7d24, type: 3}
+--- !u!114 &7118568196659334202
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3348617008470950075}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2df9a40b4cd1d7547941710755b0be24, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _modelPrefab: {fileID: 6027628300010018214, guid: c0c8a02bc09cd9942a653319da9a4afa, type: 3}
+  _jumpPreparationClip: {fileID: 5990503685941882060, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+  _heldToolPrefab: {fileID: 2972350864471165401, guid: 5e0253bc8a746fe409451044ec2d1a40, type: 3}
+  _sprayerPrefab: {fileID: 8224991529217684938, guid: b15d1c6204e243749ba46aa160b987cb, type: 3}
+  _swingSprayerMesh: {fileID: 4300000, guid: 9ab631b1ec3c9984cb7ed13bf53fba19, type: 2}
+  _purifyPrunerPrefab: {fileID: 919132149155446097, guid: ee4ee986438170344b682e04f228d822, type: 3}
+  _sprayLoop: {fileID: -3936920972477878799, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+  _airKickClip: {fileID: 3205989062162100764, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+  _airKickLeftClip: {fileID: 6065276694866636510, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+  _runAttackClip: {fileID: 4442604570071137984, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+  _motions:
+  - State: Idle
+    Clip: {fileID: -8945691123924629249, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 0
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: ItemGetHold
+    Clip: {fileID: 1597172801559152884, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 0
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: Run
+    Clip: {fileID: -7551964380084998518, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 1
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: Jump
+    Clip: {fileID: 1079665108409675491, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 0
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: Fall
+    Clip: {fileID: -5025487861805838091, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 0
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: Land
+    Clip: {fileID: -7690588252518188395, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 0
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: Attack
+    Clip: {fileID: -623603649343465320, guid: b1f30eef82e97ce4a9620f2dba335831, type: 3}
+    Grip: 1
+    LeftHandTool: 1
+    ShowHeldTool: 0
+  - State: Attack02
+    Clip: {fileID: -7386473106184555527, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 1
+    LeftHandTool: 0
+    ShowHeldTool: 1
+  - State: Attack03
+    Clip: {fileID: -2930357410350885467, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 1
+    LeftHandTool: 0
+    ShowHeldTool: 1
+  - State: AttackAir
+    Clip: {fileID: -8495436116046912665, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 1
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: HeavyAttack
+    Clip: {fileID: -6290864908766501146, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 1
+    LeftHandTool: 1
+    ShowHeldTool: 0
+  - State: Hurt
+    Clip: {fileID: 9149661223541978141, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 0
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: Death
+    Clip: {fileID: -982115091633673366, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 0
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: Victory
+    Clip: {fileID: -1228952814471920847, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 1
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: Dash
+    Clip: {fileID: -2246502780319343731, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 1
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: Roll
+    Clip: {fileID: -623603649343465320, guid: 788eb091d06a2cb43844bf209e614a4b, type: 3}
+    Grip: 0
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: Crouch
+    Clip: {fileID: 6589755540219670814, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 0
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: Idle02
+    Clip: {fileID: -8945691123924629249, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 0
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  - State: Turn
+    Clip: {fileID: -8945691123924629249, guid: e8ea5837b30e73043964b270f213f56f, type: 3}
+    Grip: 0
+    LeftHandTool: 0
+    ShowHeldTool: 0
+  _swingLeanDegrees: 13
 --- !u!1 &8619655257873437900
 GameObject:
   m_ObjectHideFlags: 0

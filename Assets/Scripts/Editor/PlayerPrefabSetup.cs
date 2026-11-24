@@ -135,6 +135,8 @@ namespace StarEco.EditorTools
                 var spraySo = new SerializedObject(spray);
                 SetIfPresent(spraySo, "_config", ecoConfig);
                 SetIfPresent(spraySo, "_fxPurifyPrefab", fxOneShot);
+                var wavePrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/FX/fx_purify_wave_l.prefab");
+                if (wavePrefab != null) SetIfPresent(spraySo, "_fxPurifyWavePrefab", wavePrefab.GetComponent<StarEco.Eco.FxOneShot>());
                 SetIfPresent(spraySo, "_hitbox", sprayHitboxGo.GetComponent<StarEco.Eco.SprayHitbox>());
                 spraySo.ApplyModifiedPropertiesWithoutUndo();
 

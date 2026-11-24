@@ -1,0 +1,27 @@
+{
+  "scene": "Assets/Scenes/Player3DRefinedAnimationPreview.unity",
+  "run_samples": 16,
+  "grip_weights": [
+    0.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    0.0
+  ],
+  "run_seconds": 4.125,
+  "console_errors": [],
+  "play_mode_exited": true
+}

@@ -1,0 +1,11 @@
+{
+  "body_quads": 4745,
+  "eyelid_quads": 336,
+  "total_quads": 5081,
+  "shape_keys": [
+    "Blink_L",
+    "Blink_R"
+  ],
+  "frames": 48,
+  "method": "Flush lid borders, recessed painted eye surface, vertex-color skin transition; separate overlay mesh remains, not anatomical integrated eyelids."
+}

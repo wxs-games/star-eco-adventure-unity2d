@@ -1,0 +1,11 @@
+{
+  "body_quads": 4745,
+  "eyelid_quads": 336,
+  "total_quads": 5081,
+  "shape_keys": [
+    "Blink_L",
+    "Blink_R"
+  ],
+  "frames": 48,
+  "method": "Surface eyelid overlay prototype; painted original eyes retained; no separate eyeballs or anatomical eye sockets yet."
+}

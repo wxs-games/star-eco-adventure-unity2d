@@ -6,9 +6,7 @@ namespace StarEco.Combat
     /// <summary>
     /// 钳子投掷（第三段连击的收尾）：把手中的钳子甩出去并负责"还回来"。
     ///
-    /// 与武器解耦架构的关系：投掷期间只是把 ToolAnchor 的 SpriteRenderer 关掉（不 SetActive，
-    /// 因为动画 clip 每帧都会写 m_IsActive，用 SetActive 会被覆盖），飞出去的是同一个精灵的副本；
-    /// 回旋归位抵达手心的那一帧再把渲染器开回来。
+    /// 投掷期间关闭手持显示，回旋归位后恢复。3D 角色从手部握点出手，精灵角色使用 ToolAnchor。
     ///
     /// 组件挂在 Player 根上；缺组件时 PlayerController 会自动补一个（见 PlayerController.Awake），
     /// 因此不需要改预制体结构。
@@ -45,7 +43,7 @@ namespace StarEco.Combat
         }
 
         /// <summary>
-        /// 出手。钳子已在空中 / 找不到工具精灵时返回 false（调用方当作"这一下空挥"处理）。
+        /// 出手。钳子已在空中或缺少可用的工具模型和精灵时返回 false。
         /// </summary>
         public bool TryThrow()
         {
@@ -56,9 +54,15 @@ namespace StarEco.Combat
             }
 
             Sprite sprite = _anchor != null ? _anchor.ToolSprite : null;
-            if (sprite == null)
+            GameObject modelPrefab = null;
+            Transform handGrip = null;
+            if (TryGetComponent<Player3DGameplayVisual>(out var visual))
             {
-                Debug.LogWarning("[PlayerToolThrow] 找不到钳子精灵，本次投掷跳过");
+                visual.TryGetHeldTool(out modelPrefab, out handGrip);
+            }
+            if (sprite == null && modelPrefab == null)
+            {
+                Debug.LogWarning("[PlayerToolThrow] 找不到钳子模型或精灵，本次投掷跳过");
                 return false;
             }
 
@@ -76,12 +80,15 @@ namespace StarEco.Combat
                 VisualScale = cfg != null ? cfg.ThrowVisualScale : 1.25f,
                 TrailTime = cfg != null ? cfg.ThrowTrailTime : 0.14f,
                 Source = gameObject,
-                ReturnTarget = _anchor != null ? _anchor.transform : transform
+                ReturnTarget = handGrip != null ? handGrip : _anchor != null ? _anchor.transform : transform,
+                ModelPrefab = modelPrefab,
+                ModelScale = handGrip != null ? handGrip.lossyScale.y : 1f,
+                ReleaseRotation = handGrip != null ? handGrip.rotation : Quaternion.identity
             };
 
             int facing = _player.FacingDir;
-            Vector2 start = _anchor != null
-                ? (Vector2)_anchor.transform.position
+            Vector2 start = handGrip != null || _anchor != null
+                ? (Vector2)p.ReturnTarget.position
                 : (Vector2)transform.position + new Vector2(facing * 0.4f, 0.2f);
 
             if (_projectile == null)

@@ -1,0 +1,9 @@
+{
+  "new_hand_vertices": {
+    "Player_Hand_L": 285,
+    "Player_Hand_R": 280
+  },
+  "removed_distal_faces": 84,
+  "shape_key": "RunGrip",
+  "method": "Rebuilt low-poly palm and five fingers per hand; curl shape key, original mesh retained in prior file."
+}

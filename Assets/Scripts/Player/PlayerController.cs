@@ -44,6 +44,9 @@ namespace StarEco.Player
         public bool IsGrounded { get; private set; }
         public float VerticalVelocity => Body.velocity.y;
         public bool IsDead { get; private set; }
+        internal float AirKickElapsed { get; set; } = -1f;
+        internal bool IsKickingEnemy(StarEco.EnemyAI.EnemyControllerBase enemy) =>
+            enemy != null && AirKickElapsed >= 0f && _machine?.Get<PlayerAttackState>()?.KickEnemy == enemy;
 
         /// <summary>死因是否为坠落（跌落山崖）。仅用于失败面板文案，不影响任何玩法逻辑。</summary>
         public bool DiedFromFall { get; private set; }
@@ -103,6 +106,9 @@ namespace StarEco.Player
         public bool IsWallJumpLocked => _wallJumpLockTimer > 0f;
 
         private PlayerStateMachine _machine;
+        private Player3DGameplayVisual _gameplayVisual;
+        private PlayerJumpPreparationState JumpPreparation => _machine?.Current as PlayerJumpPreparationState;
+        internal float JumpPreparationTime => JumpPreparation?.Elapsed ?? -1f;
 
         // 手感计时器
         private float _coyoteCounter;
@@ -167,6 +173,7 @@ namespace StarEco.Player
             Anim = GetComponent<PlayerAnimatorDriver>();
             Combat = GetComponent<StarEco.Combat.PlayerCombat>();
             Spray = GetComponent<StarEco.Eco.SprayController>();
+            _gameplayVisual = GetComponent<Player3DGameplayVisual>();
 
             // 投掷组件：场景/预制体上已挂则复用，没有就运行时补一个（幂等，不写资产）
             ToolThrow = GetComponent<StarEco.Combat.PlayerToolThrow>();
@@ -204,6 +211,7 @@ namespace StarEco.Player
             _machine = new PlayerStateMachine();
             _machine.Register(new PlayerIdleState(this, _machine));
             _machine.Register(new PlayerRunState(this, _machine));
+            _machine.Register(new PlayerJumpPreparationState(this, _machine));
             _machine.Register(new PlayerAirState(this, _machine));
             _machine.Register(new PlayerLandState(this, _machine));
             _machine.Register(new PlayerDodgeState(this, _machine));
@@ -282,7 +290,7 @@ namespace StarEco.Player
             HorizontalInput = axis;
 
             JumpPressedThisFrame = Input.GetButtonDown(ButtonJump);
-            if (JumpPressedThisFrame)
+            if (JumpPressedThisFrame && JumpPreparation == null)
             {
                 _jumpBufferCounter = _config.JumpBufferTime;
                 _jumpCutPending = false;   // 新的一次按键，重新决定本次跳高
@@ -291,7 +299,7 @@ namespace StarEco.Player
             JumpReleasedThisFrame = Input.GetButtonUp(ButtonJump);
             if (JumpReleasedThisFrame)
             {
-                if (_jumpBufferCounter > 0f)
+                if (HasJumpBuffer || JumpPreparation != null)
                 {
                     // 还没起跳就松手（同帧点按 / 空中预输入后松手）→ 本次起跳按短跳处理
                     _jumpCutPending = true;
@@ -362,32 +370,41 @@ namespace StarEco.Player
         // ===== 物理能力 =====
 
         /// <summary>
-        /// 尝试起跳：只在着地（或土狼时间窗口内）生效，空中不再有二段跳。
-        /// 跳高由跳跃键按住时长决定（松手截断）。
+        /// 接收已缓冲的跳跃请求。3D 角色在地面先播预蹲，土狼跳直接起跳。
         /// </summary>
-        public bool TryConsumeJump()
+        internal bool TryStartJump()
         {
-            bool allowed = _coyoteCounter > 0f && _canJump;
-            if (allowed)
+            if (!HasJumpBuffer || _coyoteCounter <= 0f || !_canJump || InputBlocked
+                || (_machine.Current is PlayerAirState && VerticalVelocity > 0f))
             {
-                _coyoteCounter = 0f;
-                _canJump = false;
-
-                _jumpBufferCounter = 0f;
-                Body.velocity = new Vector2(Body.velocity.x, _config.JumpVelocity);
-
-                // 按键在起跳前就已松开（同帧点按，或空中预输入后松手）→ 本次起跳截断为短跳。
-                // ReadInput 的截断发生在起跳之前，那一帧速度还是地面值，必须在这里补一次。
-                if (_jumpCutPending)
-                {
-                    _jumpCutPending = false;
-                    Body.velocity = new Vector2(Body.velocity.x, Body.velocity.y * _config.JumpCutMultiplier);
-                }
-
-                AudioManager.Instance?.PlaySfx(SfxId.Jump);   // M10
+                return false;
             }
 
-            return allowed;
+            _jumpBufferCounter = 0f;
+            float duration = IsGrounded && !IsCrouching && _gameplayVisual != null
+                ? _gameplayVisual.JumpPreparationDuration
+                : 0f;
+            if (duration > 0f)
+            {
+                _machine.Get<PlayerJumpPreparationState>().Duration = duration;
+                _machine.SwitchState<PlayerJumpPreparationState>();
+            }
+            else
+            {
+                LaunchJump();
+            }
+            return true;
+        }
+
+        internal void LaunchJump()
+        {
+            _coyoteCounter = 0f;
+            _canJump = false;
+            float velocity = _jumpCutPending ? _config.JumpVelocity * _config.JumpCutMultiplier : _config.JumpVelocity;
+            ConsumeJumpBuffer();
+            Body.velocity = new Vector2(Body.velocity.x, velocity);
+            AudioManager.Instance?.PlaySfx(SfxId.Jump);
+            _machine.SwitchState<PlayerAirState>();
         }
 
         /// <summary>跳跃缓冲是否有效（触地瞬间自动起跳用）。</summary>
@@ -449,7 +466,6 @@ namespace StarEco.Player
             {
                 _passThroughActive = true;
                 _passReleaseTimer = 0f;
-                _passIgnored.Clear();
                 RefreshPassThrough();
             }
             else
@@ -480,7 +496,9 @@ namespace StarEco.Player
                 {
                     continue;
                 }
-                if (!IsSolidObstacle(col))
+                // Moving enemies have dynamic bodies, unlike static level obstacles.
+                bool solidEnemy = !col.isTrigger && col.gameObject.layer == LayerMask.NameToLayer("Enemy");
+                if (!solidEnemy && !IsSolidObstacle(col))
                 {
                     continue;
                 }
@@ -536,7 +554,8 @@ namespace StarEco.Player
             for (int i = 0; i < _passIgnored.Count; i++)
             {
                 var col = _passIgnored[i];
-                if (col != null && col.enabled && _bodyCollider.IsTouching(col))
+                if (col != null && col.enabled && col.gameObject.activeInHierarchy
+                    && _bodyCollider.Distance(col).isOverlapped)
                 {
                     return true;
                 }
@@ -1214,6 +1233,7 @@ namespace StarEco.Player
 
         /// <summary>无敌期剩余时间（闪烁效果用）。</summary>
         public float InvincibleTimer => _invincibleTimer;
+        internal bool IsDodging => _machine?.Current is PlayerDodgeState;
 
         /// <summary>临时延长无敌（Boss 击败演出期间用：输入已锁，避免残余小怪打断演出）。</summary>
         public void GrantInvincibility(float seconds)
@@ -1323,6 +1343,10 @@ namespace StarEco.Player
 
         private void OnDisable()
         {
+            if (JumpPreparation != null)
+            {
+                _machine.SwitchState<PlayerIdleState>();
+            }
             // 域重载/退出 Play 时清理 IgnoreCollision 状态，避免残留影响下一局
             ReleasePassThrough();
         }

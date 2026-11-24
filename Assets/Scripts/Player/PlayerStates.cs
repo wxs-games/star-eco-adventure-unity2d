@@ -59,9 +59,8 @@ namespace StarEco.Player
             }
 
             // 跳跃缓冲（含土狼时间内的起跳）
-            if (Player.HasJumpBuffer && Player.TryConsumeJump())
+            if (Player.TryStartJump())
             {
-                Machine.SwitchState<PlayerAirState>();
                 return;
             }
 
@@ -131,9 +130,8 @@ namespace StarEco.Player
                 }
             }
 
-            if (Player.HasJumpBuffer && Player.TryConsumeJump())
+            if (Player.TryStartJump())
             {
-                Machine.SwitchState<PlayerAirState>();
                 return;
             }
 
@@ -142,6 +140,50 @@ namespace StarEco.Player
             if (!Player.IsGrounded && Machine.CurrentType == typeof(PlayerRunState))
             {
                 Machine.SwitchState<PlayerAirState>();
+            }
+        }
+    }
+
+    /// <summary>3D 起跳预蹲。保持水平控制，离开边沿时立即完成已接收的起跳。</summary>
+    internal sealed class PlayerJumpPreparationState : PlayerStateBase
+    {
+        public PlayerJumpPreparationState(PlayerController player, PlayerStateMachine machine)
+            : base(player, machine) { }
+
+        internal float Duration { get; set; }
+        internal float Elapsed { get; private set; }
+
+        public override void Enter() => Elapsed = 0f;
+
+        public override void Exit() => Player.ConsumeJumpBuffer();
+
+        public override void FixedTick() => Player.MoveHorizontally(false);
+
+        public override void Tick()
+        {
+            if (TryHandleCombatTransitions())
+            {
+                return;
+            }
+
+            if (Player.InputBlocked)
+            {
+                if (Player.IsGrounded)
+                    SwitchGroundLocomotion();
+                else
+                    Machine.SwitchState<PlayerAirState>();
+                return;
+            }
+
+            if (TryStartDodge() || TryStartDash())
+            {
+                return;
+            }
+
+            Elapsed += Time.deltaTime;
+            if (!Player.IsGrounded || Elapsed >= Duration)
+            {
+                Player.LaunchJump();
             }
         }
     }
@@ -188,9 +230,9 @@ namespace StarEco.Player
                 return;
             }
 
-            // 空中不再有二段跳：TryConsumeJump 在离地后恒为 false，
+            // 空中不再有二段跳：TryStartJump 只会消费合法的地面或土狼跳请求，
             // 保留这次调用只是让“落地前预输入”继续由 Land 状态接力缓冲。
-            if (Player.HasJumpBuffer && Player.TryConsumeJump())
+            if (Player.TryStartJump())
             {
                 return;
             }
@@ -255,9 +297,8 @@ namespace StarEco.Player
             _lockTimer -= Time.deltaTime;
 
             // 落地瞬间恰好有跳跃缓冲 → 立即再跳（连贯跳跃手感）
-            if (_lockTimer <= 0f && Player.HasJumpBuffer && Player.TryConsumeJump())
+            if (_lockTimer <= 0f && Player.TryStartJump())
             {
-                Machine.SwitchState<PlayerAirState>();
                 return;
             }
 
@@ -531,9 +572,8 @@ namespace StarEco.Player
             }
 
             // 蹲着按跳：先确认能起身再起跳，否则会把碰撞体弹进天花板
-            if (Player.HasJumpBuffer && Player.CanStandUp() && Player.TryConsumeJump())
+            if (Player.HasJumpBuffer && Player.CanStandUp() && Player.TryStartJump())
             {
-                Machine.SwitchState<PlayerAirState>();
                 return;
             }
 

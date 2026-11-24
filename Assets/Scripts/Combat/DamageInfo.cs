@@ -42,6 +42,8 @@ namespace StarEco.Combat
         /// </summary>
         public bool HasPoint;
         public Vector2 Point;
+        public bool SuppressDefaultHitFx;
+        public bool IsSprayerSwing;
 
         public DamageInfo(int amount, Vector2 sourceDirection, GameObject source)
         {
@@ -54,6 +56,8 @@ namespace StarEco.Combat
             IsDrowning = false;
             HasPoint = false;
             Point = Vector2.zero;
+            SuppressDefaultHitFx = false;
+            IsSprayerSwing = false;
         }
 
         /// <summary>附上命中点（用于命中特效对准）。</summary>

@@ -30,6 +30,9 @@ namespace StarEco.Combat
             public float TrailTime;
             public GameObject Source;
             public Transform ReturnTarget;
+            public GameObject ModelPrefab;
+            public float ModelScale;
+            public Quaternion ReleaseRotation;
         }
 
         /// <summary>归位判定距离：到这个距离内就算"回到手上"。</summary>
@@ -39,6 +42,7 @@ namespace StarEco.Combat
         private static readonly Color TrailTint = new Color(0.62f, 0.90f, 1f, 1f);
 
         private SpriteRenderer _sprite;
+        private GameObject _model;
         private TrailRenderer _trail;
         private FlightParams _p;
 
@@ -162,6 +166,25 @@ namespace StarEco.Combat
             if (_sprite != null)
             {
                 _sprite.flipX = facing < 0;
+                _sprite.enabled = p.ModelPrefab == null;
+            }
+            if (p.ModelPrefab != null && _model == null)
+            {
+                _model = Instantiate(p.ModelPrefab, transform, false);
+                foreach (var renderer in _model.GetComponentsInChildren<MeshRenderer>())
+                {
+                    renderer.sortingLayerID = _sprite.sortingLayerID;
+                    renderer.sortingOrder = _sprite.sortingOrder;
+                }
+            }
+            if (_model != null)
+            {
+                _model.SetActive(p.ModelPrefab != null);
+                if (p.ModelPrefab != null)
+                {
+                    _model.transform.localScale = Vector3.one * p.ModelScale;
+                    _model.transform.localRotation = p.ReleaseRotation;
+                }
             }
 
             if (_trail == null)

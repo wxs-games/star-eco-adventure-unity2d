@@ -1,0 +1,32 @@
+[
+  {
+    "test": "Rest",
+    "vertices_moved_over_1mm": 0,
+    "finite": true
+  },
+  {
+    "test": "ArmRaise",
+    "vertices_moved_over_1mm": 380,
+    "finite": true
+  },
+  {
+    "test": "Elbow",
+    "vertices_moved_over_1mm": 281,
+    "finite": true
+  },
+  {
+    "test": "Knee",
+    "vertices_moved_over_1mm": 542,
+    "finite": true
+  },
+  {
+    "test": "Hip",
+    "vertices_moved_over_1mm": 865,
+    "finite": true
+  },
+  {
+    "test": "Ankle",
+    "vertices_moved_over_1mm": 321,
+    "finite": true
+  }
+]

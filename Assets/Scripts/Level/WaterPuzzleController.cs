@@ -28,6 +28,8 @@ namespace StarEco.Level
         [Tooltip("水位视觉（整体上移的对象，如水域色块根）")]
         [SerializeField] private Transform _waterVisual;
 
+        [SerializeField] private SpriteRenderer _riverRenderer;
+
         [Tooltip("水位低位 Y（初始）")]
         [SerializeField] private float _lowY = 0f;
 
@@ -63,6 +65,9 @@ namespace StarEco.Level
         private EnemyControllerBase _bridgeEnemy;
         private StarEco.Player.PlayerController _player;
         private Collider2D _playerCollider;
+        private static readonly int Purification = Shader.PropertyToID("_Purification");
+        private MaterialPropertyBlock _riverProperties;
+        private Vector4 _riverTransition;
 
         /// <summary>解谜是否已完成。</summary>
         public bool IsSolved => _solved;
@@ -121,6 +126,8 @@ namespace StarEco.Level
             {
                 _waterVisual.position = new Vector3(_waterVisual.position.x, _lowY, _waterVisual.position.z);
             }
+
+            UpdateRiverClarity();
 
             if (_raftPath != null)
             {
@@ -302,10 +309,25 @@ namespace StarEco.Level
                 return;   // 普通污染源与解谜无关
             }
 
-            _cleared.Add(evt.TargetId);
+            if (_cleared.Add(evt.TargetId))
+                UpdateRiverClarity();
             Debug.Log($"[WaterPuzzle] 堵塞点 {evt.TargetId} 已清理（{_cleared.Count}/{ExpectedTotal()}）");
 
             TrySolveAfterPrerequisites();
+        }
+
+        private void UpdateRiverClarity()
+        {
+            if (_riverRenderer == null) return;
+
+            float elapsed = Mathf.Clamp01((Time.time - _riverTransition.z) / 0.7f);
+            float current = Mathf.SmoothStep(_riverTransition.x, _riverTransition.y, elapsed);
+            float target = Mathf.Clamp01((float)_cleared.Count / Mathf.Max(1, ExpectedTotal()));
+            _riverTransition = new Vector4(current, target, Time.time, 0f);
+            if (_riverProperties == null) _riverProperties = new MaterialPropertyBlock();
+            _riverRenderer.GetPropertyBlock(_riverProperties);
+            _riverProperties.SetVector(Purification, _riverTransition);
+            _riverRenderer.SetPropertyBlock(_riverProperties);
         }
 
         private void OnAnimalRescued(AnimalRescuedEvent evt)

@@ -29,9 +29,16 @@ namespace StarEco.Level
         [Tooltip("收起后沉入地面的额外深度（0 = 正好沉到看不见）")]
         [SerializeField] private float _retractExtraDepth = 0.2f;
 
+        [Tooltip("使用收回材质时保留地刺底槽，并以曲线控制收回。")]
+        [SerializeField] private bool _keepSlotVisible;
+        [SerializeField] private AnimationCurve _retractCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+
+        private static readonly int Retraction = Shader.PropertyToID("_Retraction");
         private Collider2D _collider;
         private SpriteRenderer _sprite;
         private Vector3 _raisedPosition;
+        private Vector2 _raisedColliderOffset;
+        private MaterialPropertyBlock _retractProperties;
         private bool _retracted;
         private bool _retracting;
         private float _retractT;
@@ -43,6 +50,7 @@ namespace StarEco.Level
             _collider = GetComponent<Collider2D>();
             _sprite = GetComponent<SpriteRenderer>();
             _raisedPosition = transform.position;
+            _raisedColliderOffset = _collider.offset;
         }
 
         private void OnEnable()
@@ -90,8 +98,21 @@ namespace StarEco.Level
             _retractT += Time.deltaTime;
             float t = _retractDuration > 0f ? Mathf.Clamp01(_retractT / _retractDuration) : 1f;
 
-            float depth = ResolveRetractDepth() * t;
-            transform.position = _raisedPosition + Vector3.down * depth;
+            if (_keepSlotVisible && _sprite != null)
+            {
+                float progress = Mathf.Clamp01(_retractCurve.Evaluate(t));
+                if (_retractProperties == null) _retractProperties = new MaterialPropertyBlock();
+                _sprite.GetPropertyBlock(_retractProperties);
+                _retractProperties.SetFloat(Retraction, progress);
+                _sprite.SetPropertyBlock(_retractProperties);
+                _collider.offset = _raisedColliderOffset
+                    + (Vector2)transform.InverseTransformVector(Vector3.down * ResolveRetractDepth() * progress);
+            }
+            else
+            {
+                float depth = ResolveRetractDepth() * t;
+                transform.position = _raisedPosition + Vector3.down * depth;
+            }
 
             if (t >= 1f)
             {
@@ -102,7 +123,7 @@ namespace StarEco.Level
                 {
                     _collider.enabled = false;
                 }
-                if (_sprite != null)
+                if (_sprite != null && !_keepSlotVisible)
                 {
                     _sprite.enabled = false;
                 }

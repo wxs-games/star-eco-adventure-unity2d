@@ -1,0 +1,26 @@
+{
+  "Player_Low_5K.fbx": {
+    "bytes": 15479308,
+    "sha256": "de013c10e2de57b49440ca3931c0ac5b1f34625ecc593b4f0dfa525575d11cbc"
+  },
+  "Player_Low_5K.glb": {
+    "bytes": 18749668,
+    "sha256": "66b12787802257484c44d0ea31ca383223c117cd685c00f7957b5bec9d45e963"
+  },
+  "DCC~/Player_Final_5K.blend": {
+    "bytes": 75313079,
+    "sha256": "414b8bc7e74b16eae0881b9235200cfce92928b1afdd4ff0279d7c47da1f1242"
+  },
+  "Player_BaseColor.png": {
+    "bytes": 11741113,
+    "sha256": "0dbc176ed174d9ff81b6cf5073054c98c579b6c8b9bc6c568e27234ca3d89cd6"
+  },
+  "Player_ORM.png": {
+    "bytes": 3263351,
+    "sha256": "9b4af992e6cdaee9da3ad8eae9d462b29648a025c35b3bb7617b09c6ea8a9d06"
+  },
+  "Player_Normal.png": {
+    "bytes": 3440270,
+    "sha256": "3de92f9579d7831f5e630092b6ed88a3df28ba2592011fee909490b8714a4a58"
+  }
+}

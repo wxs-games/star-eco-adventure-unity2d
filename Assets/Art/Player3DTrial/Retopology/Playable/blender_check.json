@@ -1,0 +1,32 @@
+[
+  {
+    "clip": "Proof",
+    "seconds": 1.0,
+    "vertices_moved_midpoint": 543
+  },
+  {
+    "clip": "Idle",
+    "seconds": 0.8333333333333334,
+    "vertices_moved_midpoint": 0
+  },
+  {
+    "clip": "Run",
+    "seconds": 0.6666666666666666,
+    "vertices_moved_midpoint": 0
+  },
+  {
+    "clip": "Jump",
+    "seconds": 0.45,
+    "vertices_moved_midpoint": 2107
+  },
+  {
+    "clip": "Fall",
+    "seconds": 0.3333333333333333,
+    "vertices_moved_midpoint": 0
+  },
+  {
+    "clip": "Land",
+    "seconds": 0.4,
+    "vertices_moved_midpoint": 2107
+  }
+]

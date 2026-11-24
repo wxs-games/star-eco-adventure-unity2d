@@ -1,0 +1,26 @@
+{
+  "Player_Fall.fbx": {
+    "bytes": 16047180,
+    "sha256": "492661cd9f55b71aea84854865a38a03812a5f741258cf87092238bcc9e78efa"
+  },
+  "Player_Idle.fbx": {
+    "bytes": 16096972,
+    "sha256": "4b3e62c10b7c79972b0720ca8ef3a6a71f6a9306e9d1673eb09624aac3006bac"
+  },
+  "Player_Jump.fbx": {
+    "bytes": 16070460,
+    "sha256": "5f4330f5201905d1c64bb49a007e8a65d3dfa1a972d57fcfece086eb8edc666e"
+  },
+  "Player_Land.fbx": {
+    "bytes": 16060300,
+    "sha256": "c99d74b111beb6d3d67bed7cc9692ff4ec2bd0c19eb90fe8a0e023285a8ec6dd"
+  },
+  "Player_Proof.fbx": {
+    "bytes": 16103212,
+    "sha256": "0bf679bb3305be71357bd0b80ed80e4cea9fd0903e9a4ab01a9d422a7609c0f0"
+  },
+  "Player_Run.fbx": {
+    "bytes": 16079084,
+    "sha256": "d0444f98ceba1ef93f6c4799a4d7f1e73ca202074bb51b7580b2f726ac358e1e"
+  }
+}

@@ -26,7 +26,7 @@ MonoBehaviour:
   HurtInvincibleTime: 1
   HurtKnockback: 6
   DodgeDuration: 0.333
-  DodgeDistance: 3
+  DodgeDistance: 4.5
   DodgeInvincibleTime: 0.33
   DodgeCooldown: 0.6
   AirDodgeCount: 1

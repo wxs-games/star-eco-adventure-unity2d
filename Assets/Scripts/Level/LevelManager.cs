@@ -194,7 +194,13 @@ namespace StarEco.Level
                     checkpoint.RestorePlayerAt(snap);
                     return;
                 }
-                // 死亡即结束本局：直接进入失败终态并弹出结算面板（重新开始 / 返回主菜单）。
+                // 战斗死亡先播倒地动画，坠落或溺水直接进入失败结算。
+                if (!_player.DiedFromFall && !_player.DiedFromDrowning
+                    && _player.TryGetComponent<Player3DGameplayVisual>(out var visual)
+                    && visual.IsDeathAnimationPending)
+                    return;
+
+                // 进入失败终态并弹出结算面板（重新开始 / 返回主菜单）。
                 // 重开本关由结算面板的"重新开始"重载场景完成，不做原地续命。
                 // 死因区分：坠落（掉出关卡地面）不能说成"被击败"，否则玩家会以为是被怪打死的。
                 FinishLevel(false,

@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Attack",
+    "seconds": 0.3333333333333333,
+    "sample_rate": 24
+  },
+  {
+    "name": "Attack02",
+    "seconds": 0.3333333333333333,
+    "sample_rate": 24
+  },
+  {
+    "name": "HeavyAttack",
+    "seconds": 0.5,
+    "sample_rate": 24
+  },
+  {
+    "name": "Hurt",
+    "seconds": 0.2916666666666667,
+    "sample_rate": 24
+  },
+  {
+    "name": "Dash",
+    "seconds": 0.4166666666666667,
+    "sample_rate": 24
+  },
+  {
+    "name": "Crouch",
+    "seconds": 0.125,
+    "sample_rate": 24
+  }
+]

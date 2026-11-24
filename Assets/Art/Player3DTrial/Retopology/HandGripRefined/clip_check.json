@@ -1,0 +1,22 @@
+[
+  {
+    "clip": "Idle",
+    "changedVertices": 8170
+  },
+  {
+    "clip": "ImportedMotionRefined",
+    "changedVertices": 11552
+  },
+  {
+    "clip": "Jump",
+    "changedVertices": 6495
+  },
+  {
+    "clip": "Fall",
+    "changedVertices": 5412
+  },
+  {
+    "clip": "Land",
+    "changedVertices": 6495
+  }
+]

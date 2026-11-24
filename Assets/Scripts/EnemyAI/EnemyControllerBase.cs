@@ -149,8 +149,10 @@ namespace StarEco.EnemyAI
             {
                 return;
             }
-            ApplyKnockback();
             Machine.FixedTick();
+            // 受击状态入场时会消费击退，避免旧状态的移动先把这次速度覆盖掉。
+            if (!_pendingHurt)
+                ApplyKnockback();
         }
 
         // ===== 感知 =====
@@ -372,11 +374,13 @@ namespace StarEco.EnemyAI
 
             // 命中火花：§AnimationVFXSpec §8.3「IHittable.TakeDamage 成功后」播在受击点。
             // 玩家受击同样走这条链路（PlayerCombat 也实现 IHittable），此处只管敌人侧。
-            PlayHitFx(info);
+            if (!info.SuppressDefaultHitFx)
+                PlayHitFx(info);
         }
 
         /// <summary>§5.2：命中火花属「特效（前）」= 21。</summary>
         private const int FxFrontOrder = 21;
+        private static Material _sprayerHitMaterial;
 
         /// <summary>命中火花：播在受击点（未提供命中点时用自身位置）。</summary>
         private void PlayHitFx(DamageInfo info)
@@ -390,7 +394,26 @@ namespace StarEco.EnemyAI
                 ? new Vector3(info.Point.x, info.Point.y, transform.position.z)
                 : transform.position;
 
-            FxOneShot.Play(_fxHitPrefab, pos, FxFrontOrder);
+            var effect = FxOneShot.Play(_fxHitPrefab, pos, FxFrontOrder);
+            if (effect == null) return;
+            effect.transform.localScale = _fxHitPrefab.transform.localScale;
+            var renderer = effect.GetComponent<SpriteRenderer>();
+            if (renderer == null) return;
+            var sourceRenderer = _fxHitPrefab.GetComponent<SpriteRenderer>();
+            if (sourceRenderer != null) renderer.sharedMaterial = sourceRenderer.sharedMaterial;
+            if (Sprite != null) renderer.sortingLayerID = Sprite.sortingLayerID;
+            if (!info.IsSprayerSwing || renderer.sprite == null) return;
+
+            if (_sprayerHitMaterial == null)
+                _sprayerHitMaterial = Resources.Load<Material>("Shaders/SprayerHit");
+            if (_sprayerHitMaterial != null) renderer.sharedMaterial = _sprayerHitMaterial;
+            // Imported spark frames have a large canvas and a small prefab scale.
+            float width = renderer.sprite.bounds.size.x;
+            if (width > 0f)
+                effect.transform.localScale = Vector3.one * (2f / width);
+            if (Sprite != null)
+                renderer.sortingOrder = Mathf.Max(FxFrontOrder, Sprite.sortingOrder + 2);
+            effect.transform.position = pos + Vector3.back * .25f;
         }
 
         public bool ConsumePendingHurt()

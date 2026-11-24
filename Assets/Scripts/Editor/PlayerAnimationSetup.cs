@@ -232,6 +232,13 @@ namespace StarEco.EditorTools
         [MenuItem("StarEco/Setup/Player Animation")]
         public static void Run()
         {
+            var playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+            if (playerPrefab != null && playerPrefab.GetComponent<StarEco.Player.Player3DGameplayVisual>() != null)
+            {
+                Debug.Log("当前玩家使用 3D 模型，旧版 2D 装配菜单已跳过。");
+                return;
+            }
+
             EnsureFolder(OutputRoot);
             EnsureFolder("Assets/Settings");
             EnsureFolder("Assets/Prefabs/Player");
@@ -675,11 +682,18 @@ namespace StarEco.EditorTools
                         t.exitTime = 0.95f;
                         t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsGrounded");
                     });
-                    Link(state, idle, t =>
+                    if (state == attackAir)
                     {
-                        t.hasExitTime = true;
-                        t.exitTime = 0.95f;
-                    });
+                        Link(state, land, t => t.AddCondition(AnimatorConditionMode.If, 0, "IsGrounded"));
+                    }
+                    else
+                    {
+                        Link(state, idle, t =>
+                        {
+                            t.hasExitTime = true;
+                            t.exitTime = 0.95f;
+                        });
+                    }
                 }
             }
 
@@ -784,6 +798,7 @@ namespace StarEco.EditorTools
             sprite.sortingOrder = 15;
 
             var body = go.AddComponent<Rigidbody2D>();
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
             body.freezeRotation = true;
             body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 

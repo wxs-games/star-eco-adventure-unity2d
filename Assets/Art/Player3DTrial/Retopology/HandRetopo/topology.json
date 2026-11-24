@@ -1,0 +1,23 @@
+{
+  "body_face_sizes": {
+    "4": 5777,
+    "3": 170,
+    "5": 44
+  },
+  "body_boundary_edges": 0,
+  "body_components": 1,
+  "wrists": [
+    {
+      "side": "L",
+      "body_rim": 21,
+      "hand_rim": 54,
+      "new_hand_faces": 608
+    },
+    {
+      "side": "R",
+      "body_rim": 22,
+      "hand_rim": 55,
+      "new_hand_faces": 613
+    }
+  ]
+}

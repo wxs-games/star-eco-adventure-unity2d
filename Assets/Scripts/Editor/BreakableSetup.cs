@@ -107,6 +107,11 @@ namespace StarEco.EditorTools
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = sprite;
             sr.sortingOrder = sortingOrder;
+            if (kind == BreakableKind.Plant)
+            {
+                var wind = Resources.Load<Material>("Shaders/ReedWind");
+                if (wind != null) sr.sharedMaterial = wind;
+            }
 
             var col = go.AddComponent<BoxCollider2D>();
             col.isTrigger = true;   // 纯装饰：玩家/怪物可直接穿过

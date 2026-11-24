@@ -91,6 +91,14 @@ namespace StarEco.EnemyAI
                 return;
             }
 
+            // 飞踢冲向已锁定敌人时，目标的近身攻击不能抢先打断这一脚。
+            if (hittable is StarEco.Combat.PlayerCombat player
+                && player.TryGetComponent<StarEco.Player.PlayerController>(out var controller)
+                && controller.IsKickingEnemy(_controller))
+            {
+                return;
+            }
+
             _hitThisWindow.Add(hittable);
 
             var dmg = new DamageInfo(

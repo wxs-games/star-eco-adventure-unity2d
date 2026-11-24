@@ -5,7 +5,7 @@ namespace StarEco.Player
 {
     /// <summary>
     /// 喷洒状态（M5）：按住 K 期间持续结算判定盒内目标，减速不锁死；
-    /// 松开/净化剂耗尽/离地/受击/死亡时退出。动画复用 Player_Interact。
+    /// 松开、净化剂耗尽、离地、受击或死亡时退出。
     /// </summary>
     public class PlayerSprayState : PlayerStateBase
     {
@@ -14,6 +14,7 @@ namespace StarEco.Player
         private SprayController _spray;
         private PurifyTank _tank;
         private Animator _animator;
+        private Player3DGameplayVisual _visual;
 
         public PlayerSprayState(PlayerController player, PlayerStateMachine machine)
             : base(player, machine) { }
@@ -23,7 +24,9 @@ namespace StarEco.Player
             _spray = Player.GetComponent<SprayController>();
             _tank = Player.GetComponent<PurifyTank>();
             _animator = Player.GetComponent<Animator>();
-            Player.TryFireAnim(PlayerAnimParams.Interact);
+            _visual = Player.GetComponent<Player3DGameplayVisual>();
+            if (_visual == null || !_visual.HasSprayVisual)
+                Player.TryFireAnim(PlayerAnimParams.Interact);
             _spray?.BeginSpray();
         }
 
@@ -52,23 +55,21 @@ namespace StarEco.Player
                 return;
             }
 
-            // 长按持续喷雾：若 Interact 片段播完又退回 locomotion，就在仍按住 K 时再次触发，
-            // 这样当前占位喷雾动画会持续循环表现，直到松键或净化剂耗尽。
-            if (_animator != null && !_animator.IsInTransition(0))
-            {
-                var state = _animator.GetCurrentAnimatorStateInfo(0);
-                if (state.shortNameHash != InteractStateHash)
-                {
-                    Player.TryFireAnim(PlayerAnimParams.Interact);
-                }
-            }
-
             // 松开 / 净化剂耗尽 → 自动退出（R2，不报错不产生负值）
             bool held = _spray != null && _spray.SprayHeld;
             bool hasTank = _tank == null || !_tank.IsEmpty;
             if (!held || !hasTank)
             {
                 SwitchGroundLocomotion();
+                return;
+            }
+
+            // 2D 角色使用 Interact；3D 喷洒独立采样，保持 Animator 的移动状态可直接衔接。
+            if ((_visual == null || !_visual.HasSprayVisual) && _animator != null
+                && !_animator.IsInTransition(0)
+                && _animator.GetCurrentAnimatorStateInfo(0).shortNameHash != InteractStateHash)
+            {
+                Player.TryFireAnim(PlayerAnimParams.Interact);
             }
         }
     }

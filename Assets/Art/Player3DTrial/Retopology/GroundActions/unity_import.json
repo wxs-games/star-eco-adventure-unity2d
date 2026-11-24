@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Attack",
+    "seconds": 0.333333343,
+    "loop": false
+  },
+  {
+    "name": "Attack02",
+    "seconds": 0.333333343,
+    "loop": false
+  },
+  {
+    "name": "HeavyAttack",
+    "seconds": 0.5,
+    "loop": false
+  },
+  {
+    "name": "Hurt",
+    "seconds": 0.2916667,
+    "loop": false
+  },
+  {
+    "name": "Dash",
+    "seconds": 0.4166667,
+    "loop": false
+  },
+  {
+    "name": "Crouch",
+    "seconds": 0.125,
+    "loop": false
+  }
+]

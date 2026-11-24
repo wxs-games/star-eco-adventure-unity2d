@@ -1,0 +1,16 @@
+{
+  "source": {
+    "vertices": 323649,
+    "faces": 500000,
+    "face_sizes": {
+      "3": 500000
+    }
+  },
+  "low": {
+    "vertices": 4729,
+    "faces": 4745,
+    "face_sizes": {
+      "4": 4745
+    }
+  }
+}

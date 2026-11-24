@@ -1,0 +1,31 @@
+{
+  "vertices": 4729,
+  "faces": 4745,
+  "face_sizes": {
+    "4": 4745
+  },
+  "boundary_edges": 0,
+  "nonmanifold_edges": 0,
+  "low_vertices_to_source_distance_m": {
+    "mean": 4.021542778988277e-07,
+    "p95": 2.107342389479072e-08,
+    "max": 0.001152168377302587
+  },
+  "low_face_centers_to_source_distance_m": {
+    "mean": 0.0023197824015131563,
+    "p95": 0.006895171012729406,
+    "max": 0.01866777054965496
+  },
+  "sampled_source_vertices_to_low_distance_m": {
+    "mean": 0.004007452041536255,
+    "p95": 0.013500414788722992,
+    "max": 0.06778872013092041
+  },
+  "uv_layers": 1,
+  "armature": false,
+  "shape_keys": false,
+  "facial_status": "Automatic quad topology; no anatomical eyelid/mouth loops. Requires dedicated facial retopology before blendshapes.",
+  "joint_status": "Automatic edge flow only. No rig or deformation test performed.",
+  "triangles": 9490,
+  "degenerate_triangles": 0
+}

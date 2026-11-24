@@ -1,17 +1,18 @@
 using System.Collections;
+using StarEco.Player;
 using UnityEngine;
 
 namespace StarEco.Eco
 {
     /// <summary>
-    /// 拾取展示特效：把刚获得的物品精灵从角色头顶「弹出并升起」，短暂停留后淡出。
-    ///
-    /// 背景：玩家的 Interact 动画是通用交互姿势（握拳），并没有「举起物品」的帧，
-    /// 因此用世界空间精灵补足塞尔达式「举高展示」的观感，且不需要新增美术资源。
+    /// 拾取展示：物品跟随 3D 角色的双手，精灵角色沿用头顶升起效果。
     /// </summary>
+    [DefaultExecutionOrder(40)]
     public class ItemRaiseFx : MonoBehaviour
     {
         private SpriteRenderer _sr;
+        private Player3DGameplayVisual _visual;
+        private float _displayScale;
 
         /// <summary>
         /// 在 <paramref name="anchor"/> 头顶播放物品升起展示。
@@ -29,7 +30,9 @@ namespace StarEco.Eco
             var go = new GameObject("ItemRaiseFx");
             var fx = go.AddComponent<ItemRaiseFx>();
             fx._sr = go.AddComponent<SpriteRenderer>();
+            fx._visual = anchor != null ? anchor.GetComponentInParent<Player3DGameplayVisual>() : null;
             fx._sr.sprite = sprite;
+            if (anchor != null) fx._sr.sortingLayerID = anchor.sortingLayerID;
             fx._sr.sortingOrder = sortingOrder;
 
             // 起点：头顶稍上方；有朝向时略微朝面向一侧偏移，避免正好被帽子挡住
@@ -41,6 +44,21 @@ namespace StarEco.Eco
 
             fx.StartCoroutine(fx.Run());
             return fx;
+        }
+
+        private void LateUpdate()
+        {
+            Vector3 position = default;
+            bool followingHands = _visual != null && _visual.TryGetItemHoldPoint(out position);
+            // Keep a held item clear of the much larger head on the 3D character.
+            float scale = followingHands ? _displayScale * .64f : _displayScale;
+            transform.localScale = new Vector3(scale, scale, 1f);
+            if (followingHands)
+            {
+                // Keep the bottom edge at the hands while the card scales in.
+                float lowerEdge = _sr.sprite.bounds.min.y * scale;
+                transform.position = position - Vector3.up * lowerEdge;
+            }
         }
 
         private IEnumerator Run()
@@ -63,13 +81,12 @@ namespace StarEco.Eco
                 float k = Mathf.Clamp01(t / riseTime);
                 float ease = 1f - Mathf.Pow(1f - k, 3f);
                 transform.position = Vector3.Lerp(start, end, ease);
-                float pop = Mathf.Lerp(0.55f, 1f, ease) * visualScale;
-                transform.localScale = new Vector3(pop, pop, 1f);
+                _displayScale = Mathf.Lerp(0.55f, 1f, ease) * visualScale;
                 yield return null;
             }
 
             transform.position = end;
-            transform.localScale = new Vector3(visualScale, visualScale, 1f);
+            _displayScale = visualScale;
 
             // 停留（轻微上下浮动，做出「举着晃」的感觉）
             t = 0f;

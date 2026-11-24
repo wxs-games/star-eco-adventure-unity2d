@@ -1,0 +1,26 @@
+[
+  {
+    "clip": "Attack",
+    "movedVertices": 11557
+  },
+  {
+    "clip": "Attack02",
+    "movedVertices": 11557
+  },
+  {
+    "clip": "HeavyAttack",
+    "movedVertices": 11555
+  },
+  {
+    "clip": "Hurt",
+    "movedVertices": 11557
+  },
+  {
+    "clip": "Dash",
+    "movedVertices": 11557
+  },
+  {
+    "clip": "Crouch",
+    "movedVertices": 11554
+  }
+]

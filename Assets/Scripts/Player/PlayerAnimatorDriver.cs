@@ -130,15 +130,10 @@ namespace StarEco.Player
 
             _dustTimer = 0f;
 
-            // 播在脚底：把角色 pivot 换算到脚下（pivot 通常在身体中段）
+            // 使用实际碰撞体底边定位脚步扬尘。
             Vector3 feet = transform.position;
-            var sr = _player.Sprite;
-            if (sr != null && sr.sprite != null)
-            {
-                float halfH = sr.sprite.bounds.extents.y;
-                float pivotToFeet = halfH - sr.sprite.bounds.min.y;
-                feet.y -= pivotToFeet;
-            }
+            if (TryGetComponent<BoxCollider2D>(out var bodyCollider))
+                feet.y = bodyCollider.bounds.min.y;
 
             FxOneShot.Play(_fxDustRunPrefab, feet, FxBackOrder);
         }

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using StarEco.Eco;
+using StarEco.Framework;
 using StarEco.Player;
 
 namespace StarEco.Combat
@@ -15,24 +16,33 @@ namespace StarEco.Combat
     {
         [Tooltip("攻击 trigger 碰撞体（允许挂在 Player 子物体上）")]
         [SerializeField] private Collider2D _hitbox;
-
-        [Tooltip("挥击斩击光特效（§AnimationVFXSpec §8.3：开窗时播在角色朝向前方 0.8 单位）")]
-        [SerializeField] private FxOneShot _fxSlashPrefab;
+        [SerializeField, Min(0f)] private float _groundSwingReach = .22f;
 
         [Tooltip("命中火花特效（§AnimationVFXSpec §8.3：命中瞬间对准受击点）")]
         [SerializeField] private FxOneShot _fxHitPrefab;
+        [SerializeField] private FxOneShot _fxAirKickImpact;
+
+        internal bool HasAirKickImpact => _fxAirKickImpact != null && PoolManager.Instance != null;
+
+        internal void PlayAirKickImpact(Vector2 point, float facing)
+        {
+            var fx = FxOneShot.Play(_fxAirKickImpact, point, FxFrontOrder);
+            if (fx == null) return;
+            fx.transform.rotation = Quaternion.identity;
+            fx.transform.localScale = new Vector3(facing, 1f, 1f);
+        }
 
         /// <summary>§5.2：斩击/命中属「特效（前）」= 21。</summary>
         private const int FxFrontOrder = 21;
 
-        /// <summary>斩击光相对角色的前方距离（世界单位）。</summary>
-        private const float SlashForwardOffset = 1.2f;
-
         private readonly HashSet<IHittable> _hitThisWindow = new HashSet<IHittable>();
         private PlayerController _player;
         private PlayerCombat _combat;
+        private Player3DGameplayVisual _visual;
         private bool _windowOpen;
+        private bool _pendingFirstSwing;
         private Vector3 _hitboxLocalPosition;
+        private Vector2 _originalBoxSize;
 
         /// <summary>当前攻击段号：由 PlayerAttackState 在 Enter/衔接/退出时写入（第三段命中附击退）。</summary>
         public int CurrentSegment { get; set; }
@@ -41,6 +51,7 @@ namespace StarEco.Combat
         {
             _player = GetComponent<PlayerController>();
             _combat = GetComponent<PlayerCombat>();
+            _visual = GetComponent<Player3DGameplayVisual>();
             if (_hitbox == null)
             {
                 foreach (var col in GetComponentsInChildren<Collider2D>(true))
@@ -55,6 +66,7 @@ namespace StarEco.Combat
 
             if (_hitbox != null)
             {
+                if (_hitbox is BoxCollider2D box) _originalBoxSize = box.size;
                 _hitboxLocalPosition = _hitbox.transform.localPosition;
                 _hitboxLocalPosition.x = Mathf.Abs(_hitboxLocalPosition.x);
                 _hitbox.enabled = false;
@@ -64,6 +76,8 @@ namespace StarEco.Combat
 
         private void LateUpdate()
         {
+            if (_pendingFirstSwing && CurrentSegment == 1 && _visual.CanOpenFirstSwingHitbox())
+                OpenWindow();
             MirrorHitbox();
         }
 
@@ -72,6 +86,7 @@ namespace StarEco.Combat
         /// <summary>开窗：HitOn 事件帧调用。</summary>
         public void OnAttackWindowOpen()
         {
+            _pendingFirstSwing = false;
             // 第三段是投掷：近身判定整段不开窗，伤害全部由飞出去的钳子（ToolProjectile）结算。
             // 动画事件在进入第三段时仍会照常触发，这里按段号拦掉。
             if (CurrentSegment == 3)
@@ -85,39 +100,31 @@ namespace StarEco.Combat
                 return;
             }
 
+            if (CurrentSegment == 1 && _visual != null && !_visual.CanOpenFirstSwingHitbox())
+            {
+                _pendingFirstSwing = true;
+                return;
+            }
+            OpenWindow();
+        }
+
+        private void OpenWindow()
+        {
+            _pendingFirstSwing = false;
             _hitThisWindow.Clear();
             _windowOpen = true;
             if (_hitbox != null)
             {
+                MirrorHitbox();
                 _hitbox.enabled = true;
             }
 
-            PlaySlashFx();
-        }
-
-        /// <summary>挥击斩击光：播在角色朝向前方 0.8 单位（§AnimationVFXSpec §8.3）。</summary>
-        private void PlaySlashFx()
-        {
-            if (_fxSlashPrefab == null || _player == null)
-            {
-                return;
-            }
-
-            float facing = _player.Sprite != null && _player.Sprite.flipX ? -1f : 1f;
-            Vector3 pos = _hitbox != null
-                ? _hitbox.bounds.center
-                : transform.position + new Vector3(facing * SlashForwardOffset, 0f, 0f);
-            var fx = FxOneShot.Play(_fxSlashPrefab, pos, FxFrontOrder);
-            if (fx != null)
-            {
-                // 紧贴判定盒的短弧光；池复用时也重新设置朝向。
-                fx.transform.localScale = new Vector3(facing * 0.55f, 0.55f, 1f);
-            }
         }
 
         /// <summary>关窗：HitOff 事件帧调用。</summary>
         public void OnAttackWindowClose()
         {
+            _pendingFirstSwing = false;
             _windowOpen = false;
             _hitThisWindow.Clear();
             if (_hitbox != null)
@@ -147,7 +154,8 @@ namespace StarEco.Combat
 
             var info = new DamageInfo(dmg, FacingDirection(), gameObject)
             {
-                KnockbackPower = CurrentSegment == 3 ? thirdKnock : 0f
+                KnockbackPower = CurrentSegment == 3 ? thirdKnock : 0f,
+                IsSprayerSwing = CurrentSegment == 1 || CurrentSegment == 2
             }.WithPoint(HitPoint(other));
 
             target.TakeDamage(info);
@@ -166,7 +174,16 @@ namespace StarEco.Combat
 
             float facing = _player.Sprite.flipX ? -1f : 1f;
             var pos = _hitbox.transform.localPosition;
-            pos.x = facing * _hitboxLocalPosition.x;
+            bool groundSwing = _windowOpen && _player.IsGrounded && (CurrentSegment == 1 || CurrentSegment == 2);
+            float reach = groundSwing ? _groundSwingReach : 0f;
+            if (_hitbox is BoxCollider2D box)
+            {
+                float extension = groundSwing && _visual != null && _visual.HasSprayVisual
+                    ? .235f * (Player3DGameplayVisual.SwingSprayerLengthMultiplier - 1f) : 0f;
+                box.size = _originalBoxSize + Vector2.right * extension;
+                reach += extension * .5f;
+            }
+            pos.x = facing * (_hitboxLocalPosition.x + reach);
             pos.y = _hitboxLocalPosition.y;
             _hitbox.transform.localPosition = pos;
         }

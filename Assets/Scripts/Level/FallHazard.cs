@@ -16,6 +16,24 @@ namespace StarEco.Level
         [Tooltip("每次结算伤害（远大于玩家最大 HP，保证一击致命）")]
         [SerializeField] private int _damage = 999;
 
+        private Collider2D _zone;
+        private StarEco.Player.PlayerController _player;
+
+        private void Start()
+        {
+            _zone = GetComponent<Collider2D>();
+            _player = FindObjectOfType<StarEco.Player.PlayerController>();
+        }
+
+        private void FixedUpdate()
+        {
+            if (_zone.isActiveAndEnabled && _player != null && !_player.IsDead &&
+                _player.transform.position.y < _zone.bounds.min.y)
+            {
+                ApplyDamage(_player.Combat);
+            }
+        }
+
         private void OnTriggerEnter2D(Collider2D other)
         {
             Apply(other);
@@ -28,7 +46,11 @@ namespace StarEco.Level
 
         private void Apply(Collider2D other)
         {
-            var hittable = other.GetComponentInParent<IHittable>();
+            ApplyDamage(other.GetComponentInParent<IHittable>());
+        }
+
+        private void ApplyDamage(IHittable hittable)
+        {
             if (hittable == null)
             {
                 return;

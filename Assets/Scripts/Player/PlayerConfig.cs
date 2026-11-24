@@ -59,7 +59,7 @@ namespace StarEco.Player
         public float DodgeDuration = 0.333f;
 
         [Tooltip("翻滚总位移距离 (u)")]
-        public float DodgeDistance = 3f;
+        public float DodgeDistance = 4.5f;
 
         [Tooltip("翻滚期间无敌时长 (s)")]
         public float DodgeInvincibleTime = 0.33f;

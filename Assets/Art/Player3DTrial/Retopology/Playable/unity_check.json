@@ -1,0 +1,37 @@
+[
+  {
+    "name": "Idle",
+    "seconds": 0.8333334,
+    "movedVertices": 4799,
+    "maxDisplacement": 0.0102133788,
+    "loop": true
+  },
+  {
+    "name": "Run",
+    "seconds": 0.666666746,
+    "movedVertices": 3268,
+    "maxDisplacement": 0.527624249,
+    "loop": true
+  },
+  {
+    "name": "Jump",
+    "seconds": 0.450000018,
+    "movedVertices": 3203,
+    "maxDisplacement": 0.148379579,
+    "loop": false
+  },
+  {
+    "name": "Fall",
+    "seconds": 0.333333343,
+    "movedVertices": 2336,
+    "maxDisplacement": 0.00738288229,
+    "loop": true
+  },
+  {
+    "name": "Land",
+    "seconds": 0.4,
+    "movedVertices": 3203,
+    "maxDisplacement": 0.148578882,
+    "loop": false
+  }
+]

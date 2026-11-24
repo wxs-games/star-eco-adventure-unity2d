@@ -1,0 +1,14 @@
+{
+  "run": {
+    "velocity": 1.19999993,
+    "grip": true
+  },
+  "jump": 13.0,
+  "attack": {
+    "openedByEvent": true,
+    "closedByEvent": true,
+    "toolVisibleAtSample": true
+  },
+  "dash": 7.0,
+  "spriteFallback": true
+}
